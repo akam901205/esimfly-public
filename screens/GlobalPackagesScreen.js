@@ -1,0 +1,719 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  SafeAreaView,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient';
+import { countries } from '../utils/countryData';
+import NetworkModalGlobal from '../components/NetworkModalGlobal';
+
+const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
+
+const packageColors = [
+  ['#2A2A2A', '#1E1E1E'],
+];
+
+const GlobalPackagesScreen = () => {
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const route = useRoute();
+  const navigation = useNavigation();
+const [networkModalVisible, setNetworkModalVisible] = useState(false);
+const [selectedPackage, setSelectedPackage] = useState(null);
+
+  
+  const { packageType, globalPackageName } = route.params || {};
+
+  const getCountryName = useCallback((code) => {
+    if (!code) return code;
+    const foundCountry = countries.find(c => c.id === code.toLowerCase().trim());
+    return foundCountry ? foundCountry.name : code;
+  }, []);
+
+console.log('[DEBUG] GlobalPackagesScreen params:', route.params);
+
+  const parseIncompleteJSON = (jsonString) => {
+    try {
+      return JSON.parse(jsonString);
+    } catch (e) {
+      console.log('[DEBUG] Initial parse failed, attempting to fix JSON');
+      const plansMatch = jsonString.match(/"plans":\s*(\[[\s\S]*?\])(?=,\s*"pagination")/);
+      if (plansMatch && plansMatch[1]) {
+        try {
+          const plansArray = JSON.parse(plansMatch[1]);
+          return { plans: plansArray };
+        } catch (e) {
+          console.error('[DEBUG] Failed to parse plans array:', e);
+        }
+      }
+      throw new Error('Unable to parse JSON response');
+    }
+  };
+
+  const normalizeDuration = (duration) => {
+    const lowerDuration = duration.toLowerCase();
+    const number = parseInt(lowerDuration);
+    if (lowerDuration.includes('day')) {
+      return `${number} day${number > 1 ? 's' : ''}`;
+    }
+    return lowerDuration;
+  };
+
+  const adjustDataDisplay = (data) => {
+    if (data === 49) return 50;
+    return data;
+  };
+
+   const getSearchTerm = (packageName) => {
+  // Normalize search terms to match database naming
+  const normalized = packageName.toLowerCase();
+  if (normalized.includes('139')) {
+    return 'Global139';
+  } else if (normalized.includes('138')) {
+    return 'Global138';
+  } else if (normalized.includes('120+')) {
+    return 'Global';
+  } else if (normalized.includes('discover global')) {
+    return 'Global';
+  } else if (normalized.includes('106')) {
+    return 'Global';
+  }
+  return 'Global';
+};
+
+const fetchPackages = useCallback(async () => {
+  if (!globalPackageName) {
+    console.log('[DEBUG] No package name provided');
+    setLoading(false);
+    return;
+  }
+
+  try {
+    console.log(`[DEBUG] Fetching packages for: ${globalPackageName}, type: ${packageType}`);
+    
+    // Determine which API to use and search term
+    let apiEndpoint;
+    let searchTerm;
+    let isProvider2 = false;
+
+    if (globalPackageName.toLowerCase().includes('139')) {
+      apiEndpoint = `${API_BASE_URL}/get_plans_esimaccess.php`;
+      searchTerm = 'Global139';
+    } else if (globalPackageName.toLowerCase().includes('138')) {
+      apiEndpoint = `${API_BASE_URL}/get_plans_esimaccess.php`;
+      searchTerm = 'Global138';
+    } else if (globalPackageName.toLowerCase().includes('106')) {
+      apiEndpoint = `${API_BASE_URL}/get_plans_esimgo.php`;
+      searchTerm = 'Global';
+      isProvider2 = true;
+    } else if (globalPackageName.toLowerCase().includes('discover global')) {
+      apiEndpoint = `${API_BASE_URL}/get_plans_airalo.php`;
+      searchTerm = 'Global';
+    } else {
+      apiEndpoint = `${API_BASE_URL}/get_plans_esimaccess.php`;
+      searchTerm = 'Global';
+    }
+
+    console.log(`[DEBUG] Using API: ${apiEndpoint}`);
+    console.log(`[DEBUG] Using search term: ${searchTerm}`);
+
+    const response = await axios.get(apiEndpoint, {
+      params: { search: searchTerm, limit: 200 }
+    });
+
+    let parsedData = typeof response.data === 'string' ? parseIncompleteJSON(response.data) : response.data;
+    const allPackages = parsedData.plans || [];
+
+    console.log(`[DEBUG] Total packages before filtering: ${allPackages.length}`);
+    console.log(`[DEBUG] Raw packages:`, allPackages);
+
+    // Updated filtering logic in fetchPackages function
+const filteredPackages = allPackages.filter(pkg => {
+  if (!pkg || !pkg.name) return false;
+
+  const pkgName = pkg.name.trim().toLowerCase();
+  const pkgRegion = (pkg.region || '').trim().toLowerCase();
+  const pkgLocation = (pkg.location || '').trim().toLowerCase();
+  
+  let isTargetPackage = false;
+
+  // Log package details for debugging
+  console.log(`[DEBUG] Checking package: Name=${pkgName}, Region=${pkgRegion}, Location=${pkgLocation}`);
+  
+  if (globalPackageName.toLowerCase().includes('discover global')) {
+    // For Discover Global packages, check if we want voice+SMS or regular packages
+    if (packageType === 'voice_sms') {
+      // For voice+SMS, only include Discover+ packages
+      isTargetPackage = 
+        (pkgName.includes('discover+') || pkgRegion.toLowerCase().includes('discover+')) &&
+        (pkg.voice_minutes !== undefined || pkg.sms_count !== undefined);
+    } else {
+      // For regular/unlimited packages, exclude Discover+ packages
+      isTargetPackage = 
+        pkgName.includes('discover global') && 
+        !pkgName.includes('discover+') &&
+        !pkgRegion.toLowerCase().includes('discover+');
+    }
+  } else {
+    // Handle other package types (139, 138, etc.) as before
+    if (globalPackageName.toLowerCase().includes('139')) {
+      isTargetPackage = pkgName.includes('139') || pkgRegion.includes('global139');
+    } else if (globalPackageName.toLowerCase().includes('138')) {
+      isTargetPackage = pkgName.includes('138') || pkgRegion.includes('global138');
+    } else if (globalPackageName.toLowerCase().includes('106')) {
+      isTargetPackage = pkgName.includes('global') || pkgRegion.includes('global');
+    } else if (globalPackageName.toLowerCase().includes('120+')) {
+      isTargetPackage = pkgName.includes('120+') || pkgName.includes('global (120');
+    }
+  }
+
+  // Log matching result
+  console.log(`[DEBUG] Package ${pkgName} isTarget: ${isTargetPackage}, packageType: ${packageType}`);
+
+  // Handle unlimited filtering for non-voice+SMS packages
+  if (packageType !== 'voice_sms') {
+    const isUnlimited = 
+      pkg.unlimited === true || 
+      (typeof pkg.data === 'string' && pkg.data.toLowerCase().includes('unlimited')) ||
+      (typeof pkg.data === 'number' && pkg.data > 1000);
+
+    return isTargetPackage && (packageType === 'unlimited' ? isUnlimited : !isUnlimited);
+  }
+
+  return isTargetPackage;
+});
+
+    console.log(`[DEBUG] Filtered packages count: ${filteredPackages.length}`);
+    filteredPackages.forEach(pkg => {
+      console.log(`[DEBUG] Filtered package: ${pkg.name}, Data: ${pkg.data}, Region: ${pkg.region}`);
+    });
+
+    // Group packages by data and duration
+   const groupedPackages = new Map();
+    filteredPackages.forEach(pkg => {
+      const key = `${pkg.data}-${pkg.duration}`;
+      if (!groupedPackages.has(key) || parseFloat(pkg.price) < parseFloat(groupedPackages.get(key).price)) {
+        groupedPackages.set(key, pkg);
+      }
+    });
+
+    const uniquePackages = Array.from(groupedPackages.values());
+    
+    // Modified sorting logic - sort by price first
+    const sortedPackages = uniquePackages.sort((a, b) => {
+      // First sort by price (ascending)
+      const priceA = parseFloat(a.price) || 0;
+      const priceB = parseFloat(b.price) || 0;
+      if (priceA !== priceB) {
+        return priceA - priceB;
+      }
+      
+      // For same price, handle unlimited packages next
+      const isUnlimitedA = a.unlimited || (typeof a.data === 'string' && a.data.toLowerCase().includes('unlimited'));
+      const isUnlimitedB = b.unlimited || (typeof b.data === 'string' && b.data.toLowerCase().includes('unlimited'));
+      
+      if (isUnlimitedA && !isUnlimitedB) return -1;
+      if (!isUnlimitedA && isUnlimitedB) return 1;
+      
+      // For same price and unlimited status, sort by data amount
+      const dataA = parseFloat(a.data) || 0;
+      const dataB = parseFloat(b.data) || 0;
+      return dataB - dataA;  // Higher data first for same price
+    });
+
+    setPackages(sortedPackages);
+    setError(null);
+
+    console.log(`[DEBUG] Final sorted packages: ${sortedPackages.length}`);
+    sortedPackages.forEach(pkg => {
+      console.log(`[DEBUG] Final package: ${pkg.name}, Data: ${pkg.data}, Price: ${pkg.price}`);
+    });
+
+  } catch (err) {
+    console.error('[DEBUG] Error fetching packages:', err);
+    setError('Failed to fetch packages. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+}, [globalPackageName, packageType]);
+
+  useEffect(() => {
+    fetchPackages();
+  }, [fetchPackages]);
+
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
+        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>{globalPackageName || 'Global Plans'}</Text>
+      <View style={styles.headerIcon}>
+        <Ionicons name="globe-outline" size={24} color="#FFFFFF" />
+      </View>
+    </View>
+  );
+
+const formatDuration = (duration) => {
+    if (!duration) return '';
+    
+    // Convert duration to string if it's a number
+    const durationStr = duration.toString().toLowerCase();
+    
+    // Extract the numeric value
+    const number = parseInt(durationStr);
+    if (isNaN(number)) return duration;
+    
+    // Return formatted string
+    return `${number} DAY${number !== 1 ? 'S' : ''}`;
+  };
+
+const renderPackageItem = ({ item, index }) => {
+  const gradientColors = packageColors[index % packageColors.length];
+  
+  const getCountryCount = (item) => {
+    const pkgName = item.name?.toLowerCase() || '';
+    
+    // For esimaccess packages
+    if (item.regionCountries?.length > 0) {
+      return item.regionCountries.length;
+    }
+    
+    // Fallback to package name parsing
+    if (pkgName.includes('139')) return 139;
+    if (pkgName.includes('138')) return 138;
+    if (pkgName.includes('106')) return 106;
+    if (pkgName.includes('120+')) return 120;
+    
+    return 120; // Default fallback
+  };
+
+const handleNetworkPress = () => {
+  if (!item) {
+    console.log('[DEBUG] No package data to show in modal');
+    return;
+  }
+
+  // Determine provider based on package name or globalPackageName
+  let provider;
+  if (globalPackageName?.toLowerCase().includes('discover')) {
+    provider = 'airalo';
+  } else if (globalPackageName?.toLowerCase().includes('106')) {
+    provider = 'esimgo';
+  } else {
+    provider = 'esimaccess';
+  }
+
+  // Add provider to the package data
+  const packageWithProvider = {
+    ...item,
+    provider
+  };
+  
+  setSelectedPackage(packageWithProvider);
+  setNetworkModalVisible(true);
+};
+
+  const getNetworkCount = (item) => {
+    if (item.provider === 'esimgo') {
+      return item.networks?.reduce((total, country) => total + (country.networks?.length || 1), 0) || 0;
+    } else if (item.provider === 'airalo') {
+      return item.networks?.length || 0;
+    } else {
+      // For esimaccess packages
+      console.log('\n[DEBUG-PACKAGE] ========== START NETWORK COUNT ==========');
+      console.log('[DEBUG-PACKAGE] Package:', {
+        name: item.name,
+        provider: item.provider,
+        totalNetworks: item.networks?.length,
+        totalRegionCountries: item.regionCountries?.length
+      });
+      
+      const networksByLocation = {};
+      
+      // First, create a map of all valid locations from regionCountries
+      const validLocations = new Set();
+      (item.regionCountries || []).forEach(code => {
+        const countryName = getCountryName(code);
+        validLocations.add(countryName);
+        console.log('[DEBUG-PACKAGE] Added valid location:', {
+          code,
+          resolvedName: countryName
+        });
+      });
+      
+      console.log('[DEBUG-PACKAGE] Total valid locations:', validLocations.size);
+      console.log('[DEBUG-PACKAGE] Valid locations:', Array.from(validLocations));
+
+      // Create a map to track which networks were skipped and why
+      const skippedNetworks = new Map();
+
+      // Only process networks for valid locations
+      (item.networks || []).forEach(network => {
+        const locationName = getCountryName(network?.location || '');
+        const networkName = network?.name || 'Network Operator';
+        
+        if (validLocations.has(locationName)) {
+          if (!networksByLocation[locationName]) {
+            networksByLocation[locationName] = new Set();
+          }
+          networksByLocation[locationName].add(networkName);
+          
+          console.log('[DEBUG-PACKAGE] Added network:', {
+            location: locationName,
+            networkName: networkName,
+            currentLocationTotal: networksByLocation[locationName].size
+          });
+        } else {
+          if (!skippedNetworks.has(locationName)) {
+            skippedNetworks.set(locationName, new Set());
+          }
+          skippedNetworks.get(locationName).add(networkName);
+          console.log('[DEBUG-PACKAGE] Skipped network - location not in regionCountries:', {
+            location: locationName,
+            networkName: networkName
+          });
+        }
+      });
+
+      // Print skipped networks summary
+      console.log('\n[DEBUG-PACKAGE] Skipped Networks Summary:');
+      skippedNetworks.forEach((networks, location) => {
+        console.log(`[DEBUG-PACKAGE] ${location}: ${networks.size} networks skipped`);
+      });
+
+      // Count total unique networks only for valid locations
+      let totalNetworks = 0;
+      console.log('\n[DEBUG-PACKAGE] Final Network Counts by Location:');
+      Object.entries(networksByLocation).forEach(([location, networks]) => {
+        totalNetworks += networks.size;
+        console.log('[DEBUG-PACKAGE] Location networks:', {
+          location,
+          uniqueNetworks: networks.size,
+          networksArray: Array.from(networks),
+          runningTotal: totalNetworks
+        });
+      });
+
+      console.log('[DEBUG-PACKAGE] ========== NETWORK COUNT SUMMARY ==========');
+      console.log('[DEBUG-PACKAGE] Total valid locations:', validLocations.size);
+      console.log('[DEBUG-PACKAGE] Total locations with networks:', Object.keys(networksByLocation).length);
+      console.log('[DEBUG-PACKAGE] Locations with skipped networks:', skippedNetworks.size);
+      console.log('[DEBUG-PACKAGE] Final network count:', totalNetworks);
+      console.log('[DEBUG-PACKAGE] ========== END NETWORK COUNT ==========\n');
+
+      return totalNetworks;
+    }
+  };
+
+  const navigateToDetails = () => {
+    navigation.navigate('GlobalPackageDetails', {
+      package: item,
+      globalPackageName: globalPackageName
+    });
+  };
+  
+   return (
+      <TouchableOpacity
+        onPress={navigateToDetails}
+        activeOpacity={0.7}
+      >
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.packageItem}
+        >
+          <View style={styles.packageHeader}>
+            <View style={styles.regionInfo}>
+              <Ionicons name="globe-outline" size={24} color="#FF6B6B" />
+              <Text style={styles.regionName}>Global</Text>
+            </View>
+            {item.speed && (
+              <View style={styles.speedContainer}>
+                <Ionicons name="cellular" size={16} color="#FF6B6B" style={styles.signalIcon} />
+                <Text style={styles.speedText}>{item.speed}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.packageDetails}>
+            <View>
+              <Text style={styles.dataAmount}>
+                {typeof item.data === 'string' && item.data.toLowerCase().includes('unlimited') 
+                  ? 'Unlimited' 
+                  : `${adjustDataDisplay(parseFloat(item.data))} GB`}
+              </Text>
+              <Text style={styles.validityPeriod}>
+                VALID FOR {formatDuration(item.duration)}
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleNetworkPress()}
+                style={styles.buttonContainer}
+              >
+                <LinearGradient
+                  colors={[gradientColors[1], gradientColors[0]]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.button}
+                >
+                  <View style={styles.buttonContent}>
+                    <Ionicons name="globe-outline" size={16} color="#FFFFFF" />
+                    <Text style={styles.buttonText}>
+                      {getCountryCount(item)} Countries
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceText}>${parseFloat(item.price).toFixed(2)}</Text>
+              <TouchableOpacity onPress={navigateToDetails}>
+                <LinearGradient
+                  colors={[gradientColors[1], gradientColors[0]]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.button}
+                >
+                  <Text style={styles.buttonText}>BUY NOW</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#FF6B6B" />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.errorText}>{error}</Text>
+      </SafeAreaView>
+    );
+  }
+
+ return (
+    <SafeAreaView style={styles.container}>
+      {renderHeader()}
+      <FlatList
+        data={packages}
+        renderItem={renderPackageItem}
+        keyExtractor={(item, index) => `${item.packageCode}-${index}`}
+        contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={() => (
+          <Text style={styles.noPackagesText}>
+            No packages available for {globalPackageName || 'selected plan'}.
+          </Text>
+        )}
+      />
+      {networkModalVisible && selectedPackage && (
+        <NetworkModalGlobal
+          visible={networkModalVisible}
+          onClose={() => {
+            setNetworkModalVisible(false);
+            setSelectedPackage(null);
+          }}
+          packageData={selectedPackage}
+          globalPackageName={globalPackageName}
+        />
+      )}
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#121212',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#1E1E1E',
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: 'Quicksand',
+  },
+  listContainer: {
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 90 : 70,
+  },
+  packageItem: {
+    borderRadius: 12,
+    marginBottom: 16,
+    padding: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  packageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  regionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  regionName: {
+    marginLeft: 8,
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontFamily: 'Quicksand',
+  },
+  speedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  speedText: {
+    color: '#FF6B6B',
+    marginLeft: 4,
+    fontSize: 14,
+    fontFamily: 'Quicksand',
+  },
+  packageDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dataAmount: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: 'Quicksand',
+  },
+  validityPeriod: {
+    fontSize: 14,
+    color: '#BBBBBB',
+    fontFamily: 'Quicksand',
+    marginTop: 4,
+  },
+  priceContainer: {
+    alignItems: 'flex-end',
+  },
+  priceText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FF6B6B',
+    fontFamily: 'Quicksand',
+    marginBottom: 8,
+  },
+  buyButton: {
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  buyButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: 'Quicksand',
+  },
+networkStatsContainer: {
+  marginTop: 8,
+  flexDirection: 'row',
+  gap: 12,
+},
+statsRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+statsText: {
+  color: '#BBBBBB',
+  fontSize: 12,
+  fontFamily: 'Quicksand',
+  marginLeft: 4,
+},
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    textAlign: 'center',
+    fontFamily: 'Quicksand',
+  },
+  noPackagesText: {
+    color: '#BBBBBB',
+    fontSize: 16,
+    textAlign: 'center',
+    fontFamily: 'Quicksand',
+    marginTop: 20,
+  },
+  listFooter: {
+    height: 20,
+  },
+ buttonContainer: {
+    marginTop: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  button: {
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    elevation: 3,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginLeft: 6,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+
+});
+
+export default GlobalPackagesScreen;
