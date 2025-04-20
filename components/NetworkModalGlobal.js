@@ -11,8 +11,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FlagIcon, countries } from '../utils/countryData';
+import { colors } from '../theme/colors';
 
 const ITEMS_PER_PAGE = 15;
+
+const ICON_COLORS = {
+  cellular: '#32CD32',
+  speed: '#32CD32',
+  closeButton: '#FF3B30',
+};
 
 const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }) => {
   const [activeTab, setActiveTab] = useState('coverage');
@@ -136,26 +143,9 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
     );
   }, [packageData, getCountryName]);
 
-  const renderNetworkItem = useCallback(({ item: network }) => {
-    return (
-      <View style={styles.networkItem}>
-        <Ionicons name={network.icon || "cellular-outline"} size={20} color="#FF6B6B" style={styles.networkIcon} />
-        <View style={styles.networkItemContent}>
-          <Text style={styles.networkName}>
-            {network.type === 'speed' ? `${network.value} Network` : network.value}
-          </Text>
-          {network.location && (
-            <Text style={styles.networkLocation}>{network.location}</Text>
-          )}
-          {network.speeds && (
-            <Text style={styles.networkSpeed}>
-              {Array.isArray(network.speeds) ? network.speeds.join(', ') : network.speeds}
-            </Text>
-          )}
-        </View>
-      </View>
-    );
-  }, []);
+  const handleLoadMore = () => {
+    setDisplayedItems(prev => prev + ITEMS_PER_PAGE);
+  };
 
   const renderCountryItem = useCallback(({ item: country }) => {
     const isSelected = selectedCountry?.locationName === country?.locationName;
@@ -178,7 +168,7 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
               {country?.operatorList?.length || 0} {(country?.operatorList?.length || 0) === 1 ? 'operator' : 'operators'}
             </Text>
           </View>
-          <Text style={styles.networkTypeText}>
+          <Text style={[styles.networkTypeText, { color: ICON_COLORS.cellular }]}>
             {country?.operatorList?.some(op => op?.networkType?.includes('5G')) ? '5G' : '4G'}
           </Text>
         </View>
@@ -187,9 +177,11 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
           <View style={styles.operatorList}>
             {country.operatorList.map((operator, index) => (
               <View key={index} style={styles.operatorItem}>
-                <Ionicons name="cellular-outline" size={16} color="#FF6B6B" />
+                <Ionicons name="cellular-outline" size={16} color={ICON_COLORS.cellular} />
                 <Text style={styles.operatorName}>{operator?.operatorName}</Text>
-                <Text style={styles.operatorSpeed}>{operator?.networkType}</Text>
+                <Text style={[styles.operatorSpeed, { color: ICON_COLORS.cellular }]}>
+                  {operator?.networkType}
+                </Text>
               </View>
             ))}
           </View>
@@ -197,10 +189,6 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
       </TouchableOpacity>
     );
   }, [selectedCountry]);
-
-  const handleLoadMore = () => {
-    setDisplayedItems(prev => prev + ITEMS_PER_PAGE);
-  };
 
   const renderNetworksTab = useMemo(() => {
     const totalOperators = processCountries.reduce((sum, country) => 
@@ -210,17 +198,19 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
     return (
       <View>
         <View style={styles.networkItem}>
-          <Ionicons name="speedometer-outline" size={20} color="#FF6B6B" style={styles.networkIcon} />
+          <Ionicons name="speedometer-outline" size={20} color={ICON_COLORS.cellular} style={styles.networkIcon} />
           <View style={styles.networkItemContent}>
             <Text style={styles.networkName}>Network Speed</Text>
-            <Text style={styles.networkSpeed}>{packageData?.speed || '4G/LTE'}</Text>
+            <Text style={[styles.networkSpeed, { color: ICON_COLORS.cellular }]}>
+              {packageData?.speed || '4G/LTE'}
+            </Text>
           </View>
         </View>
         <View style={styles.networkItem}>
-          <Ionicons name="globe-outline" size={20} color="#FF6B6B" style={styles.networkIcon} />
+          <Ionicons name="globe-outline" size={20} color={ICON_COLORS.cellular} style={styles.networkIcon} />
           <View style={styles.networkItemContent}>
             <Text style={styles.networkName}>Global Coverage</Text>
-            <Text style={styles.networkLocation}>
+            <Text style={[styles.networkLocation, { color: ICON_COLORS.cellular }]}>
               {processCountries.length} Countries, {totalOperators} Networks
             </Text>
           </View>
@@ -239,12 +229,15 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="cellular-outline" size={24} color="#FF6B6B" />
+            <View style={[styles.iconContainer, { backgroundColor: `${ICON_COLORS.cellular}15` }]}>
+              <Ionicons name="cellular-outline" size={24} color={ICON_COLORS.cellular} />
             </View>
             <Text style={styles.modalTitle}>Networks & Coverage</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+            <TouchableOpacity 
+              onPress={onClose} 
+              style={[styles.closeButton, { backgroundColor: `${ICON_COLORS.closeButton}15` }]}
+            >
+              <Ionicons name="close" size={24} color={ICON_COLORS.closeButton} />
             </TouchableOpacity>
           </View>
 
@@ -286,7 +279,7 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
           )}
 
           <TouchableOpacity 
-            style={styles.gotItButton} 
+            style={styles.gotItButton}
             onPress={onClose}
             activeOpacity={0.8}
           >
@@ -299,13 +292,13 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
 };
 
 const styles = StyleSheet.create({
-    modalOverlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     minHeight: '50%',
@@ -322,7 +315,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -330,7 +322,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     flex: 1,
     fontFamily: 'Quicksand',
   },
@@ -338,7 +330,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -346,7 +337,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 20,
     borderRadius: 12,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.tertiary,
     padding: 4,
   },
   tab: {
@@ -356,14 +347,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.stone[800],
   },
   tabText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
   },
   activeTabText: {
+    color: colors.background.primary,
     fontWeight: 'bold',
   },
   networkList: {
@@ -372,12 +364,12 @@ const styles = StyleSheet.create({
   networkItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   networkIcon: {
     marginRight: 12,
@@ -388,43 +380,30 @@ const styles = StyleSheet.create({
   },
   networkName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
     fontWeight: '500',
   },
   networkLocation: {
     fontSize: 14,
-    color: '#888',
     fontFamily: 'Quicksand',
     marginTop: 2,
   },
   networkSpeed: {
     fontSize: 14,
-    color: '#FF6B6B',
     fontFamily: 'Quicksand',
     marginTop: 2,
   },
-  countryNetworkGroup: {
-    marginBottom: 20,
-  },
-  countryNetworkTitle: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
-    fontWeight: 'bold',
-    marginBottom: 8,
-    paddingLeft: 4,
-  },
   countryItem: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   selectedCountryItem: {
-    borderColor: '#FF6B6B',
+    borderColor: ICON_COLORS.cellular,
   },
   countryItemContent: {
     flexDirection: 'row',
@@ -438,46 +417,44 @@ const styles = StyleSheet.create({
   },
   countryName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
     fontWeight: 'bold',
   },
   operatorCount: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     fontFamily: 'Quicksand',
     marginTop: 2,
   },
   networkTypeText: {
     fontSize: 14,
-    color: '#FF6B6B',
     fontFamily: 'Quicksand',
   },
   operatorList: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: colors.border.light,
     paddingTop: 12,
   },
-  operatorItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  operatorName: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
-    marginLeft: 8,
-    flex: 1,
-  },
-  operatorSpeed: {
-    fontSize: 14,
-    color: '#FF6B6B',
-    fontFamily: 'Quicksand',
-  },
+ operatorItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    operatorName: {
+      fontSize: 14,
+      color: colors.text.primary,
+      fontFamily: 'Quicksand',
+      marginLeft: 8,
+      flex: 1,
+    },
+    operatorSpeed: {
+      fontSize: 14,
+      fontFamily: 'Quicksand',
+    },
   gotItButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.stone[800],
     borderRadius: 25,
     padding: 16,
     alignItems: 'center',
@@ -487,16 +464,16 @@ const styles = StyleSheet.create({
   gotItText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.background.primary,
     fontFamily: 'Quicksand',
   },
-  noNetworkText: {
-    fontSize: 16,
-    color: '#888',
-    textAlign: 'center',
-    fontFamily: 'Quicksand',
-    marginTop: 20,
-  },
-});
+    noNetworkText: {
+      fontSize: 16,
+      color: colors.text.secondary,
+      textAlign: 'center',
+      fontFamily: 'Quicksand',
+      marginTop: 20,
+    },
+  });
 
 export default NetworkModalGlobal;

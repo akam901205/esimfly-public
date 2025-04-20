@@ -6,11 +6,13 @@ import {
   SafeAreaView, 
   ScrollView, 
   TouchableOpacity,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 
 const TAB_BAR_HEIGHT = 84;
 const WINDOW_HEIGHT = Dimensions.get('window').height;
@@ -27,9 +29,14 @@ const TermsScreen = () => {
             style={styles.backButton} 
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+            <Ionicons 
+              name="arrow-back" 
+              size={24} 
+              color={colors.icon.header}
+            />
           </TouchableOpacity>
           <Text style={styles.title}>Terms of Service</Text>
+          <View style={styles.placeholder} />
         </View>
 
         <ScrollView 
@@ -139,26 +146,38 @@ const TermsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
   },
   content: {
     flex: 1,
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    backgroundColor: '#1E1E1E',
+    borderBottomColor: colors.border.light,
+    backgroundColor: colors.background.primary,
   },
   backButton: {
-    marginRight: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.headerIcon,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
+  },
+  placeholder: {
+    width: 40, // Same width as backButton for symmetry
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   scrollContent: {
     flex: 1,
@@ -170,18 +189,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   text: {
     fontSize: 16,
-    color: '#CCCCCC',
+    color: colors.text.secondary,
     lineHeight: 24,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   footer: {
     padding: 20,
@@ -189,13 +210,15 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#888888',
+    color: colors.text.secondary,
     marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   footerNote: {
     fontSize: 12,
-    color: '#666666',
+    color: colors.text.tertiary,
     textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

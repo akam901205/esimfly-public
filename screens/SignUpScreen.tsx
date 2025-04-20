@@ -15,6 +15,7 @@ import { signUp, verifyReferralCode } from '../api/authApi';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../AppNavigator';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { colors } from '../theme/colors';
 
 type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -96,47 +97,47 @@ export default function SignUpScreen({ navigation }: Props) {
   };
 
   const getReferralCodeIcon = () => {
-    if (isVerifyingCode) return "timer-outline";
-    if (referralCodeValid === true) return "checkmark-circle-outline";
-    if (referralCodeValid === false) return "close-circle-outline";
-    return "gift-outline";
+    if (isVerifyingCode) return 'timer-outline';
+    if (referralCodeValid === true) return 'checkmark-circle-outline';
+    if (referralCodeValid === false) return 'close-circle-outline';
+    return 'gift-outline';
   };
 
   const getReferralCodeIconColor = () => {
-    if (isVerifyingCode) return "#888888";
-    if (referralCodeValid === true) return "#4CAF50";
-    if (referralCodeValid === false) return "#FF6347";
-    return "#FF6347";
+    if (isVerifyingCode) return colors.text.tertiary;
+    if (referralCodeValid === true) return colors.success;
+    if (referralCodeValid === false) return colors.accent.DEFAULT;
+    return colors.accent.DEFAULT;
   };
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#1E1E1E" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.background.tertiary} />
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="chevron-back" size={24} color="#FFFFFF" />
+            <Icon name="chevron-back" size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Sign Up</Text>
           <View style={styles.rightPlaceholder} />
         </View>
-        
+
         <View style={styles.content}>
           <Text style={styles.title}>Create Your Account</Text>
           <Text style={styles.subtitle}>Sign up to get started</Text>
-          
+
           {/* Referral Code Input */}
-          <View style={styles.inputContainer}>
-            <Icon 
-              name={getReferralCodeIcon()} 
-              size={20} 
-              color={getReferralCodeIconColor()} 
-              style={styles.inputIcon} 
+         <View style={styles.inputContainer}>
+            <Icon
+              name={getReferralCodeIcon()}
+              size={20}
+              color={getReferralCodeIconColor()}
+              style={[styles.inputIcon, { color: getReferralCodeIconColor() }]}
             />
             <TextInput
               style={styles.input}
               placeholder="Enter Referral Code"
-              placeholderTextColor="#888888"
+              placeholderTextColor={colors.text.tertiary}
               value={referralCode}
               onChangeText={handleReferralCodeChange}
               autoCapitalize="characters"
@@ -144,16 +145,16 @@ export default function SignUpScreen({ navigation }: Props) {
               maxLength={8}
             />
             {isVerifyingCode && (
-              <ActivityIndicator size="small" color="#888888" style={styles.inputIcon} />
+              <ActivityIndicator size="small" color={colors.text.tertiary} style={styles.inputIcon} />
             )}
           </View>
-          
+
           <View style={styles.inputContainer}>
-            <Icon name="mail-outline" size={20} color="#FF6347" style={styles.inputIcon} />
+            <Icon name="mail-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
             <TextInput
               style={styles.input}
               placeholder="Email"
-              placeholderTextColor="#888888"
+              placeholderTextColor={colors.text.tertiary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -161,62 +162,62 @@ export default function SignUpScreen({ navigation }: Props) {
               editable={!isLoading}
             />
           </View>
-          
+
           <View style={styles.inputContainer}>
-            <Icon name="lock-closed-outline" size={20} color="#FF6347" style={styles.inputIcon} />
+            <Icon name="lock-closed-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
             <TextInput
               style={styles.input}
               placeholder="Password"
-              placeholderTextColor="#888888"
+              placeholderTextColor={colors.text.tertiary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               editable={!isLoading}
             />
-            <TouchableOpacity 
-              style={styles.eyeIcon} 
+            <TouchableOpacity
+              style={styles.eyeIcon}
               onPress={() => setShowPassword(!showPassword)}
               disabled={isLoading}
             >
-              <Icon name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#888888" />
+              <Icon name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.text.tertiary} />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.inputContainer}>
-            <Icon name="lock-closed-outline" size={20} color="#FF6347" style={styles.inputIcon} />
+            <Icon name="lock-closed-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
             <TextInput
               style={styles.input}
               placeholder="Confirm Password"
-              placeholderTextColor="#888888"
+              placeholderTextColor={colors.text.tertiary}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirmPassword}
               editable={!isLoading}
             />
-            <TouchableOpacity 
-              style={styles.eyeIcon} 
+            <TouchableOpacity
+              style={styles.eyeIcon}
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               disabled={isLoading}
             >
-              <Icon name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#888888" />
+              <Icon name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.text.tertiary} />
             </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[
-              styles.button, 
+              styles.button,
               (!referralCodeValid || isLoading) && styles.buttonDisabled
-            ]} 
-            onPress={handleSignUp} 
+            ]}
+            onPress={handleSignUp}
             disabled={!referralCodeValid || isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.background.primary} />
             ) : (
               <Text style={styles.buttonText}>Sign Up</Text>
             )}
           </TouchableOpacity>
-          
+
           <View style={styles.signInContainer}>
             <Text style={styles.signInText}>Already have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
@@ -232,10 +233,10 @@ export default function SignUpScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.tertiary,
   },
-buttonDisabled: {
-    backgroundColor: '#666666',
+  buttonDisabled: {
+    backgroundColor: colors.text.tertiary,
     opacity: 0.7,
   },
   header: {
@@ -245,13 +246,13 @@ buttonDisabled: {
     height: 56,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: colors.border.light,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 18,
     fontWeight: 'bold',
     fontFamily: 'Quicksand',
@@ -269,21 +270,21 @@ buttonDisabled: {
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 10,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 30,
-    color: '#888888',
+    color: colors.text.secondary,
     fontFamily: 'Quicksand',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: colors.border.light,
     marginBottom: 20,
   },
   inputIcon: {
@@ -292,7 +293,7 @@ buttonDisabled: {
   input: {
     flex: 1,
     height: 40,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 16,
     fontFamily: 'Quicksand',
   },
@@ -300,14 +301,14 @@ buttonDisabled: {
     padding: 10,
   },
   button: {
-    backgroundColor: '#FF6347',
+    backgroundColor: colors.primary.DEFAULT,
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',
     marginTop: 20,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.background.primary,
     fontSize: 16,
     fontWeight: 'bold',
     fontFamily: 'Quicksand',
@@ -319,12 +320,12 @@ buttonDisabled: {
     marginTop: 20,
   },
   signInText: {
-    color: '#888888',
+    color: colors.text.secondary,
     fontSize: 14,
     fontFamily: 'Quicksand',
   },
   signInLink: {
-    color: '#FF6347',
+    color: colors.primary.DEFAULT,
     fontSize: 14,
     fontWeight: 'bold',
     fontFamily: 'Quicksand',

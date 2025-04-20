@@ -10,84 +10,85 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useStripe } from '@stripe/stripe-react-native';
 import { AuthContext } from '../api/AuthContext';
 import { FlagIcon, countries } from '../utils/countryData';
 import { regions } from '../utils/regions';
 import esimApi from '../api/esimApi';
-import { Modal } from 'react-native';
 import { EventEmitter } from '../utils/EventEmitter';
+import { colors } from '../theme/colors';
+import { useToast } from '../components/ToastNotification';
 
 const TAB_BAR_HEIGHT = 84;
 const WINDOW_HEIGHT = Dimensions.get('window').height;
 
 const CheckoutScreen = () => {
   const route = useRoute();
+	const toast = useToast(); 
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [isLoading, setIsLoading] = useState(false);
   const [isAgreed, setIsAgreed] = useState(false);
   const [balance, setBalance] = useState(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('balance');
+  const [paymentSheetEnabled, setPaymentSheetEnabled] = useState(false);
   const auth = useContext(AuthContext);
- const [termsModalVisible, setTermsModalVisible] = useState(false);
-	const [verifiedPromoDetails, setVerifiedPromoDetails] = useState(route.params.promoDetails);
+  const [verifiedPromoDetails, setVerifiedPromoDetails] = useState(route.params.promoDetails);
+	  const [isInitializingCard, setIsInitializingCard] = useState(false);
 
 
-  
   const { package: packageData } = route.params;
   const isGlobalPackage = route.params.isGlobal;
   const isRegionalPackage = !!route.params.region;
 
-  const formatDuration = (duration: any) => {
+  const formatDuration = (duration) => {
     if (!duration) return '0 days';
-    // If duration is an object (from regional packages)
     if (typeof duration === 'object' && duration.name) {
       return duration.name.toString().replace(' days', '') + ' days';
     }
-    // Remove extra "days" if it exists and add it back once
     return duration.toString().replace(' days', '') + ' days';
   };
 
- const getCoverageCount = () => {
-  if (!packageData.coverage) {
-    // Fallback to other coverage data sources
-    if (packageData.locationNetworkList?.length) {
-      return packageData.locationNetworkList.length;
+  const getCoverageCount = () => {
+    if (!packageData.coverage) {
+      if (packageData.locationNetworkList?.length) {
+        return packageData.locationNetworkList.length;
+      }
+      if (packageData.countryNetworks?.length) {
+        return packageData.countryNetworks.length;
+      }
+      if (packageData.networks?.length) {
+        return packageData.networks.length;
+      }
+      return 0;
     }
-    if (packageData.countryNetworks?.length) {
-      return packageData.countryNetworks.length;
+    
+    if (typeof packageData.coverage === 'number') {
+      return packageData.coverage;
     }
-    if (packageData.networks?.length) {
-      return packageData.networks.length;
+    
+    if (Array.isArray(packageData.coverage)) {
+      return packageData.coverage.length;
     }
+    
+    if (typeof packageData.coverage === 'object') {
+      if (packageData.coverage.countries) {
+        return packageData.coverage.countries.length;
+      }
+      return Object.keys(packageData.coverage).length;
+    }
+    
     return 0;
-  }
-  
-  // Handle numeric coverage
-  if (typeof packageData.coverage === 'number') {
-    return packageData.coverage;
-  }
-  
-  // Handle array coverage
-  if (Array.isArray(packageData.coverage)) {
-    return packageData.coverage.length;
-  }
-  
-  // Handle object coverage
-  if (typeof packageData.coverage === 'object') {
-    if (packageData.coverage.countries) {
-      return packageData.coverage.countries.length;
-    }
-    return Object.keys(packageData.coverage).length;
-  }
-  
-  return 0;
-};
+  };
 
   const countryCode = React.useMemo(() => {
     if (isGlobalPackage || isRegionalPackage) return null;
@@ -103,8 +104,93 @@ const CheckoutScreen = () => {
     );
   }, [route.params]);
 
+const initializePaymentSheet = async () => {
+  try {
+    console.log('Starting payment sheet initialization');
+    const response = await esimApi.createPaymentIntent({
+      amount: Math.round(packageData.price * 100),
+      currency: 'usd',
+      payment_method_types: ['card'],
+      metadata: {
+        package_id: packageData.package_code || packageData.packageCode || packageData.id,
+        package_name: packageData.name
+      }
+    });
+
+    console.log('Payment intent creation response:', response);
+
+    const clientSecret = response?.data?.clientSecret;
+    console.log('Client secret extracted:', clientSecret ? 'Present' : 'Missing');
+
+    if (!clientSecret) {
+      console.error('Response structure:', JSON.stringify(response, null, 2));
+      throw new Error('Invalid client secret received');
+    }
+
+    // Configure payment sheet with Apple Pay and Google Pay
+    const { error: initError } = await initPaymentSheet({
+      paymentIntentClientSecret: clientSecret,
+      merchantDisplayName: 'eSimFly',
+      applePay: Platform.OS === 'ios' ? {
+        merchantCountryCode: 'HK',
+        merchantIdentifier: STRIPE_MERCHANT_ID,
+        buttonType: 'buy'
+      } : undefined,
+      googlePay: Platform.OS === 'android' ? {
+        merchantCountryCode: 'HK',
+        testEnv: true,
+        merchantName: 'eSimFly'
+      } : undefined,
+      allowsDelayedPaymentMethods: true,
+      style: 'light',
+      appearance: {
+        colors: {
+          primary: '#27AE60', // Matching your green button color
+          background: '#FFFFFF',
+          componentBackground: '#F5F5F5',
+          componentBorder: '#E5E5E5',
+          componentDivider: '#E5E5E5',
+          primaryText: '#1E1E1E',
+          secondaryText: '#666666',
+          componentText: '#1E1E1E',
+          placeholderText: '#999999'
+        },
+        shapes: {
+          borderRadius: 12,
+        },
+        primaryButton: {
+          colors: {
+            background: '#27AE60',
+            text: '#FFFFFF'
+          }
+        }
+      },
+      defaultBillingDetails: {
+        email: auth.userEmail,
+        address: {
+          country: 'hk'
+        }
+      }
+    });
+
+    if (initError) {
+      console.error('Payment sheet initialization error:', initError);
+      throw new Error(initError.message);
+    }
+
+    console.log('Payment sheet initialized successfully');
+    setPaymentSheetEnabled(true);
+  } catch (error) {
+    console.error('Payment sheet initialization failed:', error);
+    Alert.alert('Error', error.message || 'Failed to initialize payment. Please try again.');
+  }
+};
+
   useEffect(() => {
     fetchUserBalance();
+    if (packageData.price > 0) {
+      initializePaymentSheet();
+    }
   }, []);
 
   const fetchUserBalance = async () => {
@@ -126,37 +212,86 @@ const CheckoutScreen = () => {
     return `$${Number(balance.balance).toFixed(2)}`;
   };
 
-const handlePurchase = async () => {
+ const handlePurchase = async () => {
   if (!isAgreed) {
-    Alert.alert('Terms & Conditions', 'Please agree to the terms and conditions to continue');
+    toast.error('Please agree to the terms and conditions to continue');
     return;
   }
 
   setIsLoading(true);
+  let paymentIntentId = null;
+
   try {
-    // Get flagUrl based on package type
+    // Step 1: Create payment intent for card payments
+    if (paymentMethod === 'card') {
+      console.log('Creating payment intent for card payment', {
+        amount: Math.round(packageData.price * 100),
+        packageName: packageData.name
+      });
+
+      const paymentIntentResponse = await esimApi.createPaymentIntent({
+        amount: Math.round(packageData.price * 100),
+        currency: 'usd',
+        metadata: {
+          package_id: packageData.package_code || packageData.packageCode || packageData.id,
+          package_name: packageData.name
+        },
+        payment_method_types: ['card']
+      });
+
+      console.log('Payment intent creation response:', paymentIntentResponse);
+
+      if (!paymentIntentResponse.success || !paymentIntentResponse.data?.id) {
+        throw new Error(paymentIntentResponse.message || 'Payment initialization failed');
+      }
+
+      paymentIntentId = paymentIntentResponse.data.id;
+      console.log('Payment intent created:', paymentIntentId);
+
+      // Present the payment sheet
+      console.log('Presenting payment sheet');
+      const { error: presentError } = await presentPaymentSheet();
+      
+      // Handle cancellation specifically
+      if (presentError?.code === 'Canceled') {
+        console.log('User canceled the payment');
+        toast.info('Payment canceled');
+        // Cancel the payment intent since user canceled
+        try {
+          await esimApi.cancelPaymentIntent(paymentIntentId);
+        } catch (cancelError) {
+          console.error('Error canceling payment intent:', cancelError);
+        }
+        setIsLoading(false);
+        return; // Exit early since this is a user-initiated cancellation
+      } else if (presentError) {
+        console.error('Payment sheet presentation error:', presentError);
+        throw new Error(presentError.message || 'Payment failed');
+      }
+
+      // Confirm the payment
+      console.log('Confirming payment:', paymentIntentId);
+      const confirmResponse = await esimApi.confirmPayment(paymentIntentId);
+      console.log('Payment confirmation response:', confirmResponse);
+
+      if (!confirmResponse.success) {
+        throw new Error(confirmResponse.message || 'Payment confirmation failed');
+      }
+    }
+
+    // Step 2: Process the order
+    console.log('Processing order');
     const getFlagUrl = () => {
       if (isGlobalPackage) return '/img/flags/GLOBAL.png';
       if (isRegionalPackage) {
-        if (regionInfo?.id) {
-          return `/img/flags/region/${regionInfo.id.toLowerCase()}.png`;
-        }
-        return '/img/flags/UNKNOWN.png';
+        return regionInfo?.id ? 
+          `/img/flags/region/${regionInfo.id.toLowerCase()}.png` : 
+          '/img/flags/UNKNOWN.png';
       }
-      return countryCode ? `/img/flags/${countryCode.toLowerCase()}.png` : '/img/flags/UNKNOWN.png';
+      return countryCode ? 
+        `/img/flags/${countryCode.toLowerCase()}.png` : 
+        '/img/flags/UNKNOWN.png';
     };
-
-    // Build promoDetails only if we have valid data
-    let promoDetails = null;
-    if (verifiedPromoDetails && verifiedPromoDetails.code) {
-      promoDetails = {
-        code: verifiedPromoDetails.code.trim(),
-        originalPrice: verifiedPromoDetails.originalPrice,
-        discountAmount: verifiedPromoDetails.discountAmount
-      };
-    }
-
-    console.log('Constructing order with promo details:', promoDetails);
 
     const orderRequest = {
       packageCode: packageData.package_code || packageData.packageCode || packageData.id,
@@ -168,34 +303,29 @@ const handlePurchase = async () => {
       operator: packageData.operator,
       provider: packageData.provider,
       flagUrl: getFlagUrl(),
-      quantity: 1
+      quantity: 1,
+      payment_method: paymentMethod,
+      payment_intent_id: paymentIntentId,
+      promoDetails: verifiedPromoDetails
     };
 
-    // Only add promoDetails if we have valid data
-    if (promoDetails && promoDetails.code) {
-      orderRequest.promoDetails = promoDetails;
-      console.log('Adding promo details to order:', promoDetails);
-    }
-
-    console.log('Sending final order request:', orderRequest);
+    console.log('Sending order request:', orderRequest);
     const orderResponse = await esimApi.orderEsim(orderRequest);
-    console.log('Order response received:', orderResponse);
+    console.log('Order response:', orderResponse);
 
     if (orderResponse.success && orderResponse.data) {
-      // Update local balance state
+      // Update balance if available
       if (orderResponse.data.newBalance !== undefined) {
         setBalance({ 
           balance: orderResponse.data.newBalance,
           currency: orderResponse.data.currency || 'USD'
         });
 
-        // Dispatch balance update event for real-time updates
         EventEmitter.dispatch('BALANCE_UPDATED', {
           balance: orderResponse.data.newBalance,
           currency: orderResponse.data.currency || 'USD'
         });
 
-        // Dispatch eSIM update event
         EventEmitter.dispatch('ESIM_ADDED', {
           countryName: packageData.region || packageData.location,
           data: packageData.data,
@@ -203,8 +333,8 @@ const handlePurchase = async () => {
         });
       }
 
-      // Prepare eSIM data
-      let esimData = {
+      // Prepare eSIM data for navigation
+      const esimData = {
         qrCodeUrl: orderResponse.data.qrCodeUrl,
         directAppleInstallUrl: orderResponse.data.directAppleInstallUrl,
         packageName: orderResponse.data.packageName,
@@ -212,117 +342,165 @@ const handlePurchase = async () => {
         ac: '',
         processing: orderResponse.data.processing,
         finalPrice: orderResponse.data.finalPrice || orderResponse.data.price,
-        discountAmount: orderResponse.data.discountAmount || 0
+        discountAmount: orderResponse.data.discountAmount || 0,
+        ...(orderResponse.data.esims?.[0] && {
+          qrCodeUrl: orderResponse.data.esims[0].qrCodeUrl || orderResponse.data.qrCodeUrl,
+          directAppleInstallUrl: orderResponse.data.esims[0].directAppleInstallationUrl || 
+                                orderResponse.data.esims[0].appleInstallUrl ||
+                                orderResponse.data.directAppleInstallUrl,
+          iccid: orderResponse.data.esims[0].iccid || '',
+          ac: orderResponse.data.esims[0].smdpAddress && orderResponse.data.esims[0].matchingId
+            ? `LPA:1$${orderResponse.data.esims[0].smdpAddress}$${orderResponse.data.esims[0].matchingId}`
+            : ''
+        })
       };
 
-      // If we have esims array data, use it
-      if (orderResponse.data.esims?.[0]) {
-        const firstEsim = orderResponse.data.esims[0];
-        esimData = {
-          ...esimData,
-          qrCodeUrl: firstEsim.qrCodeUrl || esimData.qrCodeUrl,
-          directAppleInstallUrl: firstEsim.directAppleInstallationUrl || 
-                                firstEsim.appleInstallUrl || 
-                                esimData.directAppleInstallUrl,
-          iccid: firstEsim.iccid || '',
-          ac: firstEsim.smdpAddress && firstEsim.matchingId
-            ? `LPA:1$${firstEsim.smdpAddress}$${firstEsim.matchingId}`
-            : ''
-        };
-      }
+      toast.success('Purchase successful! Redirecting to installation...');
 
-      // Navigate to Instructions screen
+      // Navigate to instructions screen
       navigation.navigate('Instructions', {
         ...esimData,
         isProcessing: orderResponse.data.processing,
         esimId: orderResponse.data.esimId,
         orderReference: orderResponse.data.orderReference,
-        promoApplied: promoDetails ? true : false
+        promoApplied: verifiedPromoDetails ? true : false
       });
     } else {
       handleOrderError(orderResponse);
     }
+
   } catch (error) {
     console.error('Purchase error:', error);
-    Alert.alert(
-      'Error',
-      'An unexpected error occurred. Please try again.'
-    );
+    
+    // Don't show error toast for cancellations
+    if (error?.code !== 'Canceled') {
+      toast.error(error.message || 'An unexpected error occurred. Please try again.');
+    }
+    
+    // If payment was initiated but failed (not cancelled), try to cancel it
+    if (paymentIntentId && error?.code !== 'Canceled') {
+      try {
+        console.log('Attempting to cancel payment intent:', paymentIntentId);
+        await esimApi.cancelPaymentIntent(paymentIntentId);
+      } catch (cancelError) {
+        console.error('Error canceling payment intent:', cancelError);
+      }
+    }
   } finally {
     setIsLoading(false);
   }
 };
-
-// Add this helper function to handle order errors
-const handleOrderError = (orderResponse) => {
-  if (orderResponse.data?.errorCode === 'INSUFFICIENT_BALANCE') {
-    Alert.alert(
-      'Insufficient Balance',
-      `You need to add $${orderResponse.data.needToLoad?.toFixed(2)} to complete this purchase.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Add Funds',
-          onPress: () => navigation.navigate('AddFunds', {
-            requiredAmount: orderResponse.data.needToLoad
-          })
-        }
-      ]
-    );
-  } else {
-    Alert.alert(
-      'Purchase Failed',
-      orderResponse.message || 'Failed to process purchase. Please try again.'
-    );
-  }
-};
 	
-const TermsModal = () => (
-  <Modal
-    visible={termsModalVisible}
-    animationType="slide"
-    transparent={true}
-    onRequestClose={() => setTermsModalVisible(false)}
-  >
-    <View style={styles.modalContainer}>
-      <View style={styles.modalContent}>
-        <ScrollView style={styles.modalScroll}>
-          <Text style={styles.modalTitle}>Key Terms & Conditions</Text>
-          
-          <Text style={styles.modalSubtitle}>By purchasing this eSIM:</Text>
-          
-          <Text style={styles.modalText}>
-            • The service begins when you first connect to a network{'\n'}
-            • Purchased data/validity cannot be refunded once activated{'\n'}
-            • Package is non-transferable{'\n'}
-            • Service may vary by network availability{'\n'}
-            • Speed/coverage depends on local network conditions{'\n'}
-            • Fair usage policy applies{'\n'}
-            • Auto-renewal is not enabled by default{'\n'}
-            • Top-up availability varies by package type
-          </Text>
+const handleSuccessfulOrder = (orderResponse) => {
+  // Update balance if available
+  if (orderResponse.data.newBalance !== undefined) {
+    setBalance({ 
+      balance: orderResponse.data.newBalance,
+      currency: orderResponse.data.currency || 'USD'
+    });
 
+    EventEmitter.dispatch('BALANCE_UPDATED', {
+      balance: orderResponse.data.newBalance,
+      currency: orderResponse.data.currency || 'USD'
+    });
+  }
+
+  // Prepare eSIM data for navigation
+  const esimData = {
+    qrCodeUrl: orderResponse.data.qrCodeUrl,
+    directAppleInstallUrl: orderResponse.data.directAppleInstallUrl,
+    packageName: orderResponse.data.packageName,
+    iccid: '',
+    ac: '',
+    processing: orderResponse.data.processing,
+    finalPrice: orderResponse.data.finalPrice || orderResponse.data.price,
+    discountAmount: orderResponse.data.discountAmount || 0,
+    ...(orderResponse.data.esims?.[0] && {
+      qrCodeUrl: orderResponse.data.esims[0].qrCodeUrl || esimData.qrCodeUrl,
+      directAppleInstallUrl: orderResponse.data.esims[0].directAppleInstallationUrl || 
+                            orderResponse.data.esims[0].appleInstallUrl,
+      iccid: orderResponse.data.esims[0].iccid || '',
+      ac: orderResponse.data.esims[0].smdpAddress && orderResponse.data.esims[0].matchingId
+        ? `LPA:1$${orderResponse.data.esims[0].smdpAddress}$${orderResponse.data.esims[0].matchingId}`
+        : ''
+    })
+  };
+
+  // Navigate to instructions screen
+  navigation.navigate('Instructions', {
+    ...esimData,
+    isProcessing: orderResponse.data.processing,
+    esimId: orderResponse.data.esimId,
+    orderReference: orderResponse.data.orderReference,
+    promoApplied: verifiedPromoDetails ? true : false
+  });
+};
+
+  const handleOrderError = (orderResponse) => {
+    if (orderResponse.data?.errorCode === 'INSUFFICIENT_BALANCE') {
+      Alert.alert(
+        'Insufficient Balance',
+        `You need to add $${orderResponse.data.needToLoad?.toFixed(2)} to complete this purchase.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Add Funds',
+            onPress: () => navigation.navigate('Deposit', {
+              requiredAmount: orderResponse.data.needToLoad
+            })
+          }
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Purchase Failed',
+        orderResponse.message || 'Failed to process purchase. Please try again.'
+      );
+    }
+  };
+
+  const TermsModal = () => (
+    <Modal
+      visible={termsModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setTermsModalVisible(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <ScrollView style={styles.modalScroll}>
+            <Text style={styles.modalTitle}>Key Terms & Conditions</Text>
+            <Text style={styles.modalSubtitle}>By purchasing this eSIM:</Text>
+            <Text style={styles.modalText}>
+              • The service begins when you first connect to a network{'\n'}
+              • Purchased data/validity cannot be refunded once activated{'\n'}
+              • Package is non-transferable{'\n'}
+              • Service may vary by network availability{'\n'}
+              • Speed/coverage depends on local network conditions{'\n'}
+              • Fair usage policy applies{'\n'}
+              • Auto-renewal is not enabled by default{'\n'}
+              • Top-up availability varies by package type
+            </Text>
+            <TouchableOpacity 
+              style={styles.viewFullTerms}
+              onPress={() => {
+                setTermsModalVisible(false);
+                navigation.navigate('Terms');
+              }}
+            >
+              <Text style={styles.viewFullTermsText}>View Full Terms</Text>
+            </TouchableOpacity>
+          </ScrollView>
           <TouchableOpacity 
-            style={styles.viewFullTerms}
-            onPress={() => {
-              setTermsModalVisible(false);
-              navigation.navigate('Terms');
-            }}
+            style={styles.closeButton}
+            onPress={() => setTermsModalVisible(false)}
           >
-            <Text style={styles.viewFullTermsText}>View Full Terms</Text>
+            <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
-        </ScrollView>
-        
-        <TouchableOpacity 
-          style={styles.closeButton}
-          onPress={() => setTermsModalVisible(false)}
-        >
-          <Text style={styles.closeButtonText}>Close</Text>
-        </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  </Modal>
-);
+    </Modal>
+  );
 
   const LocationIcon = () => {
     if (isGlobalPackage) {
@@ -338,16 +516,80 @@ const TermsModal = () => (
     return <Ionicons name="globe-outline" size={24} color="#FF6B6B" />;
   };
 
+   const PaymentMethods = () => (
+    <View>
+      <TouchableOpacity 
+        style={[
+          styles.paymentMethodCard,
+          paymentMethod === 'balance' && styles.selectedPaymentMethod
+        ]}
+        onPress={() => setPaymentMethod('balance')}
+      >
+        <View style={styles.balanceMethod}>
+          <View style={styles.methodLeft}>
+            <View style={styles.methodIconContainer}>
+              <Ionicons name="wallet-outline" size={24} color={colors.text.primary} />
+            </View>
+            <View style={styles.methodInfo}>
+              <Text style={styles.methodTitle}>Balance</Text>
+              <Text style={styles.balanceAmount}>{getFormattedBalance()}</Text>
+            </View>
+          </View>
+          <View style={styles.radioButton}>
+            {paymentMethod === 'balance' && <View style={styles.radioInner} />}
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[
+          styles.paymentMethodCard,
+          paymentMethod === 'card' && styles.selectedPaymentMethod
+        ]}
+        onPress={async () => {
+          setPaymentMethod('card');
+          if (!paymentSheetEnabled) {
+            setIsInitializingCard(true);
+            await initializePaymentSheet();
+            setIsInitializingCard(false);
+          }
+        }}
+      >
+        <View style={styles.balanceMethod}>
+          <View style={styles.methodLeft}>
+            <View style={styles.methodIconContainer}>
+              <Ionicons name="card-outline" size={24} color={colors.text.primary} />
+            </View>
+            <View style={styles.methodInfo}>
+              <Text style={styles.methodTitle}>Credit/Debit Card</Text>
+              {isInitializingCard ? (
+                <ActivityIndicator size="small" color={colors.text.secondary} style={{marginTop: 4}} />
+              ) : (
+                <Text style={styles.balanceAmount}>Pay with Stripe</Text>
+              )}
+            </View>
+          </View>
+          <View style={styles.radioButton}>
+            {paymentMethod === 'card' && <View style={styles.radioInner} />}
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={[styles.content, { height: WINDOW_HEIGHT - insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.icon.header} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Checkout</Text>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Ionicons name="cart-outline" size={24} color="#FFFFFF" />
+          <TouchableOpacity style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}>
+            <Ionicons name="cart-outline" size={24} color={colors.icon.header} />
           </TouchableOpacity>
         </View>
 
@@ -367,24 +609,24 @@ const TermsModal = () => (
                   <LocationIcon />
                 </View>
               </View>
-             <View style={styles.packageDetails}>
-			  <Text style={styles.locationName}>
-				{isGlobalPackage ? 'Global' : 
-				 isRegionalPackage ? route.params.region : 
-				 route.params.country}
-			  </Text>
-			  <Text style={styles.packageSpecs}>
-				{packageData.data === 'Unlimited' || packageData.unlimited ? 
-				  'Unlimited' : `${packageData.data}GB`} • {formatDuration(packageData.duration)}
-				{packageData.voice_minutes ? ` • ${packageData.voice_minutes} Minutes` : ''}
-				{packageData.sms_count ? ` • ${packageData.sms_count} SMS` : ''}
-			  </Text>
-			  {(isGlobalPackage || isRegionalPackage) && (
-				<Text style={styles.coverageText}>
-				  Coverage in {getCoverageCount()} countries
-				</Text>
-			  )}
-			</View>
+              <View style={styles.packageDetails}>
+                <Text style={styles.locationName}>
+                  {isGlobalPackage ? 'Global' : 
+                   isRegionalPackage ? route.params.region : 
+                   route.params.country}
+                </Text>
+                <Text style={styles.packageSpecs}>
+                  {packageData.data === 'Unlimited' || packageData.unlimited ? 
+                    'Unlimited' : `${packageData.data}GB`} • {formatDuration(packageData.duration)}
+                  {packageData.voice_minutes ? ` • ${packageData.voice_minutes} Minutes` : ''}
+                  {packageData.sms_count ? ` • ${packageData.sms_count} SMS` : ''}
+                </Text>
+                {(isGlobalPackage || isRegionalPackage) && (
+                  <Text style={styles.coverageText}>
+                    Coverage in {getCoverageCount()} countries
+                  </Text>
+                )}
+              </View>
             </View>
             <View style={styles.priceBreakdown}>
               <View style={[styles.priceRow, styles.totalRow]}>
@@ -397,20 +639,7 @@ const TermsModal = () => (
           </View>
 
           <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Payment Method</Text>
-          <TouchableOpacity style={styles.paymentMethodCard}>
-            <View style={styles.balanceMethod}>
-              <View style={styles.methodLeft}>
-                <Ionicons name="wallet-outline" size={24} color="#FFFFFF" />
-                <View style={styles.methodInfo}>
-                  <Text style={styles.methodTitle}>Balance</Text>
-                  <Text style={styles.balanceAmount}>{getFormattedBalance()}</Text>
-                </View>
-              </View>
-              <View style={styles.radioButton}>
-                <View style={styles.radioInner} />
-              </View>
-            </View>
-          </TouchableOpacity>
+          <PaymentMethods />
 
           <View style={{ height: 150 }} />
         </ScrollView>
@@ -418,28 +647,25 @@ const TermsModal = () => (
         <View style={[styles.bottomContainer, { 
           paddingBottom: insets.bottom + TAB_BAR_HEIGHT 
         }]}>
-         <TouchableOpacity 
-  style={styles.termsContainer}
->
-  <TouchableOpacity 
-    style={styles.checkbox}
-    onPress={() => setIsAgreed(!isAgreed)}
-  >
-    {isAgreed && <Ionicons name="checkmark" size={16} color="#FF6B6B" />}
-  </TouchableOpacity>
-  <Text style={styles.termsText}>
-    I agree to the{' '}
-    <Text 
-      style={styles.termsLink}
-      onPress={() => setTermsModalVisible(true)}
-    >
-      Terms & Conditions
-    </Text>
-  </Text>
-</TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.termsContainer}
+            onPress={() => setIsAgreed(!isAgreed)}
+          >
+            <View style={styles.checkbox}>
+              {isAgreed && <Ionicons name="checkmark" size={16} color="#FF6B6B" />}
+            </View>
+            <Text style={styles.termsText}>
+              I agree to the{' '}
+              <Text 
+                style={styles.termsLink}
+                onPress={() => setTermsModalVisible(true)}
+              >
+                Terms & Conditions
+              </Text>
+            </Text>
+          </TouchableOpacity>
 
-{/* Add the modal */}
-<TermsModal />
+          <TermsModal />
           
           <TouchableOpacity 
             onPress={handlePurchase}
@@ -467,10 +693,11 @@ const TermsModal = () => (
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.primary,
   },
   content: {
     flex: 1,
@@ -480,26 +707,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.headerIcon,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
   },
   scrollView: {
     flex: 1,
+    backgroundColor: colors.background.primary,
   },
   scrollContentContainer: {
     padding: 16,
@@ -507,29 +735,29 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 16,
     fontFamily: 'Quicksand',
   },
   summaryCard: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   packageInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
   },
   flagContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -538,14 +766,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'white',
+    backgroundColor: colors.background.primary,
     padding: 1,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   globalFlagWrapper: {
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.tertiary,
   },
   packageDetails: {
     flex: 1,
@@ -553,18 +781,18 @@ const styles = StyleSheet.create({
   locationName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 4,
     fontFamily: 'Quicksand',
   },
   packageSpecs: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     fontFamily: 'Quicksand',
   },
   coverageText: {
     fontSize: 12,
-    color: '#888',
+    color: colors.text.tertiary,
     marginTop: 4,
     fontFamily: 'Quicksand',
   },
@@ -580,27 +808,31 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: colors.border.light,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
   },
   totalValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
   },
   paymentMethodCard: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FF6B6B',
+    borderColor: colors.border.light,
     padding: 16,
     marginBottom: 16,
+  },
+  selectedPaymentMethod: {
+    borderColor: colors.stone[600],
+    borderWidth: 2,
   },
   balanceMethod: {
     flexDirection: 'row',
@@ -616,13 +848,13 @@ const styles = StyleSheet.create({
   },
   methodTitle: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontWeight: 'bold',
     fontFamily: 'Quicksand',
   },
   balanceAmount: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     marginTop: 2,
     fontFamily: 'Quicksand',
   },
@@ -631,7 +863,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#FF6B6B',
+    borderColor: colors.stone[600],
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -639,16 +871,16 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.stone[600],
   },
   bottomContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: colors.border.light,
     padding: 16,
   },
   termsContainer: {
@@ -661,18 +893,18 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#FF6B6B',
+    borderColor: colors.stone[600],
     marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   termsText: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     fontFamily: 'Quicksand',
   },
   termsLink: {
-    color: '#FF6B6B',
+    color: colors.stone[600],
   },
   payButtonContainer: {
     marginBottom: 6,
@@ -687,24 +919,21 @@ const styles = StyleSheet.create({
   payButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.background.primary,
     fontFamily: 'Quicksand',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10
   },
- modalContainer: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.1)',
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
   modalContent: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     maxHeight: '80%',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   modalScroll: {
     padding: 20,
@@ -712,19 +941,19 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 16,
     fontFamily: 'Quicksand',
   },
   modalSubtitle: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 12,
     fontFamily: 'Quicksand',
   },
   modalText: {
     fontSize: 14,
-    color: '#BBBBBB',
+    color: colors.text.secondary,
     lineHeight: 24,
     fontFamily: 'Quicksand',
   },
@@ -732,26 +961,26 @@ const styles = StyleSheet.create({
     marginTop: 20,
     padding: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.tertiary,
     alignItems: 'center',
   },
   viewFullTermsText: {
-    color: '#FF6B6B',
+    color: colors.stone[600],
     fontSize: 14,
     fontFamily: 'Quicksand',
   },
   closeButton: {
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: colors.border.light,
     padding: 16,
     alignItems: 'center',
   },
   closeButtonText: {
-    color: '#FF6B6B',
+    color: colors.stone[600],
     fontSize: 16,
     fontFamily: 'Quicksand',
     fontWeight: 'bold',
-  },
+  }
 });
 
 export default CheckoutScreen;

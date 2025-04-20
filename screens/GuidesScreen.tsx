@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  SafeAreaView, 
+  FlatList, 
+  TouchableOpacity, 
+  Modal, 
+  ScrollView,
+  Platform 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme/colors';
 
 const guides = [
   {
@@ -496,7 +507,7 @@ const GuidesScreen = () => {
     </TouchableOpacity>
   );
 
-  return (
+   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>eSIM Guide</Text>
@@ -528,9 +539,9 @@ const GuidesScreen = () => {
               </Text>
               <TouchableOpacity 
                 onPress={() => setModalVisible(false)}
-                style={styles.closeButton}
+                style={[styles.closeButton, { backgroundColor: colors.background.headerIcon }]}
               >
-                <Ionicons name="close" size={24} color="#FFFFFF" />
+                <Ionicons name="close" size={24} color={colors.icon.header} />
               </TouchableOpacity>
             </View>
 
@@ -565,22 +576,25 @@ const GuidesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: colors.background.primary,
   },
   header: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
+    backgroundColor: colors.background.primary,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 5,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   subtitle: {
     fontSize: 16,
-    color: '#888',
+    color: colors.text.secondary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   listContainer: {
     padding: 15,
@@ -592,7 +606,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
   },
   guideItemContent: {
     flexDirection: 'row',
@@ -601,11 +615,13 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 10,
+    color: colors.text.secondary,
   },
   guideTitle: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   modalContainer: {
     flex: 1,
@@ -613,7 +629,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '80%',
@@ -624,16 +640,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   closeButton: {
-    padding: 5,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.headerIcon,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
   modalScrollView: {
     padding: 20,
@@ -644,8 +668,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   stepContainer: {
     flexDirection: 'row',
@@ -653,14 +678,15 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
   },
   bullet: {
-    color: '#888',
+    color: colors.text.secondary,
     marginRight: 10,
     fontSize: 16,
   },
   stepText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 16,
     flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

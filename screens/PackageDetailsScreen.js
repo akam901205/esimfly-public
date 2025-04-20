@@ -1,5 +1,3 @@
-//curent packagedetialsscreen
-
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
@@ -19,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FlagIcon, countries } from '../utils/countryData';
 import NetworkModal from '../components/NetworkModalSingelCountry';
 import esimApi from '../api/esimApi';
+import { colors } from '../theme/colors';
+
 
 const PackageDetailsScreen = () => {
   const [networkModalVisible, setNetworkModalVisible] = useState(false);
@@ -240,16 +240,24 @@ const PackageDetailsScreen = () => {
   }, [packageData.id]);
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>Package Details</Text>
-      <View style={styles.headerIcon}>
-        <Ionicons name="information-circle-outline" size={24} color="#FFFFFF" />
-      </View>
+  <View style={styles.header}>
+    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
+      <Ionicons 
+        name="arrow-back" 
+        size={24} 
+        color={colors.icon.header}  // Using new icon color
+      />
+    </TouchableOpacity>
+    <Text style={styles.headerTitle}>Package Details</Text>
+    <View style={styles.headerIcon}>
+      <Ionicons 
+        name="information-circle-outline" 
+        size={24} 
+        color={colors.icon.header}  // Using new icon color
+      />
     </View>
-  );
+  </View>
+);
 
   const TopFlag = () => (
     <View style={styles.topFlagContainer}>
@@ -290,16 +298,22 @@ const PackageDetailsScreen = () => {
     </View>
   );
 
-  const ValiditySection = () => (
-    <View style={styles.validitySection}>
-      <View style={styles.validityInner}>
-        <View style={styles.validityIconContainer}>
-          <Ionicons name="time-outline" size={24} color="#FF6B6B" />
-        </View>
-        <Text style={styles.validityDuration}>Valid for {packageData.duration} days</Text>
+    const ValiditySection = () => (
+  <View style={styles.validitySection}>
+    <View style={styles.validityInner}>
+      <View style={styles.validityIconContainer}>
+        <Ionicons 
+          name="time-outline" 
+          size={24} 
+          color={colors.stone[600]} 
+        />
       </View>
+      <Text style={styles.validityDuration}>
+        Valid for {packageData.duration.toString().replace(' days', '')} days
+      </Text>
     </View>
-  );
+  </View>
+);
 
   const WorksInSection = () => (
     <View style={styles.worksInSection}>
@@ -312,13 +326,18 @@ const PackageDetailsScreen = () => {
   );
 
  const PromoCodeSection = () => {
-  // Create local state here instead of using parent state
   const [localPromoCode, setLocalPromoCode] = useState('');
   const [localIsRedeeming, setLocalIsRedeeming] = useState(false);
 
-  // Create local handle redemption
   const localHandleRedemption = async () => {
+    // Validate promo code format
     if (!localPromoCode.trim()) {
+      Alert.alert('Error', 'Please enter a promo code');
+      return;
+    }
+
+    if (localPromoCode.length < 6) {
+      Alert.alert('Error', 'Promo code must be 6 characters');
       return;
     }
 
@@ -366,23 +385,27 @@ const PackageDetailsScreen = () => {
         <TextInput
           style={[
             styles.promoInput,
-            {color: '#FFFFFF'}
+            { color: colors.text.primary } // Changed from #FFFFFF to use theme color
           ]}
           placeholder="Enter referral or promo code"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.text.secondary}
           value={localPromoCode}
-          onChangeText={setLocalPromoCode}
+          onChangeText={(text) => {
+            // Only allow alphanumeric characters
+            const cleanText = text.replace(/[^A-Za-z0-9]/g, '');
+            setLocalPromoCode(cleanText.slice(0, 6)); // Limit to 6 characters
+          }}
           autoCapitalize="characters"
           maxLength={6}
-          selectionColor="#FF6B6B"
+          selectionColor={colors.stone[800]}
         />
         <TouchableOpacity 
           style={[
             styles.redeemButton,
-            !localPromoCode.trim() && styles.redeemButtonDisabled
+            !localPromoCode.trim() || localPromoCode.length < 6 ? styles.redeemButtonDisabled : null
           ]}
           onPress={localHandleRedemption}
-          disabled={!localPromoCode.trim() || localIsRedeeming}
+          disabled={!localPromoCode.trim() || localPromoCode.length < 6 || localIsRedeeming}
         >
           {localIsRedeeming ? (
             <ActivityIndicator size="small" color="#FF6B6B" />
@@ -500,28 +523,32 @@ const PackageDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.primary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
   },
-  headerIcon: {
+ headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.headerIcon,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   scrollView: {
     flex: 1,
@@ -535,142 +562,167 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   flagInnerWrapper: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'white',
+    backgroundColor: colors.background.primary,
     padding: 1,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   topCountryName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   dataPrice: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
-  },
-  dataSection: {
-    flex: 1,
-  },
-  priceSection: {
-    flex: 1,
-    alignItems: 'flex-end',
+    paddingHorizontal: 8,
   },
   sectionLabel: {
     fontSize: 16,
-    color: '#888',
+    color: colors.text.secondary,
     marginBottom: 8,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   dataAmount: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   priceAmount: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   validitySection: {
     marginBottom: 24,
-    alignItems: 'center',
+    paddingHorizontal: 16,
   },
   validityInner: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    padding: 16,
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
-    width: '100%',
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
+    alignItems: 'center',
+    paddingVertical: 20,
   },
   validityIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.tertiary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   validityDuration: {
-    fontSize: 20,
-    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    fontWeight: 'bold',
-  },
-  worksInSection: {
-    marginBottom: 24,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 16,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   countryContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   countryName: {
     fontSize: 18,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginLeft: 12,
-    fontFamily: 'Quicksand',
-  },
-  promoSection: {
-    marginBottom: 24,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   promoContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  promoPlaceholder: {
+  promoInput: {
+    flex: 1,
     fontSize: 16,
-    color: '#888',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    padding: 0,
+    marginRight: 12,
+    height: 40,
   },
-  redeemButton: {
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+   redeemButton: {
+    backgroundColor: colors.background.redeemButton,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border.redeemButton,
+  },
+  redeemButtonDisabled: {
+    backgroundColor: colors.background.tertiary,
+    opacity: 0.7,
   },
   redeemText: {
     fontSize: 14,
-    color: '#FF6B6B',
-    fontFamily: 'Quicksand',
+    color: colors.text.redeemText,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: '600',
   },
   infoSection: {
-    marginBottom: 24,
+    marginTop: 24,
   },
   infoRow: {
     flexDirection: 'row',
@@ -678,60 +730,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
   },
   infoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   infoLabel: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginLeft: 12,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   infoValue: {
     fontSize: 16,
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   viewAllButton: {
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.tertiary,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
   viewAllText: {
     fontSize: 14,
-    color: '#FF6B6B',
-    fontFamily: 'Quicksand',
+    color: colors.text.secondary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   policySection: {
     marginTop: 16,
   },
   policyText: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     marginTop: 8,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     lineHeight: 20,
   },
   bottomContainer: {
     padding: 16,
     paddingBottom: Platform.OS === 'ios' ? 90 : 70,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.secondary,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: colors.border.light,
   },
   disclaimer: {
     fontSize: 12,
-    color: '#888',
+    color: colors.text.secondary,
     marginBottom: 16,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     textAlign: 'center',
+    lineHeight: 16,
   },
   learnMore: {
-    color: '#FF6B6B',
+    color: colors.stone[800],
+    fontWeight: '600',
   },
   buyButton: {
     flexDirection: 'row',
@@ -740,44 +795,27 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 25,
     marginBottom: 6,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   buyButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.stone[50],
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  buyButtonDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-    marginLeft: 8,
-  },
-promoInput: {
-  flex: 1,
-  fontSize: 16,
-  color: '#FFFFFF', // Changed from black to white
-  fontFamily: 'Quicksand',
-  padding: 0,
-  marginRight: 12,
-  height: 40, // Added fixed height for better touch target
-},
-redeemButton: {
-  backgroundColor: 'rgba(255, 107, 107, 0.1)',
-  paddingVertical: 8,
-  paddingHorizontal: 16,
-  borderRadius: 8,
-},
-redeemButtonDisabled: {
-  backgroundColor: 'rgba(136, 136, 136, 0.1)',
-},
   originalPrice: {
     fontSize: 16,
-    color: '#888',
+    color: colors.text.secondary,
     textDecorationLine: 'line-through',
     marginTop: 4,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

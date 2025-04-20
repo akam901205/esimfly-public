@@ -16,9 +16,16 @@ import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 import { countries, FlagIcon } from '../utils/countryData';
 import NetworkModal from '../components/NetworkModalSingelCountry';
+import { colors } from '../theme/colors';
 
 const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
-const packageColors = [['#2A2A2A', '#1E1E1E']];
+
+const packageColors = [['#f4f4f5', '#f4f4f5']];
+
+const ICON_COLORS = {
+  network: '#007AFF',
+  speed: '#2563eb',  // Changed to a richer blue
+};
 
 const CountryPackagesScreen = () => {
   const [packages, setPackages] = useState([]);
@@ -432,19 +439,27 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
   }, [fetchPackages]);
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity 
-        onPress={() => navigation.goBack()} 
-        style={styles.headerIcon}
-      >
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>{country} Plans</Text>
-      <View style={styles.headerIcon}>
-        <Ionicons name="cash-outline" size={24} color="#FFFFFF" />
-      </View>
+  <View style={styles.header}>
+    <TouchableOpacity 
+      onPress={() => navigation.goBack()} 
+      style={styles.headerIcon}
+    >
+      <Ionicons 
+        name="arrow-back" 
+        size={24} 
+        color={colors.icon.header} 
+      />
+    </TouchableOpacity>
+    <Text style={styles.headerTitle}>{country} Plans</Text>
+    <View style={styles.headerIcon}>
+      <Ionicons 
+        name="cash-outline" 
+        size={24} 
+        color={colors.icon.header} 
+      />
     </View>
-  );
+  </View>
+);
 
   const formatDataAmount = (data) => {
     if (data === 'Unlimited' || data === Infinity) return 'Unlimited';
@@ -474,99 +489,86 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
     , null);
   };
 
-  const renderPackageItem = ({ item, index }) => {
-    const countryCode = countries.find(c => 
-      c.name.toLowerCase() === country.toLowerCase()
-    )?.id || '';
-    const gradientColors = packageColors[index % packageColors.length];
-    const highestSpeed = getHighestSpeed(item.speed);
+const renderPackageItem = ({ item, index }) => {
+  const countryCode = countries.find(c => 
+    c.name.toLowerCase() === country.toLowerCase()
+  )?.id || '';
+  const highestSpeed = getHighestSpeed(item.speed);
 
-    const handlePackagePress = () => {
-      navigation.navigate('PackageDetails', {
-        package: {
-          ...item,
-          data: item.data,
-          price: item.price,
-          duration: typeof item.duration === 'string' ? 
-            item.duration.replace(' days', '') : item.duration,
-          unlimited: item.unlimited || item.data === 'Unlimited',
-          region: item.region,
-          networkCount: item.networkCount
-        },
-        country: country
-      });
-    };
+  const handlePackagePress = () => {
+    navigation.navigate('PackageDetails', {
+      package: {
+        ...item,
+        data: item.data,
+        price: item.price,
+        duration: typeof item.duration === 'string' ? 
+          item.duration.replace(' days', '') : item.duration,
+        unlimited: item.unlimited || item.data === 'Unlimited',
+        region: item.region,
+        networkCount: item.networkCount
+      },
+      country: country
+    });
+  };
 
-    return (
-      <TouchableOpacity onPress={handlePackagePress} activeOpacity={0.9}>
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.packageItem}
-        >
-          <View style={styles.packageHeader}>
-            <View style={styles.countryInfo}>
-              <FlagIcon countryCode={countryCode} size={24} />
-              <Text style={styles.countryName}>{country}</Text>
+  return (
+    <TouchableOpacity onPress={handlePackagePress} activeOpacity={0.9}>
+      <View style={styles.packageItem}>
+        <View style={styles.packageHeader}>
+          <View style={styles.countryInfo}>
+            <FlagIcon countryCode={countryCode} size={24} />
+            <Text style={styles.countryName}>{country}</Text>
+          </View>
+          {highestSpeed && (
+            <View style={[styles.speedContainer, { backgroundColor: `${ICON_COLORS.speed}15` }]}>
+              <Ionicons name="speedometer-outline" size={16} color={ICON_COLORS.speed} />
+              <Text style={[styles.speedText, { color: ICON_COLORS.speed }]}>
+                {highestSpeed.toUpperCase()}
+              </Text>
             </View>
-            {highestSpeed && (
-              <View style={styles.speedContainer}>
-                <Ionicons name="speedometer-outline" size={16} color="#FF6B6B" />
-                <Text style={styles.speedText}>
-                  {highestSpeed.toUpperCase()}
-                </Text>
-              </View>
+          )}
+        </View>
+
+        <View style={styles.packageDetails}>
+          <View>
+            <Text style={styles.dataAmount}>
+              {formatDataAmount(item.data)}
+            </Text>
+            <Text style={styles.validityPeriod}>
+              VALID FOR {item.duration} DAYS
+            </Text>
+            {item.networkCount > 0 && (
+              <TouchableOpacity
+                onPress={() => handleNetworkPress(item)}
+                style={styles.networkButton}
+              >
+                <View style={styles.networkContent}>
+                  <Ionicons 
+                    name="cellular-outline" 
+                    size={16} 
+                    color={ICON_COLORS.network}
+                  />
+                  <Text style={styles.networkButtonText}>Networks</Text>
+                </View>
+              </TouchableOpacity>
             )}
           </View>
-
-          <View style={styles.packageDetails}>
-            <View>
-              <Text style={styles.dataAmount}>
-                {formatDataAmount(item.data)}
-              </Text>
-              <Text style={styles.validityPeriod}>
-                VALID FOR {item.duration} DAYS
-              </Text>
-              {item.networkCount > 0 && (
-			  <TouchableOpacity
-				onPress={() => handleNetworkPress(item)}
-				style={styles.networkButtonContainer}
-			  >
-				<LinearGradient
-				  colors={[gradientColors[1], gradientColors[0]]}
-				  start={{ x: 0, y: 0 }}
-				  end={{ x: 1, y: 1 }}
-				  style={styles.networkButton}
-				>
-				  <View style={styles.networkContent}>
-					<Ionicons name="cellular-outline" size={16} color="#FFFFFF" />
-					<Text style={styles.networkButtonText}>Networks</Text>
-				  </View>
-				</LinearGradient>
-			  </TouchableOpacity>
-			)}
-			</View>
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceText}>
-                ${item.price.toFixed(2)}
-              </Text>
-              <TouchableOpacity onPress={handlePackagePress}>
-                <LinearGradient
-                  colors={[gradientColors[1], gradientColors[0]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.buyButton}
-                >
-                  <Text style={styles.buyButtonText}>BUY NOW</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.priceContainer}>
+            <Text style={styles.priceText}>
+              ${item.price.toFixed(2)}
+            </Text>
+            <TouchableOpacity 
+              onPress={handlePackagePress} 
+              style={styles.buyButton}
+            >
+              <Text style={styles.buyButtonText}>BUY NOW</Text>
+            </TouchableOpacity>
           </View>
-        </LinearGradient>
-      </TouchableOpacity>
-    );
-  };
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -603,29 +605,31 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.primary,
   },
-  header: {
+    header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.headerIcon,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   listContainer: {
@@ -635,15 +639,13 @@ const styles = StyleSheet.create({
   listFooter: {
     height: 20,
   },
-  packageItem: {
+packageItem: {
     borderRadius: 12,
     marginBottom: 16,
     padding: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: colors.background.secondary,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   packageHeader: {
     flexDirection: 'row',
@@ -658,13 +660,13 @@ const styles = StyleSheet.create({
   countryName: {
     marginLeft: 8,
     fontSize: 18,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   speedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.tertiary,
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -672,7 +674,7 @@ const styles = StyleSheet.create({
   speedText: {
     marginLeft: 4,
     fontSize: 12,
-    color: '#FF6B6B',
+    color: colors.text.secondary,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   packageDetails: {
@@ -683,252 +685,231 @@ const styles = StyleSheet.create({
   dataAmount: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   validityPeriod: {
     fontSize: 14,
-    color: '#BBBBBB',
+    color: colors.text.secondary,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginTop: 4,
   },
-  priceContainer: {
+priceContainer: {
     alignItems: 'flex-end',
+    minWidth: 120, // Ensure consistent width for price container
   },
   priceText: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#FF6B6B',
+    color: colors.text.primary,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginBottom: 8,
   },
-  buyButton: {
+buyButton: {
     borderRadius: 8,
     paddingVertical: 10,
-    paddingHorizontal: 20,
-    elevation: 3,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    paddingHorizontal: 16,
+    backgroundColor: '#2196f3', // Changed to green
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#15803d', // Darker green for shadow
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   buyButtonText: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: '600',
+    color: colors.stone[50], // Using white color for contrast
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    letterSpacing: 0.5,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.primary,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.primary,
     padding: 16,
   },
   errorText: {
-        color: '#FF6B6B',
-        fontSize: 16,
-        textAlign: 'center',
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-        marginBottom: 8,
-    },
-    noPackagesText: {
-        color: '#BBBBBB',
-        fontSize: 16,
-        textAlign: 'center',
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-        marginTop: 20,
-    },
-    shadow: {
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 3.84,
-            },
-            android: {
-                elevation: 5,
-            },
-        }),
-    },
-    gradientBorder: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 107, 107, 0.3)',
-    },
-    networkContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-    },
-    networkText: {
-        color: '#BBBBBB',
-        fontSize: 12,
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-        marginLeft: 4,
-    },
-    coverageContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 8,
-    },
-    coverageItem: {
-        backgroundColor: 'rgba(255, 107, 107, 0.1)',
-        borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        marginRight: 8,
-        marginBottom: 8,
-    },
-    coverageText: {
-        color: '#FF6B6B',
-        fontSize: 12,
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    },
-    featureRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    featureIcon: {
-        width: 16,
-        height: 16,
-        marginRight: 4,
-    },
-    featureText: {
-        color: '#BBBBBB',
-        fontSize: 12,
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        marginVertical: 8,
-    },
-    badgeContainer: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: '#FF6B6B',
-        borderRadius: 12,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 3.84,
-            },
-            android: {
-                elevation: 5,
-            },
-        }),
-    },
-    badgeText: {
-        color: '#FFFFFF',
-        fontSize: 10,
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-        fontWeight: 'bold',
-    },
-    refreshButton: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#FF6B6B',
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 3.84,
-            },
-            android: {
-                elevation: 5,
-            },
-        }),
-    },
-    emptyStateContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    emptyStateText: {
-        color: '#BBBBBB',
-        fontSize: 16,
-        textAlign: 'center',
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-        marginTop: 12,
-    },
-    retryButton: {
-        marginTop: 16,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        backgroundColor: '#FF6B6B',
-        borderRadius: 8,
-    },
-    retryButtonText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-        fontWeight: 'bold',
-    },
-networkButtonContainer: {
-  marginTop: 8,
-  borderRadius: 6,
-  elevation: 3,
-  shadowColor: '#FF6B6B',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.3,
-  shadowRadius: 4,
-},
+    color: colors.text.secondary,
+    fontSize: 16,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginBottom: 8,
+  },
+  noPackagesText: {
+    color: colors.text.secondary,
+    fontSize: 16,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginTop: 20,
+  },
+  gradientBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  networkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  networkText: {
+    color: colors.text.secondary,
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginLeft: 4,
+  },
+  coverageContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  coverageItem: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  coverageText: {
+    color: colors.text.secondary,
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  featureIcon: {
+    width: 16,
+    height: 16,
+    marginRight: 4,
+  },
+  featureText: {
+    color: colors.text.secondary,
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border.light,
+    marginVertical: 8,
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: colors.stone[800],
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    color: colors.background.primary,
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: 'bold',
+  },
+  refreshButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.stone[800],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyStateText: {
+    color: colors.text.secondary,
+    fontSize: 16,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.stone[800],
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: colors.background.primary,
+    fontSize: 14,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: 'bold',
+  },
+  networkButtonContainer: {
+    marginTop: 8,
+    borderRadius: 6,
+  },
 networkButton: {
-  borderRadius: 6,
-  paddingVertical: 9,    // Reduced from 10
-  paddingHorizontal: 12, // Reduced from 20
-  elevation: 3,
-  shadowColor: '#FF6B6B',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.3,
-  shadowRadius: 4,
-},
-networkContent: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-networkButtonText: {
-  fontSize: 13,         // Reduced from 14
-  fontWeight: 'bold',
-  color: '#FFFFFF',
-  fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  marginLeft: 4,       // Reduced from 6
-  textShadowColor: 'rgba(0, 0, 0, 0.75)',
-  textShadowOffset: { width: -1, height: 1 },
-  textShadowRadius: 10,
-},
+    marginTop: 8,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.stone[100],
+    borderWidth: 1,
+    borderColor: colors.stone[200],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.stone[900],
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  networkButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.stone[600],
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginLeft: 4,
+  },
+  networkContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
 
 export default CountryPackagesScreen;

@@ -1,5 +1,3 @@
-// popularDestinations.js
-
 export const popularDestinations = [
   {
     id: 'tr',
@@ -66,20 +64,16 @@ export const popularDestinations = [
     isPopular: true
   }
 ];
-
 // Helper function to get a subset of popular destinations
 export const getPopularDestinations = (limit = 8) => {
   return popularDestinations.slice(0, limit);
 };
-
 // Helper function to check if a destination is popular
 export const isPopularDestination = (id) => {
   return popularDestinations.some(destination => destination.id === id.toLowerCase());
 };
-
 // Helper function to get a destination by ID
 export const getDestinationById = (id) => {
   return popularDestinations.find(destination => destination.id === id.toLowerCase());
 };
-
 export default popularDestinations;

@@ -49,6 +49,10 @@ export interface Order {
   is_gift_card: boolean;
   flag_url: string | null;
   order_reference: string | null;
+  payment_method: 'balance' | 'card' | 'apple_pay' | 'google_pay' | null;
+  payment_status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded';
+  payment_intent_id: string | null;
+  has_stripe_payment: boolean;
 }
 
 export interface OrdersResponse {
@@ -290,6 +294,180 @@ export interface VerifyGiftCardResponse {
   message?: string;
   error_code?: string;
 }
+
+// Add these new interfaces after your existing interfaces
+interface PaymentStatusResponse {
+  status: string;
+  paymentIntentId: string;
+  requiresAction: boolean;
+  clientSecret?: string;
+}
+
+interface PaymentConfirmationResponse {
+  status: string;
+  paymentIntentId: string;
+  clientSecret?: string;
+}
+
+interface StripePaymentIntent {
+  id: string;
+  client_secret: string;
+  status: string;
+  amount: number;
+  currency: string;
+}
+
+interface CreatePaymentIntentRequest {
+  amount: number;
+  currency?: string;
+  metadata?: {
+    package_id?: string;
+    package_name?: string;
+    [key: string]: any;
+  };
+  payment_method_types?: string[];
+}
+
+// Add these new functions to your esimApi object
+const stripeApi = {
+createPaymentIntent: async (data: CreatePaymentIntentRequest): Promise<ApiResponse<StripePaymentIntent>> => {
+  try {
+    console.log('Creating payment intent:', data);
+    
+    const response = await api.post('/public_app/api/payments/create-intent.php', {
+      amount: data.amount,
+      currency: data.currency || 'usd',
+      metadata: data.metadata,
+      payment_method_types: data.payment_method_types || ['card']
+    });
+
+    console.log('Raw payment intent response:', response.data);
+
+    if (!response.data.success || !response.data.data?.clientSecret) {
+      throw new Error(response.data.message || 'Failed to create payment intent');
+    }
+
+    return {
+      success: true,
+      data: {
+        id: response.data.data.paymentIntentId,
+        clientSecret: response.data.data.clientSecret,  // Keep original property name
+        status: 'created',
+        amount: data.amount,
+        currency: data.currency || 'usd'
+      }
+    };
+  } catch (error) {
+    console.error('Payment intent creation error:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to create payment intent'
+    };
+  }
+},
+		
+  confirmPayment: async (paymentIntentId: string): Promise<ApiResponse<PaymentConfirmationResponse>> => {
+    try {
+      console.log('Confirming payment:', paymentIntentId);
+      
+      const response = await api.post('/public_app/api/payments/confirm-payment.php', {
+        paymentIntentId
+      });
+
+      console.log('Payment confirmation response:', response.data);
+
+      if (response.data.success) {
+        return {
+          success: true,
+          data: {
+            status: response.data.data.status,
+            paymentIntentId: paymentIntentId,
+            clientSecret: response.data.data.clientSecret
+          }
+        };
+      }
+
+      return {
+        success: false,
+        message: response.data.message || 'Failed to confirm payment'
+      };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      console.error('Error confirming payment:', error);
+      return {
+        success: false,
+        ...errorInfo
+      };
+    }
+  },
+
+  checkPaymentStatus: async (paymentIntentId: string): Promise<ApiResponse<PaymentStatusResponse>> => {
+    try {
+      console.log('Checking payment status:', paymentIntentId);
+      
+      const response = await api.get('/public_app/api/payments/check-status.php', {
+        params: { paymentIntentId }
+      });
+
+      console.log('Payment status response:', response.data);
+
+      if (response.data.success) {
+        return {
+          success: true,
+          data: {
+            status: response.data.data.status,
+            paymentIntentId: paymentIntentId,
+            requiresAction: response.data.data.requires_action || false,
+            clientSecret: response.data.data.client_secret
+          }
+        };
+      }
+
+      return {
+        success: false,
+        message: response.data.message || 'Failed to check payment status'
+      };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      console.error('Error checking payment status:', error);
+      return {
+        success: false,
+        ...errorInfo
+      };
+    }
+  },
+
+  cancelPaymentIntent: async (paymentIntentId: string): Promise<ApiResponse<void>> => {
+    try {
+      console.log('Canceling payment intent:', paymentIntentId);
+      
+      const response = await api.post('/public_app/api/payments/cancel-intent.php', {
+        paymentIntentId
+      });
+
+      console.log('Payment cancellation response:', response.data);
+
+      if (response.data.success) {
+        return {
+          success: true,
+          message: 'Payment intent cancelled successfully'
+        };
+      }
+
+      return {
+        success: false,
+        message: response.data.message || 'Failed to cancel payment intent'
+      };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      console.error('Error canceling payment intent:', error);
+      return {
+        success: false,
+        ...errorInfo
+      };
+    }
+  }
+};
 	
 // Add new verification function
 export const verifyGiftCardForDiscount = async (cardNumber: string): Promise<ApiResponse<VerifyGiftCardResponse>> => {
@@ -703,6 +881,27 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
   try {
     console.log('Ordering eSIM:', data);
     
+    // Handle payment intent creation for card payments
+    let paymentIntentId: string | undefined;
+    if (data.payment_method === 'card') {
+      const paymentIntent = await stripeApi.createPaymentIntent({
+		  amount: Math.round(data.price * 100),
+		  metadata: {
+			package_id: data.packageCode,  // Changed from package_code
+			package_name: data.packageName,
+			provider: detectProvider(data as PackagePlan)
+		  }
+		});
+
+      if (!paymentIntent.success) {
+        return {
+          success: false,
+          message: paymentIntent.message || 'Payment initialization failed'
+        };
+      }
+      paymentIntentId = paymentIntent.data.id;
+    }
+    
     const provider = detectProvider(data as PackagePlan);
     console.log('Detected provider:', provider);
     
@@ -724,18 +923,22 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
     
     switch (provider) {
       case 'second':
-        endpoint = '/esimplan/order_second_esim.php';
+        endpoint = '/public_app/api/order/order_second_esim.php';
         requestData = {
           bundleName: packageCode,
           quantity: 1,
           packageName: data.packageName,
           duration: data.duration?.toString(),
-          flagUrl: flagUrl
+          flagUrl: flagUrl,
+          payment_method: data.payment_method,
+          payment_intent_id: paymentIntentId,
+          price: data.price,
+          ...(data.promoDetails && { promoDetails: data.promoDetails })
         };
         break;
         
       case 'third':
-        endpoint = '/esimplan/order_third_esim.php';
+        endpoint = '/public_app/api/order/order_third_esim.php';
         requestData = {
           packageCode: packageCode,
           packageName: data.packageName,
@@ -746,23 +949,29 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
           duration: data.duration,
           region: data.region,
           operator: (data as any).operator,
+          payment_method: data.payment_method,
+          payment_intent_id: paymentIntentId,
           planDetails: {
             data: data.data,
             duration: data.duration,
             region: data.region || '',
             type: 'local'
-          }
+          },
+          ...(data.promoDetails && { promoDetails: data.promoDetails })
         };
         break;
         
       default: // first provider
-        endpoint = '/esimplan/order_esim.php';
+        endpoint = '/public_app/api/order/order_esim.php';
         requestData = {
           packageCode: packageCode,
           packageName: data.packageName,
           price: data.price,
           quantity: 1,
-          flagUrl: flagUrl
+          flagUrl: flagUrl,
+          payment_method: data.payment_method,
+          payment_intent_id: paymentIntentId,
+          ...(data.promoDetails && { promoDetails: data.promoDetails })
         };
     }
 
@@ -772,6 +981,21 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
     console.log('Order eSIM response:', response.data);
 
     if (response.data.success) {
+      // If using card payment, confirm the payment
+      if (data.payment_method === 'card' && paymentIntentId) {
+        const confirmResponse = await stripeApi.confirmPayment(paymentIntentId);
+        if (!confirmResponse.success) {
+          return {
+            success: false,
+            message: 'Payment confirmation failed',
+            data: {
+              success: false,
+              errorCode: 'PAYMENT_CONFIRMATION_FAILED'
+            }
+          };
+        }
+      }
+
       return {
         success: true,
         data: {
@@ -782,14 +1006,26 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
           profit: response.data.profit,
           flagUrl: response.data.flagUrl,
           orderReference: response.data.orderReference,
-          currency: response.data.currency,
+          currency: response.data.currency || 'USD',
           qrCodeUrl: response.data.qrCodeUrl || response.data.esims?.[0]?.qrCodeUrl,
-          directAppleInstallUrl: response.data.directAppleInstallUrl || response.data.esims?.[0]?.directAppleInstallUrl,
+          directAppleInstallUrl: response.data.directAppleInstallUrl || 
+                                response.data.esims?.[0]?.directAppleInstallUrl ||
+                                response.data.esims?.[0]?.appleInstallUrl,
           processing: response.data.processing,
-          esims: response.data.esims
+          esimId: response.data.esimId,
+          esims: response.data.esims,
+          discountAmount: response.data.discountAmount,
+          finalPrice: response.data.finalPrice,
+          payment_intent_id: paymentIntentId,
+          payment_method: data.payment_method
         }
       };
     } else {
+      // If payment failed, void the payment intent
+      if (paymentIntentId) {
+        await stripeApi.cancelPaymentIntent(paymentIntentId);
+      }
+
       return {
         success: false,
         message: response.data.message,
@@ -805,6 +1041,16 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
   } catch (error) {
     console.error('Error ordering eSIM:', error);
     const errorInfo = handleApiError(error);
+    
+    // If there was a payment intent created, try to cancel it
+    if (data.payment_method === 'card' && (data as any).payment_intent_id) {
+      try {
+        await stripeApi.cancelPaymentIntent((data as any).payment_intent_id);
+      } catch (cancelError) {
+        console.error('Error canceling payment intent:', cancelError);
+      }
+    }
+    
     return {
       success: false,
       ...errorInfo
@@ -1103,7 +1349,7 @@ export const fetchOrders = async (page: number = 1): Promise<ApiResponse<OrdersR
   try {
     console.log('Fetching orders for page:', page);
     
-    const response = await api.get('/esimplan/get_orders.php', {
+    const response = await api.get('/public_app/api/order/get_orders.php', {
       params: { page }
     });
 
@@ -1194,6 +1440,7 @@ export const fetchLatestEsim = async (): Promise<ApiResponse<EsimData>> => {
 };
 
 const esimApi = {
+  ...stripeApi, // Add Stripe API functions
   fetchBalance,
   fetchLatestEsim,
   fetchEsimDetails,

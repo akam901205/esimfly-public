@@ -23,6 +23,7 @@ import * as Notifications from 'expo-notifications';
 import type { BalanceData } from '../api/esimApi';
 import NotificationService from '../services/notificationService';
 import { notificationManager } from '../components/NotificationManager';
+import { colors } from '../theme/colors';
 
 const TAB_BAR_HEIGHT = 84;
 const WINDOW_HEIGHT = Dimensions.get('window').height;
@@ -220,63 +221,63 @@ const ProfileScreen: React.FC = () => {
           </View>
           
           <View style={styles.options}>
-            <TouchableOpacity 
-              style={styles.option}
-              onPress={() => navigation.navigate('Deposit')}
-            >
-              <Ionicons name="wallet-outline" size={24} color="#FFFFFF" />
-              <Text style={styles.optionText}>Add Balance</Text>
-              <Ionicons name="chevron-forward" size={24} color="#888" />
-            </TouchableOpacity>
+  <TouchableOpacity 
+    style={styles.option}
+    onPress={() => navigation.navigate('Deposit')}
+  >
+    <Ionicons name="wallet-outline" size={24} color={colors.icon.header} />
+    <Text style={styles.optionText}>Add Balance</Text>
+    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
+  </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.option}
-              onPress={() => navigation.navigate('EditProfile')}
-            >
-              <Ionicons name="person-outline" size={24} color="#FFFFFF" />
-              <Text style={styles.optionText}>Edit Profile</Text>
-              <Ionicons name="chevron-forward" size={24} color="#888" />
-            </TouchableOpacity>
+  <TouchableOpacity 
+    style={styles.option}
+    onPress={() => navigation.navigate('EditProfile')}
+  >
+    <Ionicons name="person-outline" size={24} color={colors.icon.header} />
+    <Text style={styles.optionText}>Edit Profile</Text>
+    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
+  </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.option}
-              onPress={() => navigation.navigate('OrderHistory')}
-            >
-              <Ionicons name="receipt-outline" size={24} color="#FFFFFF" />
-              <Text style={styles.optionText}>Order History</Text>
-              <Ionicons name="chevron-forward" size={24} color="#888" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.option}>
-              <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
-              <Text style={styles.optionText}>Notifications</Text>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={toggleNotifications}
-                trackColor={{ false: '#767577', true: '#81b0ff' }}
-                thumbColor={notificationsEnabled ? '#f5dd4b' : '#f4f3f4'}
-                ios_backgroundColor="#3e3e3e"
-              />
-            </TouchableOpacity>
+  <TouchableOpacity 
+    style={styles.option}
+    onPress={() => navigation.navigate('OrderHistory')}
+  >
+    <Ionicons name="receipt-outline" size={24} color={colors.icon.header} />
+    <Text style={styles.optionText}>Order History</Text>
+    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
+  </TouchableOpacity>
+  
+  <TouchableOpacity style={styles.option}>
+    <Ionicons name="notifications-outline" size={24} color={colors.icon.header} />
+    <Text style={styles.optionText}>Notifications</Text>
+    <Switch
+      value={notificationsEnabled}
+      onValueChange={toggleNotifications}
+      trackColor={{ false: colors.background.light, true: '#4CAF50' }}
+      thumbColor={notificationsEnabled ? colors.stone[50] : colors.stone[200]}
+      ios_backgroundColor={colors.background.light}
+    />
+  </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.option}
-              onPress={() => navigation.navigate('Privacy')}
-            >
-              <Ionicons name="shield-outline" size={24} color="#FFFFFF" />
-              <Text style={styles.optionText}>Privacy</Text>
-              <Ionicons name="chevron-forward" size={24} color="#888" />
-            </TouchableOpacity>
+  <TouchableOpacity 
+    style={styles.option}
+    onPress={() => navigation.navigate('Privacy')}
+  >
+    <Ionicons name="shield-outline" size={24} color={colors.icon.header} />
+    <Text style={styles.optionText}>Privacy</Text>
+    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
+  </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.option}
-              onPress={() => navigation.navigate('Terms')}
-            >
-              <Ionicons name="document-text-outline" size={24} color="#FFFFFF" />
-              <Text style={styles.optionText}>Terms of Service</Text>
-              <Ionicons name="chevron-forward" size={24} color="#888" />
-            </TouchableOpacity>
-          </View>
+  <TouchableOpacity 
+    style={styles.option}
+    onPress={() => navigation.navigate('Terms')}
+  >
+    <Ionicons name="document-text-outline" size={24} color={colors.icon.header} />
+    <Text style={styles.optionText}>Terms of Service</Text>
+    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
+  </TouchableOpacity>
+</View>
 
           <View style={styles.logoutButtonContainer}>
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -292,7 +293,7 @@ const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
   },
   content: {
     flex: 1,
@@ -300,13 +301,14 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    backgroundColor: '#1E1E1E',
+    borderBottomColor: colors.border.light,
+    backgroundColor: colors.background.primary,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   scrollContent: {
     flex: 1,
@@ -323,53 +325,73 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     marginBottom: 10,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     overflow: 'hidden',
   },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 5,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   email: {
     fontSize: 16,
-    color: '#888',
+    color: colors.text.secondary,
     marginBottom: 15,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   balanceContainer: {
     alignItems: 'center',
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     padding: 15,
     borderRadius: 12,
     width: '100%',
     marginTop: 10,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   balanceLabel: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     marginBottom: 5,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   balanceAmount: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   options: {
     marginTop: 20,
   },
-  option: {
+option: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
+    backgroundColor: colors.background.secondary,
   },
   optionText: {
     flex: 1,
     marginLeft: 15,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+ optionIcon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevronIcon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoutButtonContainer: {
     padding: 20,
@@ -377,14 +399,15 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     padding: 15,
-    backgroundColor: '#FF6347',
+    backgroundColor: '#FF6347', // Keep this color for logout button as warning
     borderRadius: 8,
     alignItems: 'center',
   },
   logoutText: {
-    color: '#FFFFFF',
+    color: colors.stone[50],
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

@@ -10,9 +10,17 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FlagIcon } from '../utils/countryData';
+import { colors } from '../theme/colors';
+
+const ICON_COLORS = {
+  cellular: '#32CD32',
+  speed: '#32CD32',
+  closeButton: '#FF3B30',
+};
 
 const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [] }) => {
   const [activeTab, setActiveTab] = useState('coverage');
+  const [selectedCountry, setSelectedCountry] = useState(null);
 
   // Filter out Sint Eustatius And Saba from the locationNetworkList
   const filteredLocationNetworkList = locationNetworkList.filter(
@@ -32,24 +40,24 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
       <ScrollView style={styles.networkList}>
         <View style={styles.coverageCard}>
           <View style={styles.coverageHeader}>
-            <View style={styles.coverageIcon}>
-              <Ionicons name="cellular-outline" size={24} color="#FF6B6B" />
+            <View style={[styles.coverageIcon, { backgroundColor: `${ICON_COLORS.cellular}15` }]}>
+              <Ionicons name="cellular-outline" size={24} color={ICON_COLORS.cellular} />
             </View>
             <Text style={styles.coverageTitle}>Network Coverage</Text>
           </View>
 
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
-              <Ionicons name="cellular-outline" size={20} color="#FF6B6B" />
-              <Text style={styles.statValue}>
+              <Ionicons name="cellular-outline" size={20} color={ICON_COLORS.cellular} />
+              <Text style={[styles.statValue, { color: ICON_COLORS.cellular }]}>
                 {operators.length}
               </Text>
               <Text style={styles.statLabel}>Operators</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Ionicons name="speedometer-outline" size={20} color="#FF6B6B" />
-              <Text style={styles.statValue}>
+              <Ionicons name="speedometer-outline" size={20} color={ICON_COLORS.speed} />
+              <Text style={[styles.statValue, { color: ICON_COLORS.speed }]}>
                 {speed}
               </Text>
               <Text style={styles.statLabel}>Network Type</Text>
@@ -64,11 +72,16 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
 
         {operators.map((network, index) => (
           <View key={index} style={styles.networkItem}>
-            <Ionicons name="cellular-outline" size={20} color="#FF6B6B" style={styles.networkIcon} />
+            <Ionicons 
+              name="cellular-outline" 
+              size={20} 
+              color={ICON_COLORS.cellular} 
+              style={styles.networkIcon} 
+            />
             <View style={styles.networkContent}>
               <Text style={styles.networkName}>{network.value}</Text>
               {network.speeds && (
-                <Text style={styles.networkSpeed}>
+                <Text style={[styles.networkSpeed, { color: ICON_COLORS.speed }]}>
                   {Array.isArray(network.speeds) ? network.speeds.join(', ') : network.speeds}
                 </Text>
               )}
@@ -100,7 +113,7 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
               {country.operatorList.length} {country.operatorList.length === 1 ? 'operator' : 'operators'}
             </Text>
           </View>
-          <Text style={styles.networkTypeText}>
+          <Text style={[styles.networkTypeText, { color: ICON_COLORS.cellular }]}>
             {country.operatorList.some(op => op.networkType.includes('5G')) ? '5G' : '4G'}
           </Text>
         </View>
@@ -109,9 +122,11 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
           <View style={styles.operatorList}>
             {country.operatorList.map((operator, index) => (
               <View key={index} style={styles.operatorItem}>
-                <Ionicons name="cellular-outline" size={16} color="#FF6B6B" />
+                <Ionicons name="cellular-outline" size={16} color={ICON_COLORS.cellular} />
                 <Text style={styles.operatorName}>{operator.operatorName}</Text>
-                <Text style={styles.operatorSpeed}>{operator.networkType}</Text>
+                <Text style={[styles.operatorSpeed, { color: ICON_COLORS.speed }]}>
+                  {operator.networkType}
+                </Text>
               </View>
             ))}
           </View>
@@ -119,8 +134,6 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
       </TouchableOpacity>
     );
   };
-
-  const [selectedCountry, setSelectedCountry] = useState(null);
 
   return (
     <Modal
@@ -132,12 +145,15 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="cellular-outline" size={24} color="#FF6B6B" />
+            <View style={[styles.iconContainer, { backgroundColor: `${ICON_COLORS.cellular}15` }]}>
+              <Ionicons name="cellular-outline" size={24} color={ICON_COLORS.cellular} />
             </View>
             <Text style={styles.modalTitle}>Networks & Coverage</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+            <TouchableOpacity 
+              onPress={onClose} 
+              style={[styles.closeButton, { backgroundColor: `${ICON_COLORS.closeButton}15` }]}
+            >
+              <Ionicons name="close" size={24} color={ICON_COLORS.closeButton} />
             </TouchableOpacity>
           </View>
 
@@ -169,10 +185,10 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
           )}
 
           <TouchableOpacity 
-            style={styles.gotItButton} 
-            onPress={onClose}
-            activeOpacity={0.8}
-          >
+			  style={styles.gotItButton}
+			  onPress={onClose}
+			  activeOpacity={0.8}
+			>
             <Text style={styles.gotItText}>Got it</Text>
           </TouchableOpacity>
         </View>
@@ -184,11 +200,11 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     minHeight: '50%',
@@ -205,15 +221,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: colors.background.headerIcon,
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     flex: 1,
     fontFamily: 'Quicksand',
   },
@@ -221,15 +237,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background.headerIcon,
   },
   tabContainer: {
     flexDirection: 'row',
     marginBottom: 20,
     borderRadius: 12,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.tertiary,
     padding: 4,
   },
   tab: {
@@ -239,26 +255,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.stone[800],
   },
   tabText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
   },
   activeTabText: {
+    color: colors.stone[50],
     fontWeight: 'bold',
   },
   networkList: {
     marginBottom: 20,
   },
   coverageCard: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   coverageHeader: {
     flexDirection: 'row',
@@ -269,15 +286,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: colors.background.headerIcon,
   },
   coverageTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
   },
   statsContainer: {
@@ -287,7 +304,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
     marginBottom: 16,
   },
   statItem: {
@@ -296,35 +313,35 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
     marginVertical: 8,
   },
   statLabel: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     fontFamily: 'Quicksand',
   },
   statDivider: {
     width: 1,
     height: '80%',
-    backgroundColor: '#333',
+    backgroundColor: colors.border.light,
   },
   coverageDescription: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     fontFamily: 'Quicksand',
     lineHeight: 20,
   },
   networkItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   networkIcon: {
     marginRight: 12,
@@ -334,26 +351,26 @@ const styles = StyleSheet.create({
   },
   networkName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
     fontWeight: '500',
   },
   networkSpeed: {
     fontSize: 14,
-    color: '#FF6B6B',
     fontFamily: 'Quicksand',
     marginTop: 4,
+    color: colors.text.secondary,
   },
   countryItem: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   selectedCountryItem: {
-    borderColor: '#FF6B6B',
+    borderColor: colors.stone[800],
   },
   countryItemContent: {
     flexDirection: 'row',
@@ -367,25 +384,25 @@ const styles = StyleSheet.create({
   },
   countryName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
     fontWeight: 'bold',
   },
   operatorCount: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
     fontFamily: 'Quicksand',
     marginTop: 2,
   },
   networkTypeText: {
     fontSize: 14,
-    color: '#FF6B6B',
     fontFamily: 'Quicksand',
+    color: colors.text.secondary,
   },
   operatorList: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: colors.border.light,
     paddingTop: 12,
   },
   operatorItem: {
@@ -395,18 +412,18 @@ const styles = StyleSheet.create({
   },
   operatorName: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontFamily: 'Quicksand',
     marginLeft: 8,
     flex: 1,
   },
   operatorSpeed: {
     fontSize: 14,
-    color: '#FF6B6B',
     fontFamily: 'Quicksand',
+    color: colors.text.secondary,
   },
   gotItButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.stone[800],
     borderRadius: 25,
     padding: 16,
     alignItems: 'center',
@@ -416,7 +433,7 @@ const styles = StyleSheet.create({
   gotItText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.background.primary,
     fontFamily: 'Quicksand',
   },
 });

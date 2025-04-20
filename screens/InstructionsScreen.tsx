@@ -21,6 +21,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import esimApi from '../api/esimApi';
+import { colors } from '../theme/colors';
+
+
+interface QRCodeDisplayProps {
+  esimDetails: any;
+  params?: {
+    qrCodeUrl?: string;
+  };
+}
+
 
 const TAB_BAR_HEIGHT = 84;
 const WINDOW_HEIGHT = Dimensions.get('window').height;
@@ -40,34 +50,79 @@ const Step = ({ number, text }) => (
 );
 
 
-const QRCodeDisplay = ({ esimDetails, params }) => {
+const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ esimDetails, params }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const getQRCodeUrl = () => {
+    // Check if coming from checkout flow
+    if (params?.qrCodeUrl) {
+      return params.qrCodeUrl;
+    }
+
+    // For provider 1 (qrsim.net URLs), use qr_code_url directly
+    if (esimDetails?.qr_code_url?.includes('qrsim.net')) {
+      return esimDetails.qr_code_url;
+    }
+
+    // Detect Airalo provider
     const isAiralo = esimDetails?.order_reference?.startsWith('AIR_') || 
-                    esimDetails?.transaction_id?.startsWith('AIR_');
-    
-    return isAiralo ? 
-      esimDetails?.qr_code_url || params?.qrCodeUrl :
-      esimDetails?.short_url || params?.qrCodeUrl;
+                     esimDetails?.transaction_id?.startsWith('AIR_') ||
+                     esimDetails?.qr_code_url?.includes('airalo.com');
+
+    if (isAiralo) {
+      return esimDetails?.qr_code_url;
+    }
+
+    // For other cases, try different URL fields in order of preference
+    return esimDetails?.qr_code_url || 
+           esimDetails?.formatted_short_url || 
+           esimDetails?.short_url;
+  };
+
+  const handleError = (error: any) => {
+    console.error('QR Code loading error:', {
+      error,
+      url: getQRCodeUrl(),
+      provider: esimDetails?.qr_code_url?.includes('qrsim.net') ? 'Provider1' : 'Other'
+    });
+    setError('Failed to load QR code image');
+    setIsLoading(false);
   };
 
   const qrCodeUrl = getQRCodeUrl();
+
+  // Reset error state when URL changes
+  useEffect(() => {
+    setError(null);
+    setIsLoading(true);
+  }, [qrCodeUrl]);
+
+  if (!qrCodeUrl) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>QR code URL not available</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.qrOuterContainer}>
       <View style={styles.qrInnerContainer}>
         <Image
-          source={{ uri: qrCodeUrl }}
+          source={{ 
+            uri: qrCodeUrl,
+            // Add cache busting for provider 1 URLs
+            cache: qrCodeUrl.includes('qrsim.net') ? 'reload' : 'default'
+          }}
           style={styles.qrImage}
           resizeMode="contain"
-          onLoadStart={() => setIsLoading(true)}
-          onLoadEnd={() => setIsLoading(false)}
-          onError={(error) => {
-            console.error('QR Code loading error:', error);
-            setIsLoading(false);
-            Alert.alert('Error', 'Failed to load QR code image');
+          onLoadStart={() => {
+            setIsLoading(true);
+            setError(null);
           }}
+          onLoadEnd={() => setIsLoading(false)}
+          onError={handleError}
         />
         {isLoading && (
           <ActivityIndicator 
@@ -75,6 +130,11 @@ const QRCodeDisplay = ({ esimDetails, params }) => {
             color="#FF6B00" 
             style={styles.loader}
           />
+        )}
+        {error && (
+          <View style={styles.errorOverlay}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
         )}
       </View>
     </View>
@@ -375,15 +435,20 @@ const handleCopy = async (text: string) => {
               </Text>
             </View>
 
-            <TouchableOpacity 
-              style={styles.installButton}
-              onPress={handleInstall}
-            >
-              <View style={styles.installButtonContent}>
-                <Ionicons name="download-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.installButtonText}>Install eSIM Now</Text>
-              </View>
-            </TouchableOpacity>
+           <TouchableOpacity 
+		  style={[
+			styles.copyButtonContainer,
+			!activationData.smdpAddress && styles.copyButtonDisabled
+		  ]}
+		  onPress={() => handleCopy(activationData.smdpAddress)}
+		  disabled={!activationData.smdpAddress}
+		>
+		  <Ionicons 
+			name="copy" 
+			size={24} 
+			color={activationData.smdpAddress ? "#4CAF50" : "#666666"}
+		  />
+		</TouchableOpacity>
 
             <View style={[styles.directStepsContainer, { marginTop: 32 }]}>
               <DirectStep
@@ -518,23 +583,23 @@ const handleCopy = async (text: string) => {
               {activationData.smdpAddress || 'Not available'}
             </Text>
             <TouchableOpacity 
-              style={[
-                styles.copyButtonContainer,
-                !activationData.smdpAddress && styles.copyButtonDisabled
-              ]}
-              onPress={() => handleCopy(activationData.smdpAddress)}
-              disabled={!activationData.smdpAddress}
-            >
-              <Ionicons 
-                name="copy" 
-                size={24} 
-                color={activationData.smdpAddress ? "#FF6B00" : "#666666"}
-              />
-            </TouchableOpacity>
+		  style={[
+			styles.copyButtonContainer,
+			!activationData.smdpAddress && styles.copyButtonDisabled
+		  ]}
+		  onPress={() => handleCopy(activationData.smdpAddress)}
+		  disabled={!activationData.smdpAddress}
+		>
+		  <Ionicons 
+			name="copy" 
+			size={24} 
+			color={activationData.smdpAddress ? "#4CAF50" : "#666666"}
+		  />
+		</TouchableOpacity>
           </View>
         </View>
 
-        {/* Activation Code Section */}
+      {/* Activation Code Section */}
         <View style={styles.activationSection}>
           <Text style={styles.activationLabel}>Activation Code</Text>
           <View style={styles.activationCodeContainer}>
@@ -552,7 +617,7 @@ const handleCopy = async (text: string) => {
               <Ionicons 
                 name="copy" 
                 size={24} 
-                color={activationData.activationCode ? "#FF6B00" : "#666666"}
+                color={activationData.activationCode ? "#4CAF50" : "#666666"}
               />
             </TouchableOpacity>
           </View>
@@ -576,14 +641,14 @@ const handleCopy = async (text: string) => {
               <Ionicons 
                 name="copy" 
                 size={24} 
-                color={lpaFormat ? "#FF6B00" : "#666666"}
+                color={lpaFormat ? "#4CAF50" : "#666666"}
               />
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      <View style={styles.manualStepsContainer}>
+        <View style={styles.manualStepsContainer}>
         <DirectStep
           number={1}
           text='Go to "Settings", tap "Connections", then tap "SIM card manager" on your device.'
@@ -675,14 +740,28 @@ const handleCopy = async (text: string) => {
     <SafeAreaView style={styles.container}>
       <View style={[styles.content, { height: WINDOW_HEIGHT - insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Instructions</Text>
-          <TouchableOpacity onPress={handleShare}>
-            <Ionicons name="share-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+  <TouchableOpacity 
+    onPress={() => navigation.goBack()}
+    style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+  >
+    <Ionicons 
+      name="arrow-back" 
+      size={24} 
+      color={colors.icon.header}
+    />
+  </TouchableOpacity>
+  <Text style={styles.title}>Instructions</Text>
+  <TouchableOpacity 
+    onPress={handleShare}
+    style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+  >
+    <Ionicons 
+      name="share-outline" 
+      size={24} 
+      color={colors.icon.header}
+    />
+  </TouchableOpacity>
+</View>
 
         <View style={styles.tabBar}>
           {['QR Code', 'Direct', 'Manual'].map((tab) => (
@@ -716,7 +795,7 @@ const handleCopy = async (text: string) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: colors.background.primary,
   },
   content: {
     flex: 1,
@@ -726,17 +805,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.headerIcon,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.secondary,
     paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
   },
   tab: {
     flex: 1,
@@ -745,14 +839,15 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   activeTab: {
-    borderBottomColor: '#FF6B00',
+    borderBottomColor: colors.primary.DEFAULT,
   },
   tabText: {
-    color: '#666666',
+    color: colors.text.secondary,
     fontSize: 14,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   activeTabText: {
-    color: '#FF6B00',
+    color: colors.primary.DEFAULT,
     fontWeight: '600',
   },
   activeIndicator: {
@@ -761,53 +856,69 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     height: 2,
-    backgroundColor: '#FF6B00',
+    backgroundColor: colors.primary.DEFAULT,
   },
   tabContent: {
     flex: 1,
+    backgroundColor: colors.background.primary,
   },
   scrollContentContainer: {
     padding: 16,
   },
   warningContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     alignItems: 'center',
     gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   warningText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     flex: 1,
     lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-qrWrapper: {
+  qrWrapper: {
     padding: 24,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.secondary,
     borderRadius: 16,
     marginBottom: 24,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  qrOuterContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrInnerContainer: {
+    width: 200,
+    height: 200,
+    backgroundColor: colors.stone[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 8,
+  },
+  qrImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.stone[50],
   },
   qrContainer: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
+    overflow: 'hidden',
     borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
   instruction: {
-    color: '#999999',
+    color: colors.text.secondary,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   stepsContainer: {
     gap: 16,
@@ -817,70 +928,38 @@ qrWrapper: {
     gap: 8,
   },
   stepNumber: {
-    color: '#FF6B00',
+    color: colors.primary.DEFAULT,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   stepText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     flex: 1,
-  },
-  comingSoonText: {
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginTop: 24,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#FFFFFF',
-    marginTop: 16,
-    fontSize: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  errorText: {
-    color: '#FF6B00',
-    fontSize: 16,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: '#FF6B00',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   directInstallContainer: {
     flex: 1,
   },
   stepTitle: {
-    color: '#FF6B00',
+    color: colors.primary.DEFAULT,
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   warningBox: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   warningBoxText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   directStepsContainer: {
     marginBottom: 32,
@@ -894,42 +973,21 @@ qrWrapper: {
     width: 20,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   directStepText: {
     flex: 1,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  successBanner: {
-    backgroundColor: '#00875A',
+  installButton: {
+    backgroundColor: '#4CAF50', // Using the green color
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  successIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  successText: {
-    color: '#FFFFFF',
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-   installButton: {
-    backgroundColor: '#FF6B00',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,        // Adjust space above button
-    marginBottom: 32,    // Adjust space below button (increased from 24 to 32)
+    marginTop: 8,
+    marginBottom: 32,
   },
   installButtonContent: {
     flexDirection: 'row',
@@ -937,31 +995,13 @@ qrWrapper: {
     justifyContent: 'center',
   },
   installButtonText: {
-    color: '#FFFFFF',
+    color: colors.stone[50],
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  manualContainer: {
-    padding: 16,
-  },
-  manualTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  codeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#121212',
-    padding: 16,
-    borderRadius: 12,
-  },
-  copyButton: {
-    padding: 8,
-  },
-activationDetailsContainer: {
+  activationDetailsContainer: {
     marginBottom: 24,
     gap: 16,
   },
@@ -969,22 +1009,22 @@ activationDetailsContainer: {
     gap: 8,
   },
   activationLabel: {
-    color: '#666666',
+    color: colors.text.secondary,
     fontSize: 14,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   activationCodeContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   activationCode: {
     flex: 1,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 14,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
@@ -992,18 +1032,20 @@ activationDetailsContainer: {
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 107, 0, 0.1)',
+    backgroundColor: 'rgba(76, 175, 80, 0.1)', // Light green background
     justifyContent: 'center',
     alignItems: 'center',
   },
-  manualStepsContainer: {
-    marginBottom: 32,
+  copyButtonDisabled: {
+    opacity: 0.5,
   },
   networkSettingsContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   networkRow: {
     flexDirection: 'row',
@@ -1017,78 +1059,104 @@ activationDetailsContainer: {
   networkDivider: {
     width: 1,
     height: 24,
-    backgroundColor: '#333333',
+    backgroundColor: colors.border.light,
     marginHorizontal: 8,
   },
   networkLabel: {
-    color: '#666666',
+    color: colors.text.secondary,
     fontSize: 12,
     marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   networkValue: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.background.tertiary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
   networkText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 12,
-  },	
-processingBanner: {
-    backgroundColor: '#FF6B00',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  successBanner: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    margin: 16,
-    borderRadius: 8,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
-  processingIconContainer: {
+  successIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${colors.primary.DEFAULT}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
-  processingText: {
-    color: '#FFFFFF',
+  successText: {
+    color: colors.text.primary,
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-    qrInnerContainer: {
-      width: 200,
-      height: 200,
-      backgroundColor: '#FFFFFF',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 12,
-      padding: 8, // Add padding around the QR code
-    },
-    qrImage: {
-      width: '100%',
-      height: '100%',
-      backgroundColor: '#FFFFFF',
-    },
-    loader: {
-      position: 'absolute',
-    },
-	
-qrImageContainer: {
-      width: 200,
-      height: 200,
-      backgroundColor: '#FFFFFF',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 12,
-    },
-    qrWrapper: {
-      padding: 24,
-      backgroundColor: '#121212',
-      borderRadius: 16,
-      marginBottom: 24,
-      alignItems: 'center',
-    },
-    qrContainer: {
-      overflow: 'hidden',
-      borderRadius: 12,
-    },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+  },
+  loadingText: {
+    color: colors.text.primary,
+    marginTop: 16,
+    fontSize: 16,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.background.primary,
+  },
+  errorText: {
+    color: colors.text.primary,
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  loader: {
+    position: 'absolute',
+  },
+  errorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: `${colors.background.primary}E6`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  retryButton: {
+    backgroundColor: colors.primary.DEFAULT,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: colors.stone[50],
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
 });
 
 export default InstructionsScreen;

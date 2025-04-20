@@ -8,7 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Dimensions,
-  SafeAreaView
+  SafeAreaView,
+ Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +17,7 @@ import { AuthContext } from '../api/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import esimApi from '../api/esimApi';
 import { notificationManager } from '../components/NotificationManager';
+import { colors } from '../theme/colors';
 
 const { height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 84;
@@ -192,14 +194,15 @@ const EditProfileScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={[styles.content, { height: height - insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Edit Profile</Text>
-        </View>
+		  <TouchableOpacity 
+			style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+			onPress={() => navigation.goBack()}
+		  >
+			<Ionicons name="arrow-back" size={24} color={colors.icon.header} />
+		  </TouchableOpacity>
+		  <Text style={styles.headerTitle}>Edit Profile</Text>
+		  <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
+		</View>
 
         <View style={styles.tabContainer}>
           <TouchableOpacity
@@ -210,10 +213,10 @@ const EditProfileScreen: React.FC = () => {
             onPress={() => setActiveTab('password')}
           >
             <Ionicons
-              name="lock-closed-outline"
-              size={20}
-              color={activeTab === 'password' ? '#FF6B6B' : '#888'}
-            />
+		  name="lock-closed-outline"
+		  size={20}
+		  color={activeTab === 'password' ? colors.primary.DEFAULT : colors.text.secondary}
+		/>
             <Text style={[
               styles.tabText,
               activeTab === 'password' && styles.activeTabText
@@ -230,10 +233,10 @@ const EditProfileScreen: React.FC = () => {
             onPress={() => setActiveTab('email')}
           >
             <Ionicons
-              name="mail-outline"
-              size={20}
-              color={activeTab === 'email' ? '#FF6B6B' : '#888'}
-            />
+			  name="mail-outline"
+			  size={20}
+			  color={activeTab === 'email' ? colors.primary.DEFAULT : colors.text.secondary}
+			/>
             <Text style={[
               styles.tabText,
               activeTab === 'email' && styles.activeTabText
@@ -413,7 +416,7 @@ const EditProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
   },
   content: {
     flex: 1,
@@ -421,23 +424,35 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    backgroundColor: '#1E1E1E',
+    borderBottomColor: colors.border.light,
   },
-  backButton: {
-    marginRight: 15,
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.headerIcon,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
-  title: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    flex: 1,
+    textAlign: 'center',
   },
   tabContainer: {
     flexDirection: 'row',
     padding: 20,
     paddingBottom: 0,
+    backgroundColor: colors.background.primary,
   },
   tab: {
     flex: 1,
@@ -446,57 +461,64 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 15,
     borderBottomWidth: 2,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
     gap: 8,
   },
   activeTab: {
-    borderBottomColor: '#FF6B6B',
+    borderBottomColor: colors.primary.DEFAULT,
   },
   tabText: {
-    color: '#888',
+    color: colors.text.secondary,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   activeTabText: {
-    color: '#FF6B6B',
+    color: colors.primary.DEFAULT,
   },
   card: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   description: {
-    color: '#888',
+    color: colors.text.secondary,
     fontSize: 14,
     marginBottom: 20,
     lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   fieldContainer: {
     marginBottom: 20,
   },
   label: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 14,
     marginBottom: 8,
     fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   currentEmail: {
-    color: '#888',
+    color: colors.text.secondary,
     fontSize: 16,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.tertiary,
     padding: 15,
     borderRadius: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   inputWrapper: {
     position: 'relative',
   },
   input: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.tertiary,
     borderRadius: 8,
     padding: 15,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 16,
     paddingRight: 50,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   eyeIcon: {
     position: 'absolute',
@@ -504,7 +526,7 @@ const styles = StyleSheet.create({
     top: 15,
   },
   button: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.primary.DEFAULT,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -514,9 +536,10 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.stone[50],
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

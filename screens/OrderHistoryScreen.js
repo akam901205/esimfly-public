@@ -17,6 +17,7 @@ import { formatDistance } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import esimApi from '../api/esimApi';
+import { colors } from '../theme/colors';
 
 const TAB_BAR_HEIGHT = 84;
 const WINDOW_HEIGHT = Dimensions.get('window').height;
@@ -103,6 +104,29 @@ const OrderHistoryScreen = () => {
     );
   };
 
+  const getPaymentMethodInfo = (method, hasStripePayment) => {
+    if (method === 'card' || hasStripePayment) {
+      return {
+        icon: 'card-outline',
+        text: 'Credit/Debit Card'
+      };
+    } else if (method === 'apple_pay') {
+      return {
+        icon: 'logo-apple',
+        text: 'Apple Pay'
+      };
+    } else if (method === 'google_pay') {
+      return {
+        icon: 'logo-google',
+        text: 'Google Pay'
+      };
+    }
+    return {
+      icon: 'wallet-outline',
+      text: 'Balance'
+    };
+  };
+
   const handleLoadMore = () => {
     if (!loading && !refreshing && hasMorePages) {
       const nextPage = currentPage + 1;
@@ -117,44 +141,58 @@ const OrderHistoryScreen = () => {
     fetchOrders(1, true);
   };
 
-  const renderOrderItem = ({ item }) => (
-    <View style={styles.orderCard}>
-      <View style={styles.orderHeader}>
-        {getPackageIcon(item.package_name, item.flag_url)}
-        <View style={styles.packageDetails}>
-          <Text style={styles.packageName}>
-            {item.package_name || 'Unknown Package'}
-          </Text>
-          <View style={styles.orderInfo}>
-            <Ionicons name="time-outline" size={16} color="#888" />
-            <Text style={styles.orderDate}>
-              {formatDistance(new Date(item.order_date || Date.now()), new Date(), { addSuffix: true })}
+  const renderOrderItem = ({ item }) => {
+    const paymentInfo = getPaymentMethodInfo(item.payment_method, item.has_stripe_payment);
+    const statusColor = item.status === 'Completed' ? '#2ECC71' : 
+                       item.status === 'Pending' ? '#F1C40F' : '#E74C3C';
+
+    return (
+      <View style={styles.orderCard}>
+        <View style={styles.orderHeader}>
+          {getPackageIcon(item.package_name, item.flag_url)}
+          <View style={styles.packageDetails}>
+            <Text style={styles.packageName}>
+              {item.package_name || 'Unknown Package'}
             </Text>
+            <View style={styles.orderInfo}>
+              <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
+              <Text style={styles.orderDate}>
+                {formatDistance(new Date(item.order_date || Date.now()), new Date(), { addSuffix: true })}
+              </Text>
+            </View>
+            <View style={styles.orderFooter}>
+              <View style={styles.paymentMethodContainer}>
+                <Ionicons name={paymentInfo.icon} size={16} color={colors.text.secondary} />
+                <Text style={styles.paymentMethod}>{paymentInfo.text}</Text>
+              </View>
+              <View style={[styles.statusContainer, { backgroundColor: `${statusColor}20` }]}>
+                <Text style={[styles.statusText, { color: statusColor }]}>{item.status}</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.paymentMethodContainer}>
-            <Ionicons name="card-outline" size={16} color="#888" />
-            <Text style={styles.paymentMethod}>Balance</Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.priceText}>${item.amount.toFixed(2)}</Text>
           </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
- if (loading && !refreshing) {
+  if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.headerIcon}
+            style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color={colors.icon.header} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Order History</Text>
-          <View style={styles.placeholder} />
+          <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#FF6B6B" size="large" />
+          <ActivityIndicator color={colors.primary.DEFAULT} size="large" />
         </View>
       </SafeAreaView>
     );
@@ -165,13 +203,13 @@ const OrderHistoryScreen = () => {
       <View style={[styles.content, { height: WINDOW_HEIGHT - insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.headerIcon}
+            style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color={colors.icon.header} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Order History</Text>
-          <View style={styles.placeholder} />
+          <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
         </View>
 
         <FlatList
@@ -203,48 +241,52 @@ const OrderHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: colors.background.primary,
   },
   content: {
     flex: 1,
   },
-header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: 16,
-  backgroundColor: '#1E1E1E',
-},
-headerIcon: {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  backgroundColor: 'rgba(255, 107, 107, 0.1)',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-headerTitle: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#FFFFFF',
-  fontFamily: Platform.select({ ios: 'Quicksand', android: 'Quicksand-Regular' }),
-},
-title: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#FFFFFF',
-},
-placeholder: {
-  width: 40, // Same width as backButton for symmetry
-},
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.headerIcon,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 40,
+    height: 40,
+  },
   listContainer: {
     padding: 16,
   },
   orderCard: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   orderHeader: {
     flexDirection: 'row',
@@ -255,14 +297,17 @@ placeholder: {
     width: 48,
     height: 48,
     borderRadius: 24,
+    backgroundColor: colors.background.tertiary,
   },
   defaultIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.tertiary,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   packageIcon: {
     fontSize: 24,
@@ -274,7 +319,8 @@ placeholder: {
   packageName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   orderInfo: {
     flexDirection: 'row',
@@ -283,7 +329,14 @@ placeholder: {
   },
   orderDate: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  orderFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
   paymentMethodContainer: {
     flexDirection: 'row',
@@ -292,15 +345,36 @@ placeholder: {
   },
   paymentMethod: {
     fontSize: 14,
-    color: '#888',
+    color: colors.text.secondary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  statusContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  priceContainer: {
+    marginLeft: 'auto',
+  },
+  priceText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   emptyState: {
     padding: 32,
     alignItems: 'center',
   },
   emptyStateText: {
-    color: '#888',
+    color: colors.text.secondary,
     fontSize: 16,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   loadingContainer: {
     flex: 1,
@@ -308,17 +382,20 @@ placeholder: {
     alignItems: 'center',
   },
   loadMoreButton: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginVertical: 20,
     marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   loadMoreText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

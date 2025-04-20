@@ -10,6 +10,7 @@ import Animated, {
   Extrapolate
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 
 type CustomTabBarProps = {
   state: any;
@@ -49,8 +50,10 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
     };
   });
 
- const getIcon = (routeName: string, isFocused: boolean) => {
-    const color = isFocused ? '#FF6347' : '#888888';
+  const getIcon = (routeName: string, isFocused: boolean) => {
+    const color = isFocused ? colors.text.primary : colors.text.secondary;
+    const strokeWidth = isFocused ? 2.5 : 2;
+    // Icon components remain the same...
     switch (routeName) {
       case 'Shop':
         return (
@@ -92,7 +95,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
   };
 
   return (
-    <Animated.View style={[styles.container, { paddingBottom: insets.bottom }, containerAnimatedStyle]}>
+    <Animated.View style={[styles.container, containerAnimatedStyle]}>
       <View style={styles.buttonContainer}>
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
@@ -132,7 +135,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                 {getIcon(label, isFocused)}
                 <Text style={[
                   styles.label,
-                  { color: isFocused ? '#FF6347' : '#888888' }
+                  { color: isFocused ? colors.text.primary : colors.text.secondary }
                 ]}>
                   {label}
                 </Text>
@@ -148,35 +151,25 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    ...Platform.select({
-      ios: {
-        bottom: -10,
-        paddingBottom: 25,
-      },
-      android: {
-        bottom: 10,
-        paddingBottom: 10,
-      },
-    }),
-    left: 20,
-    right: 20,
-    backgroundColor: 'transparent',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background.primary,
   },
   buttonContainer: {
     flexDirection: 'row',
-    height: 70, // Increased height to accommodate label
+    height: 70,
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: '#1E1E1E',
-    borderRadius: 30,
-    shadowColor: "#000",
+    backgroundColor: colors.background.primary,
+    shadowColor: colors.stone[700],
     shadowOffset: {
       width: 0,
-      height: 5,
+      height: -2,
     },
-    shadowOpacity: 0.34,
-    shadowRadius: 6.27,
-    elevation: 10,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
   },
   button: {
     flex: 1,
@@ -191,6 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     textAlign: 'center',
+    fontFamily: 'Quicksand',
   },
 });
 

@@ -365,49 +365,49 @@ function MainNavigator() {
 
   return (
     <Tab.Navigator
-      tabBar={props => (
-        <CustomTabBar 
-          {...props} 
-          style={{
-            opacity: tabBarOpacity,
-            transform: [{ translateY: tabBarTranslateY }],
-          }}
-        />
-      )}
-      screenOptions={{
-        headerShown: false,
-        unmountOnBlur: true,
+  tabBar={props => (
+    <CustomTabBar 
+      {...props} 
+      style={{
+        opacity: tabBarOpacity,
+        transform: [{ translateY: tabBarTranslateY }],
       }}
-    >
-      <Tab.Screen 
-        name="Shop" 
-        component={ShopNavigator}
-        options={{
-          unmountOnBlur: false
-        }}
-      />
-      <Tab.Screen 
-        name="My eSims" 
-        component={MyESimsScreen}
-        options={{
-          unmountOnBlur: true
-        }}
-      />
-      <Tab.Screen 
-        name="Guides" 
-        component={GuidesScreen}
-        options={{
-          unmountOnBlur: true
-        }}
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileNavigator}
-        options={{
-          unmountOnBlur: true
-        }}
-      />
-    </Tab.Navigator>
+    />
+  )}
+  screenOptions={{
+    headerShown: false,
+    unmountOnBlur: true,
+  }}
+>
+  <Tab.Screen 
+    name="Shop" 
+    component={ShopNavigator}
+    options={{
+      unmountOnBlur: false
+    }}
+  />
+  <Tab.Screen 
+    name="My eSims" 
+    component={MyESimsScreen}
+    options={{
+      unmountOnBlur: true
+    }}
+  />
+  <Tab.Screen 
+    name="Guides" 
+    component={GuidesScreen}
+    options={{
+      unmountOnBlur: true
+    }}
+  />
+  <Tab.Screen 
+    name="Profile" 
+    component={ProfileNavigator}
+    options={{
+      unmountOnBlur: true
+    }}
+  />
+</Tab.Navigator>
   );
 }
 

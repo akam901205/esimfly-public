@@ -15,6 +15,7 @@ import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 import { regions } from '../utils/regions';
 import NetworkModal from '../components/NetworkModal';
+import { colors } from '../theme/colors';
 import {
   isUnlimitedPackage,
   normalizeDuration,
@@ -28,7 +29,11 @@ import {
 } from '../utils/PackageFilters';
 
 const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
-const packageColors = [['#2A2A2A', '#1E1E1E']];
+
+const ICON_COLORS = {
+  network: '#007AFF',
+  speed: '#2563eb',
+};
 
 const RegionalPackagesScreen = () => {
   const [packages, setPackages] = useState([]);
@@ -190,28 +195,36 @@ const RegionalPackagesScreen = () => {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+      <TouchableOpacity 
+        onPress={() => navigation.goBack()} 
+        style={styles.headerIcon}
+      >
+        <Ionicons 
+          name="arrow-back" 
+          size={24} 
+          color={colors.icon.header} 
+        />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>{region} Plans</Text>
       <View style={styles.headerIcon}>
-        <Ionicons name="globe-outline" size={24} color="#FFFFFF" />
+        <Ionicons 
+          name="globe-outline" 
+          size={24} 
+          color={colors.icon.header} 
+        />
       </View>
     </View>
   );
 
- const renderPackageItem = ({ item, index }) => {
-    const regionInfo = regions.find(r => r.name.toLowerCase() === region.toLowerCase());
-    const RegionIcon = regionInfo ? regionInfo.image : null;
-    const gradientColors = packageColors[index % packageColors.length];
+const renderPackageItem = ({ item, index }) => {
+    const RegionIcon = regions.find(r => r.name.toLowerCase() === region.toLowerCase())?.image;
+    const highestSpeed = getHighestSpeed(item);
+    const networkInfo = processProviderNetworks(item);
+    const alternatives = item.alternatives || [];
     
     const displayData = item.data === 'Unlimited' || item.unlimited 
       ? 'Unlimited' 
       : `${adjustDataDisplay(item.data)} GB`;
-
-    const networkInfo = processProviderNetworks(item);
-    const highestSpeed = getHighestSpeed(item);
-    const alternatives = item.alternatives || [];
 
     const navigateToDetails = () => {
       navigation.navigate('RegionalPackageDetails', {
@@ -221,25 +234,17 @@ const RegionalPackagesScreen = () => {
     };
 
     return (
-      <TouchableOpacity 
-        onPress={navigateToDetails}
-        activeOpacity={0.7}
-      >
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.packageItem}
-        >
+      <TouchableOpacity onPress={navigateToDetails} activeOpacity={0.9}>
+        <View style={styles.packageItem}>
           <View style={styles.packageHeader}>
             <View style={styles.regionInfo}>
               {RegionIcon && <RegionIcon size={24} />}
               <Text style={styles.regionName}>{region}</Text>
             </View>
             {highestSpeed && (
-              <View style={styles.speedContainer}>
-                <Ionicons name="speedometer-outline" size={16} color="#FF6B6B" />
-                <Text style={styles.speedText}>
+              <View style={[styles.speedContainer, { backgroundColor: `${ICON_COLORS.speed}15` }]}>
+                <Ionicons name="speedometer-outline" size={16} color={ICON_COLORS.speed} />
+                <Text style={[styles.speedText, { color: ICON_COLORS.speed }]}>
                   {highestSpeed.toUpperCase()}
                 </Text>
               </View>
@@ -249,96 +254,85 @@ const RegionalPackagesScreen = () => {
           <View style={styles.packageDetails}>
             <View>
               <Text style={styles.dataAmount}>{displayData}</Text>
-              <Text style={styles.validityPeriod}>VALID FOR {item.duration}</Text>
+              <Text style={styles.validityPeriod}>
+                VALID FOR {item.duration} DAYS
+              </Text>
               <TouchableOpacity
                 onPress={() => handleNetworkPress(item)}
-                style={[styles.buttonContainer, styles.countryButtonContainer]}
+                style={styles.networkButton}
               >
-                <LinearGradient
-                  colors={[gradientColors[1], gradientColors[0]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.button, styles.countryButton]}
-                >
-                  <View style={styles.buttonContent}>
-                    <Ionicons name="globe-outline" size={16} color="#FFFFFF" />
-                    <Text style={styles.buttonText}>
-                      {networkInfo.countryCount} Countries
-                    </Text>
-                  </View>
-                </LinearGradient>
+                <View style={styles.networkContent}>
+                  <Ionicons 
+                    name="cellular-outline" 
+                    size={16} 
+                    color={ICON_COLORS.network}
+                  />
+                  <Text style={styles.networkButtonText}>
+                    {networkInfo.countryCount} Countries
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
             <View style={styles.priceContainer}>
-              <Text style={styles.priceText}>${parseFloat(item.price).toFixed(2)}</Text>
-              <TouchableOpacity onPress={navigateToDetails}>
-                <LinearGradient
-                  colors={[gradientColors[1], gradientColors[0]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.button, styles.buyButton]}
-                >
-                  <Text style={styles.buttonText}>BUY NOW</Text>
-                </LinearGradient>
+              <Text style={styles.priceText}>
+                ${parseFloat(item.price).toFixed(2)}
+              </Text>
+              <TouchableOpacity 
+                onPress={navigateToDetails}
+                style={styles.buyButton}
+              >
+                <Text style={styles.buyButtonText}>BUY NOW</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-         {alternatives.length > 0 && (
-		  <View style={styles.alternativesContainer}>
-			{alternatives.map((pkg, i) => {
-                const pkgNetworkInfo = processProviderNetworks(pkg);
-                return (
-                  <TouchableOpacity 
-                    key={i}
-                    style={styles.alternativeItem}
-                    onPress={() => navigation.navigate('RegionalPackageDetails', {
-                      package: pkg,
-                      region: region
-                    })}
-                  >
-                    <LinearGradient
-                      colors={packageColors[(index + i + 1) % packageColors.length]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.alternativeGradient}
-                    >
-                      <View style={styles.alternativeContent}>
-                        <View style={styles.alternativeLeft}>
-                          <View style={styles.altProviderBadge}>
-                            <Text style={styles.altProviderText}>
-                              {pkg.id === item.id ? "Main Plan" : "Alternative Plan"}
-                            </Text>
-                          </View>
-                          <View style={styles.altCoverageBadge}>
-                            <Ionicons name="globe-outline" size={12} color="#BBBBBB" />
-                            <Text style={styles.altCoverageText}>{pkgNetworkInfo.countryCount}</Text>
-                          </View>
-                        </View>
-                        <View style={styles.alternativeRight}>
-                          <Text style={styles.altPriceText}>
-                            ${parseFloat(pkg.price).toFixed(2)}
-                          </Text>
-                          <View style={styles.compareContainer}>
-                            <Text style={[
-                              styles.compareText,
-                              { color: pkg.price < item.price ? '#4CAF50' : '#FF6B6B' }
-                            ]}>
-                              {pkg.price < item.price 
-                                ? `Save $${(item.price - pkg.price).toFixed(2)}`
-                                : `+$${(pkg.price - item.price).toFixed(2)}`
-                              }
-                            </Text>
-                          </View>
-                        </View>
+          {alternatives.length > 0 && (
+            <View style={styles.alternativesContainer}>
+              {alternatives.map((pkg, i) => (
+                <TouchableOpacity 
+                  key={i}
+                  style={styles.alternativeItem}
+                  onPress={() => navigation.navigate('RegionalPackageDetails', {
+                    package: pkg,
+                    region: region
+                  })}
+                >
+                  <View style={styles.alternativeContent}>
+                    <View style={styles.alternativeLeft}>
+                      <View style={styles.altProviderBadge}>
+                        <Text style={styles.altProviderText}>
+                          {pkg.id === item.id ? "Main Plan" : "Alternative Plan"}
+                        </Text>
                       </View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                );
-              })}
+                      <View style={styles.altCoverageBadge}>
+                        <Ionicons name="globe-outline" size={12} color={colors.text.secondary} />
+                        <Text style={styles.altCoverageText}>
+                          {processProviderNetworks(pkg).countryCount}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.alternativeRight}>
+                      <Text style={styles.altPriceText}>
+                        ${parseFloat(pkg.price).toFixed(2)}
+                      </Text>
+                      <View style={styles.compareContainer}>
+                        <Text style={[
+                          styles.compareText,
+                          { color: pkg.price < item.price ? '#4CAF50' : '#FF6B6B' }
+                        ]}>
+                          {pkg.price < item.price 
+                            ? `Save $${(item.price - pkg.price).toFixed(2)}`
+                            : `+$${(pkg.price - item.price).toFixed(2)}`
+                          }
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
             </View>
           )}
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -368,7 +362,15 @@ const RegionalPackagesScreen = () => {
         keyExtractor={(item, index) => `${item.packageCode}-${index}`}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={() => (
-          <Text style={styles.noPackagesText}>No packages available for this selection.</Text>
+          <View style={styles.emptyStateContainer}>
+            {loading ? (
+              <ActivityIndicator size="large" color="#2196f3" />
+            ) : (
+              <Text style={styles.noPackagesText}>
+                No packages available for this selection.
+              </Text>
+            )}
+          </View>
         )}
         ListFooterComponent={<View style={styles.listFooter} />}
       />
@@ -386,42 +388,44 @@ const RegionalPackagesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.primary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.headerIcon,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   listContainer: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 90 : 70,
+    paddingBottom: Platform.OS === 'ios' ? 80 : 60,
   },
   packageItem: {
     borderRadius: 12,
     marginBottom: 16,
     padding: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: colors.background.secondary,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   packageHeader: {
     flexDirection: 'row',
@@ -436,20 +440,20 @@ const styles = StyleSheet.create({
   regionName: {
     marginLeft: 8,
     fontSize: 18,
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  viewAllContainer: {
+  speedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  signalIcon: {
-    marginRight: 4,
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: '#FF6B6B',
-    fontFamily: 'Quicksand',
+  speedText: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   packageDetails: {
     flexDirection: 'row',
@@ -459,113 +463,88 @@ const styles = StyleSheet.create({
   dataAmount: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   validityPeriod: {
     fontSize: 14,
-    color: '#BBBBBB',
-    fontFamily: 'Quicksand',
+    color: colors.text.secondary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginTop: 4,
+  },
+  networkButton: {
+    marginTop: 8,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.stone[100],
+    borderWidth: 1,
+    borderColor: colors.stone[200],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.stone[900],
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  networkButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.stone[600],
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginLeft: 4,
+  },
+  networkContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   priceContainer: {
     alignItems: 'flex-end',
+    minWidth: 120,
   },
   priceText: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#FF6B6B',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginBottom: 8,
   },
   buyButton: {
     borderRadius: 8,
     paddingVertical: 10,
-    paddingHorizontal: 20,
-    elevation: 3,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    paddingHorizontal: 16,
+    backgroundColor: '#2196f3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#15803d',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   buyButtonText: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    fontWeight: '600',
+    color: colors.stone[50],
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#121212',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#121212',
-    padding: 16,
-  },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 16,
-    textAlign: 'center',
-    fontFamily: 'Quicksand',
-  },
- speedContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: 'rgba(255, 107, 107, 0.1)',
-  borderRadius: 12,
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-},
-speedText: {
-  marginLeft: 4,
-  fontSize: 12,
-  color: '#FF6B6B',
-  fontFamily: 'Quicksand',
-},
-networkContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginTop: 4,
-},
-networkText: {
-  color: '#BBBBBB',
-  fontSize: 12,
-  fontFamily: 'Quicksand',
-  marginLeft: 4,
-},
-  noPackagesText: {
-    color: '#BBBBBB',
-    fontSize: 16,
-    textAlign: 'center',
-    fontFamily: 'Quicksand',
-    marginTop: 20,
-  },
-  listFooter: {
-    height: 20,
-  },
-networkStatsContainer: {
-    marginTop: 8,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statsText: {
-    color: '#BBBBBB',
-    fontSize: 12,
-    fontFamily: 'Quicksand',
-    marginLeft: 4,
+    letterSpacing: 0.5,
   },
   alternativesContainer: {
     marginTop: 12,
@@ -573,12 +552,12 @@ networkStatsContainer: {
   },
   alternativeItem: {
     borderRadius: 8,
-    overflow: 'hidden',
-  },
-  alternativeGradient: {
-    padding: 12,
+    backgroundColor: colors.background.secondary,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   alternativeContent: {
+    padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -589,81 +568,113 @@ networkStatsContainer: {
     gap: 8,
   },
   altProviderBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.background.tertiary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   altProviderText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 12,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   altCoverageBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.background.tertiary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   altCoverageText: {
-    color: '#BBBBBB',
+    color: colors.text.secondary,
     fontSize: 12,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   alternativeRight: {
     alignItems: 'flex-end',
   },
   altPriceText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 16,
     fontWeight: 'bold',
-    fontFamily: 'Quicksand',
-  },
-  compareContainer: {
-    marginTop: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   compareText: {
     fontSize: 12,
-    fontFamily: 'Quicksand',
-    fontWeight: 'bold',
-  },
-buttonContainer: {
-    marginTop: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-    elevation: 3,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  button: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    elevation: 3,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    marginLeft: 6,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    fontWeight: 'bold',
   },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noPackagesText: {
+    color: colors.text.secondary,
+    fontSize: 16,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginTop: 20,
+  },
+  listFooter: {
+    height: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    padding: 16,
+  },
+  errorText: {
+    color: colors.text.secondary,
+    fontSize: 16,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginBottom: 8,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.stone[800],
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: colors.background.primary,
+    fontSize: 14,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border.light,
+    marginVertical: 8,
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: colors.stone[800],
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    color: colors.background.primary,
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: 'bold',
+  }
 });
 
 export default RegionalPackagesScreen;

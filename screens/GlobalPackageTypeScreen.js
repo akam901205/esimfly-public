@@ -12,6 +12,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import LottieView from 'lottie-react-native';
+import { colors } from '../theme/colors';
 
 const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
 
@@ -60,6 +61,29 @@ const GlobalPackageTypeScreen = () => {
       throw new Error('Unable to parse JSON response');
     }
   };
+	
+const renderHeader = () => (
+  <View style={styles.header}>
+    <TouchableOpacity 
+      onPress={() => navigation.goBack()} 
+      style={styles.headerIcon}
+    >
+      <Ionicons 
+        name="arrow-back" 
+        size={24} 
+        color={colors.icon.header} 
+      />
+    </TouchableOpacity>
+    <Text style={styles.headerTitle}>{globalPackageName}</Text>
+    <View style={styles.headerIcon}>
+      <Ionicons 
+        name="globe-outline" 
+        size={24} 
+        color={colors.icon.header} 
+      />
+    </View>
+  </View>
+);
 
   const checkPackageAvailability = useCallback(async () => {
     if (!globalPackageName) {
@@ -152,7 +176,10 @@ const GlobalPackageTypeScreen = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
+        {renderHeader()}
+        <View style={styles.content}>
+          <ActivityIndicator size="large" color="#FF6B6B" />
+        </View>
       </SafeAreaView>
     );
   }
@@ -160,97 +187,93 @@ const GlobalPackageTypeScreen = () => {
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
-        <LottieView
-          source={require('../assets/Animation - datapacke.json')}
-          autoPlay
-          loop
-          style={styles.lottieAnimation}
-        />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity 
-          style={styles.retryButton} 
-          onPress={checkPackageAvailability}
-        >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+        {renderHeader()}
+        <View style={styles.content}>
+          <LottieView
+            source={require('../assets/Animation - datapacke.json')}
+            autoPlay
+            loop
+            style={styles.lottieAnimation}
+          />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={checkPackageAvailability}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{globalPackageName}</Text>
-        <View style={styles.headerIcon}>
-          <Ionicons name="globe-outline" size={24} color="#FFFFFF" />
-        </View>
-      </View>
-
-      <View style={styles.content}>
-        <LottieView
-          source={require('../assets/Animation - datapacke.json')}
-          autoPlay
-          loop
-          style={styles.lottieAnimation}
-        />
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigateToPackages('regular')}
-        >
-          <Text style={styles.buttonText}>Regular Data</Text>
-        </TouchableOpacity>
-        {hasUnlimited && (
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigateToPackages('unlimited')}
-          >
-            <Text style={styles.buttonText}>Unlimited Data</Text>
-          </TouchableOpacity>
-        )}
-        {hasVoiceSMS && (
-          <TouchableOpacity
-            style={[styles.button, styles.voiceSmsButton]}
-            onPress={() => navigateToPackages('voice_sms')}
-          >
-            <Text style={styles.buttonText}>Data + Voice + SMS</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </SafeAreaView>
-  );
+  <SafeAreaView style={styles.container}>
+    {/* We should place comments outside JSX or wrap them in a Text component if needed */}
+    {renderHeader()}
+    <View style={styles.content}>
+      <LottieView
+        source={require('../assets/Animation - datapacke.json')}
+        autoPlay
+        loop
+        style={styles.lottieAnimation}
+      />
+      <TouchableOpacity style={styles.button} onPress={() => navigateToPackages('regular')}>
+		  <Text style={styles.buttonText}>Regular Data</Text>
+		</TouchableOpacity>
+		{hasUnlimited && (
+		  <TouchableOpacity 
+			style={[styles.button, styles.unlimitedButton]} 
+			onPress={() => navigateToPackages('unlimited')}
+		  >
+			<Text style={styles.buttonText}>Unlimited Data</Text>
+		  </TouchableOpacity>
+		)}
+		{hasVoiceSMS && (
+		  <TouchableOpacity 
+			style={[styles.button, styles.unlimitedButton]} 
+			onPress={() => navigateToPackages('voice_sms')}
+		  >
+			<Text style={styles.buttonText}>Data + Voice + SMS</Text>
+		  </TouchableOpacity>
+		)}
+    </View>
+  </SafeAreaView>
+);
 };
 
 
 const styles = StyleSheet.create({
-  container: {
+container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.light,
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.headerIcon,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Quicksand',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    maxWidth: '70%', // Prevent long titles from overlapping
+    textAlign: 'center',
   },
   voiceSmsButton: {
     backgroundColor: '#FF8C42',
@@ -267,28 +290,31 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#FF6B6B',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 25,
-    marginVertical: 10,
-    width: '80%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+  backgroundColor: colors.slate[600],
+  paddingVertical: 15,
+  paddingHorizontal: 30,
+  borderRadius: 25,
+  marginVertical: 10,
+  width: '80%',
+  alignItems: 'center',
+  shadowColor: colors.stone[900],
+  shadowOffset: {
+    width: 0,
+    height: 2,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Quicksand',
-  },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  elevation: 5,
+},
+unlimitedButton: {
+  backgroundColor: colors.slate[700],
+},
+buttonText: {
+  color: colors.stone[50],
+  fontSize: 18,
+  fontWeight: 'bold',
+  fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+},
   errorText: {
     color: '#FF6B6B',
     fontSize: 16,

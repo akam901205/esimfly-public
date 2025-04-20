@@ -20,6 +20,8 @@ import { AuthContext } from '../api/AuthContext';
 import { EventEmitter } from '../utils/EventEmitter';
 import esimApi from '../api/esimApi';
 import type { BalanceData } from '../api/esimApi';
+import { colors } from '../theme/colors';
+
 
 const TAB_BAR_HEIGHT = 84;
 const WINDOW_HEIGHT = Dimensions.get('window').height;
@@ -243,14 +245,15 @@ const DepositScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={[styles.content, { height: WINDOW_HEIGHT - insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Add Balance</Text>
-        </View>
+  <TouchableOpacity 
+    style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+    onPress={() => navigation.goBack()}
+  >
+    <Ionicons name="arrow-back" size={24} color={colors.icon.header} />
+  </TouchableOpacity>
+  <Text style={styles.headerTitle}>Add Balance</Text>
+  <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
+</View>
 
         <ScrollView 
           style={styles.scrollContent}
@@ -274,16 +277,16 @@ const DepositScreen: React.FC = () => {
           <View style={styles.card}>
             <Text style={styles.label}>Enter Gift Card Number</Text>
             <TextInput
-              style={styles.input}
-              value={giftCardNumber}
-              onChangeText={text => setGiftCardNumber(text.replace(/[^0-9]/g, ''))}
-              placeholder="Enter 6-digit code"
-              placeholderTextColor="#666"
-              keyboardType="number-pad"
-              maxLength={6}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+			  style={styles.input}
+			  value={giftCardNumber}
+			  onChangeText={text => setGiftCardNumber(text.replace(/[^0-9]/g, ''))}
+			  placeholder="Enter 6-digit code"
+			  placeholderTextColor={colors.text.secondary}
+			  keyboardType="number-pad"
+			  maxLength={6}
+			  autoCapitalize="none"
+			  autoCorrect={false}
+			/>
             <TouchableOpacity 
               style={[
                 styles.verifyButton,
@@ -327,41 +330,37 @@ const DepositScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.primary,
   },
   content: {
     flex: 1,
   },
-supportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4A90E2',
-    borderRadius: 8,
-    padding: 15,
-    marginTop: 20,
-  },
-  supportButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    backgroundColor: '#1E1E1E',
+    borderBottomColor: colors.border.light,
   },
-  backButton: {
-    marginRight: 15,
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.headerIcon,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
-  title: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    flex: 1,
+    textAlign: 'center',
   },
   scrollContent: {
     flex: 1,
@@ -370,64 +369,93 @@ supportButton: {
     padding: 20,
   },
   balanceCard: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   balanceLabel: {
     fontSize: 16,
-    color: '#888',
+    color: colors.text.secondary,
     marginBottom: 5,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   balanceAmount: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   card: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   label: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   input: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: colors.background.tertiary,
     borderRadius: 8,
     padding: 15,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 16,
     marginBottom: 20,
     letterSpacing: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   verifyButton: {
-    backgroundColor: '#FF6347',
+    backgroundColor: colors.primary.DEFAULT,
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
   },
   verifyButtonText: {
-    color: '#FFFFFF',
+    color: colors.stone[50],
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   infoCard: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   infoText: {
-    color: '#FFFFFF',
+    color: colors.text.secondary,
     marginLeft: 10,
     flex: 1,
+    lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  supportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 8,
+    padding: 15,
+    marginTop: 20,
+  },
+  supportButtonText: {
+    color: colors.stone[50],
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

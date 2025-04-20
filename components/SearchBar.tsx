@@ -16,6 +16,7 @@ import debounce from 'lodash/debounce';
 import { countries, FlagIcon } from '../utils/countryData';
 import { isCountryInRegion, regionCoverageData } from '../utils/regionCoverage';
 import { isCountryInGlobalCoverage } from '../utils/globalCoverage';
+import { colors } from '../theme/colors';
 
 interface SearchBarProps {
   searchQuery: string;
@@ -24,17 +25,13 @@ interface SearchBarProps {
   activeTab: string;
 }
 
-interface Country {
-  id: string;
-  name: string;
-}
-
 interface Suggestion {
   id: string;
   name: string;
   type: 'country' | 'region' | 'global';
   description?: string;
   countryCode?: string;
+  score?: number;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = React.memo(({ 
@@ -52,77 +49,94 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
   const navigation = useNavigation();
 
   const formatCountryCount = (count: number) => {
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}k`;
-    }
-    return count.toString();
+    return count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count.toString();
   };
 
-const getPlaceholderText = useCallback(() => {
+  const getPlaceholderText = useCallback(() => {
     switch (activeTab) {
       case 'Countries':
         return `Search across ${formatCountryCount(countries.length)} countries`;
       case 'Regional':
         return `Search ${regionCoverageData.length} regional plans`;
       case 'Global':
-        return `Search Discover Global packages`;  // Updated text
+        return 'Search Discover Global packages';
       default:
         return 'Search destinations';
     }
   }, [activeTab]);
 
-  const getSuggestions = useCallback((text: string): Suggestion[] => {
+  const getSearchMatches = (text: string): Suggestion[] => {
     if (!text) return [];
     const searchLower = text.toLowerCase();
-    let suggestions: Suggestion[] = [];
+    const matches: Suggestion[] = [];
 
-    // Get country matches
-    const countryMatches = countries
-      .filter(country => country.name.toLowerCase().startsWith(searchLower))
-      .slice(0, 2)
-      .map(country => ({
-        id: country.id,
-        name: country.name,
-        type: 'country' as const,
-        countryCode: country.id
-      }));
+    // Fuzzy match countries
+    countries.forEach(country => {
+      const name = country.name.toLowerCase();
+      let score = 0;
+      
+      if (name.startsWith(searchLower)) {
+        score = 100;
+      } else if (name.includes(searchLower)) {
+        score = 75;
+      } else {
+        let textIndex = 0;
+        let nameIndex = 0;
+        while (textIndex < searchLower.length && nameIndex < name.length) {
+          if (searchLower[textIndex] === name[nameIndex]) {
+            score += 10;
+            textIndex++;
+          }
+          nameIndex++;
+        }
+      }
 
-    suggestions.push(...countryMatches);
+      if (score > 30) {
+        const suggestion: Suggestion = {
+          id: country.id,
+          name: country.name,
+          type: 'country',
+          countryCode: country.id,
+          score
+        };
 
-    // If we found any country matches, check for regional and global coverage
-    if (countryMatches.length > 0) {
-      const countryName = countryMatches[0].name;
+        // Add regional coverage if available
+        regionCoverageData.forEach(region => {
+          if (isCountryInRegion(country.name, region.name)) {
+            matches.push({
+              id: `region-${region.name}`,
+              name: region.name,
+              type: 'region',
+              description: `Regional coverage includes ${country.name}`,
+              score: score - 10
+            });
+          }
+        });
 
-      // Add regional suggestions
-      regionCoverageData.forEach(region => {
-        if (isCountryInRegion(countryName, region.name)) {
-          suggestions.push({
-            id: `region-${region.name}`,
-            name: region.name,
-            type: 'region',
-            description: `Regional coverage includes ${countryName}`
+        // Add global coverage if available
+        if (isCountryInGlobalCoverage(country.name)) {
+          matches.push({
+            id: 'global',
+            name: 'Discover Global',
+            type: 'global',
+            description: `Global coverage includes ${country.name}`,
+            score: score - 20
           });
         }
-      });
 
-      // Add global suggestion if available
-      if (isCountryInGlobalCoverage(countryName)) {
-        suggestions.push({
-          id: 'global',
-          name: 'Discover Global',  // Updated to match exact package name
-          type: 'global',
-          description: `Global coverage includes ${countryName}`
-        });
+        matches.push(suggestion);
       }
-    }
+    });
 
-    return suggestions;
-  }, []);
+    return matches
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 5);
+  };
 
   const handleChangeText = useCallback((text: string) => {
     setSearchQuery(text);
     setSelectedIndex(-1);
-    const newSuggestions = getSuggestions(text);
+    const newSuggestions = getSearchMatches(text);
     setSuggestions(newSuggestions);
     
     if (newSuggestions.length > 0) {
@@ -138,13 +152,11 @@ const getPlaceholderText = useCallback(() => {
         toValue: 0,
         duration: 150,
         useNativeDriver: true,
-      }).start(() => {
-        setShowSuggestions(false);
-      });
+      }).start(() => setShowSuggestions(false));
     }
     
     debouncedSearch(text);
-  }, [setSearchQuery, debouncedSearch, getSuggestions, fadeAnim]);
+  }, [setSearchQuery, debouncedSearch, fadeAnim]);
 
   const handleSuggestionPress = useCallback((suggestion: Suggestion, index: number) => {
     setSelectedIndex(index);
@@ -160,7 +172,6 @@ const getPlaceholderText = useCallback(() => {
         setShowSuggestions(false);
         setSelectedIndex(-1);
         
-        // Navigate based on suggestion type
         switch (suggestion.type) {
           case 'country':
             navigation.navigate('PackageType' as never, { country: suggestion.name } as never);
@@ -170,7 +181,7 @@ const getPlaceholderText = useCallback(() => {
             break;
           case 'global':
             navigation.navigate('GlobalPackageType' as never, { 
-              globalPackageName: 'Discover Global' // Updated to match exact package name
+              globalPackageName: 'Discover Global'
             } as never);
             break;
         }
@@ -205,7 +216,7 @@ const getPlaceholderText = useCallback(() => {
   return (
     <View style={styles.searchContainer}>
       <LinearGradient
-        colors={['#FF6B6B', '#FF6B6B']}
+        colors={[colors.stone[50], colors.stone[100]]}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 0}}
         style={styles.searchGradient}
@@ -214,14 +225,13 @@ const getPlaceholderText = useCallback(() => {
           <Ionicons 
             name="search" 
             size={24} 
-            color="#888" 
-            style={styles.searchIcon} 
+            color={colors.stone[500]} 
           />
           <TextInput
             ref={searchInputRef}
             style={styles.searchInput}
             placeholder={getPlaceholderText()}
-            placeholderTextColor="#888"
+            placeholderTextColor={colors.stone[500]}
             value={searchQuery}
             onChangeText={handleChangeText}
             autoCorrect={false}
@@ -238,13 +248,15 @@ const getPlaceholderText = useCallback(() => {
                   toValue: 0,
                   duration: 150,
                   useNativeDriver: true,
-                }).start(() => {
-                  setShowSuggestions(false);
-                });
+                }).start(() => setShowSuggestions(false));
                 searchInputRef.current?.focus();
               }}
             >
-              <Ionicons name="close-circle" size={20} color="#888" />
+              <Ionicons 
+                name="close-circle" 
+                size={20} 
+                color={colors.stone[500]} 
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -288,7 +300,7 @@ const getPlaceholderText = useCallback(() => {
               <Ionicons 
                 name="chevron-forward" 
                 size={20} 
-                color={selectedIndex === index ? '#FF6B6B' : '#666'} 
+                color={colors.stone[500]} 
               />
             </TouchableOpacity>
           ))}
@@ -302,53 +314,65 @@ const styles = StyleSheet.create({
   searchContainer: {
     zIndex: 1000,
     marginVertical: 16,
-    marginHorizontal: 16,
+    marginHorizontal: 14,
+    elevation: Platform.OS === 'android' ? 6 : 0,
   },
   searchGradient: {
-    borderRadius: 30,
-    padding: 2,
+    borderRadius: 16,
+    padding: 1.5,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.stone[900],
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+    }),
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    borderRadius: 28,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 10,
     paddingHorizontal: 16,
-    height: 60,
+    height: 45,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: colors.text.primary,
+    fontSize: 16,
     fontFamily: 'Quicksand',
-    marginLeft: 8,
-    paddingVertical: 8,
-  },
-  searchIcon: {
-    marginRight: 8,
+    marginLeft: 12,
+    paddingVertical: 12,
   },
   clearButton: {
     padding: 8,
+    marginLeft: 4,
   },
   suggestionsContainer: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#262626',
+    backgroundColor: colors.background.primary,
     borderRadius: 16,
     marginTop: 8,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#333',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
+    borderColor: colors.border.light,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.stone[900],
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   suggestionItem: {
     flexDirection: 'row',
@@ -357,10 +381,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.stone[200],
   },
   suggestionItemSelected: {
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.stone[50],
   },
   suggestionItemLast: {
     borderBottomWidth: 0,
@@ -376,27 +400,26 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    borderWidth: 2,
-    borderColor: '#333',
+    backgroundColor: colors.background.secondary,
+    borderWidth: 1,
+    borderColor: colors.stone[200],
     overflow: 'hidden',
   },
   suggestionIcon: {
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    borderColor: 'rgba(255, 107, 107, 0.2)',
+    backgroundColor: colors.stone[100],
   },
   suggestionTextContainer: {
     marginLeft: 12,
     flex: 1,
   },
   suggestionText: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 16,
     fontFamily: 'Quicksand',
     fontWeight: '600',
   },
   suggestionSubtext: {
-    color: '#888',
+    color: colors.text.secondary,
     fontSize: 12,
     fontFamily: 'Quicksand',
     marginTop: 2,

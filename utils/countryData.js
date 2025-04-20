@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, Image } from 'react-native';
+import { colors } from '../theme/colors';
+
 
 
 // Import all country flags as PNG
@@ -451,65 +453,92 @@ export const countries = [
   { id: 'zw', name: 'Zimbabwe' },
 ];
 
-export const FlagIcon = React.memo(({ countryCode, size = 30 }) => {
+export const FlagIcon = React.memo(({ countryCode, size = 30, variant = 'default' }) => {
+  const getBorderStyle = () => {
+    if (variant === 'popular') {
+      return {
+        borderWidth: 2,
+        borderColor: colors.stone[400], // Slightly warmer stone color
+        shadowColor: colors.stone[500],
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2, // For Android shadow
+      };
+    }
+    return {
+      borderWidth: 1,
+      borderColor: colors.stone[300], // Lighter stone for default
+      shadowColor: colors.stone[400],
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 1, // For Android shadow
+    };
+  };
 
-  // Handle undefined/null countryCode
   if (!countryCode) {
     return (
-      <View style={{
+      <View style={[{
         width: size,
         height: size,
-        backgroundColor: '#ccc',
+        borderRadius: size / 2,
+        backgroundColor: colors.background.secondary,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: size / 2,
-        overflow: 'hidden'
-      }}>
-        <Text style={{ fontSize: size / 2, color: '#fff' }}>?</Text>
+        overflow: 'hidden',
+        ...getBorderStyle()
+      }]}>
+        <Text style={{ 
+          fontSize: size / 2, 
+          color: colors.text.secondary 
+        }}>?</Text>
       </View>
     );
   }
 
-  // Safely convert countryCode to lowercase and log the result
   const normalizedCode = countryCode.toLowerCase();
   const flagImage = flagImages[normalizedCode];
   
+  if (flagImage) {
+    return (
+      <View style={[{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: colors.background.secondary,
+        overflow: 'hidden',
+        ...getBorderStyle()
+      }]}>
+        <Image
+          source={flagImage}
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: size / 2,
+          }}
+          resizeMode="cover"
+        />
+      </View>
+    );
+  }
 
-if (flagImage) {
   return (
-    <View style={{
+    <View style={[{
       width: size,
       height: size,
       borderRadius: size / 2,
-      overflow: 'hidden',
-      backgroundColor: 'white',  // This creates the white background
-      padding: 1  // This creates the white border space
-    }}>
-      <Image
-        source={flagImage}
-        style={{
-          width: '100%',
-          height: '100%',
-          borderRadius: (size - 2) / 2,  // Slightly smaller radius for the image
-        }}
-        resizeMode="cover"
-      />
-    </View>
-  );
-}
-
-  // Fallback to text representation if flag is not available
-  return (
-    <View style={{
-      width: size,
-      height: size,
-      backgroundColor: '#ccc',
+      backgroundColor: colors.background.secondary,
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: size / 2,
-      overflow: 'hidden'
-    }}>
-      <Text style={{ fontSize: size / 3, color: '#fff' }}>
+      overflow: 'hidden',
+      ...getBorderStyle()
+    }]}>
+      <Text style={{ 
+        fontSize: size / 3, 
+        color: colors.text.secondary,
+        fontFamily: 'Quicksand'
+      }}>
         {countryCode.substring(0, 2).toUpperCase()}
       </Text>
     </View>

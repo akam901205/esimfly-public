@@ -24,6 +24,8 @@ import { regions } from '../utils/regions';
 import esimApi from '../api/esimApi';
 import NoeSIMState from '../components/NoeSIMState';
 import axios from 'axios';
+import { colors } from '../theme/colors';
+
 
 
 interface ESim {
@@ -154,26 +156,26 @@ export const FlagIcon = ({ countryCode, size = 40 }) => {
 
 // Update the getStatusColor function
 const getStatusColor = (status: string) => {
-  // Normalize the status by converting to lowercase and removing spaces
   const normalizedStatus = status.toLowerCase().replace(/\s+/g, '');
   
   switch (normalizedStatus) {
     case 'active':
-    case 'inuse':  // Will match both "In Use" and "inuse"
-      return '#4CAF50';  // Green color for active/in use
+    case 'inuse':
+      return '#4CAF50';  // Green for active
     case 'expired':
-      return '#FF6B00';  // Orange color for expired
+      return colors.slate[400];  // Theme slate for expired
     case 'inactive':
     case 'cancelled':
-    case 'notactive':  // Will match "Not Active"
-      return '#666666';  // Gray color for inactive states
+    case 'notactive':
+      return colors.slate[400];  // Theme slate for inactive
     case 'new':
     case 'got_resource':
-      return '#2196F3';  // Blue color for new states
+      return '#2196F3';  // Theme blue for new
     default:
-      return '#666666';  // Default gray color
+      return colors.slate[400];
   }
 };
+
 	
 const isSingleUsePackage = (packageName?: string): boolean => {
   return Boolean(packageName?.toLowerCase().includes('single use'));
@@ -214,7 +216,10 @@ const DataTypeButton = ({
     ]}
   >
     <View style={styles.dataTypeContent}>
-      <View style={[styles.dataDot, { backgroundColor: dotColor }]} />
+      <View style={[
+        styles.dataDot, 
+        { backgroundColor: isActive ? '#4CAF50' : colors.text.secondary }
+      ]} />
       <Text style={[
         styles.dataTypeText,
         isActive ? styles.activeDataTypeText : styles.inactiveDataTypeText
@@ -224,6 +229,7 @@ const DataTypeButton = ({
     </View>
   </TouchableOpacity>
 );
+
 
 
 
@@ -542,13 +548,18 @@ const getESIMStateInfo = (
         canTopUp: false,
         message: 'This eSIM needs to be activated. Please scan the QR code or follow the installation instructions.',
         action: {
-          label: 'View Installation Guide',
-          handler: () => {
-            if (iccid) {
-              navigation.navigate('Instructions', { iccid });
-            }
-          }
+  label: 'View Installation Guide',
+  handler: () => {
+    if (iccid) {
+      navigation.navigate('Shop', {
+        screen: 'Instructions',
+        params: {
+          iccid: iccid
         }
+      });
+    }
+  }
+}
       };
       
     case 'EXPIRED':
@@ -739,52 +750,68 @@ const handlePlanPurchase = async () => {
     fetchEsimData();
   }, [userToken]);
 
-  const renderProgressCircle = () => {
-    if (!selectedEsim) return null;
+  // Update the progress circle rendering:
+const renderProgressCircle = () => {
+  if (!selectedEsim) return null;
 
-    const size = 220;
-    const strokeWidth = 20;
-    const radius = (size - strokeWidth) / 2;
-    const center = size / 2;
-    const circumference = 2 * Math.PI * radius;
-    const progress = selectedEsim.data_left_percentage / 100;
-    const strokeDashoffset = circumference * (1 - progress);
+  const size = 220;
+  const strokeWidth = 20;
+  const radius = (size - strokeWidth) / 2;
+  const center = size / 2;
+  const circumference = 2 * Math.PI * radius;
+  
+  const isNA = selectedEsim.data_left === 'N/A' || selectedEsim.data_left_formatted === 'N/A';
+  const progress = isNA ? 1 : (selectedEsim.data_left_percentage / 100);
+  const strokeDashoffset = circumference * (1 - progress);
 
-    return (
-      <View style={styles.progressContainer}>
-        <Svg width={size} height={size} style={styles.svg}>
-          <Circle
-            cx={center}
-            cy={center}
-            r={radius}
-            stroke="#333333"
-            strokeWidth={strokeWidth}
-            fill="none"
-          />
-          <Circle
-            cx={center}
-            cy={center}
-            r={radius}
-            stroke="#FF6B00"
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={strokeDashoffset}
-            transform={`rotate(-90 ${center} ${center})`}
-            strokeLinecap="round"
-          />
-        </Svg>
-        <View style={styles.progressContent}>
-          <Text style={styles.dataAmount} numberOfLines={1} adjustsFontSizeToFit>
-            {selectedEsim.data_left_formatted}
-          </Text>
-          <Text style={styles.dataTotal} numberOfLines={1}>
-            {selectedEsim.unlimited ? 'Unlimited Data' : `Left of ${selectedEsim.total_volume}`}
-          </Text>
-        </View>
+  // Using slate colors from our theme for N/A state
+  const circleColor = isNA ? colors.slate[400] : '#2196F3';
+
+  return (
+    <View style={styles.progressContainer}>
+      <Svg width={size} height={size} style={styles.svg}>
+        <Circle
+          cx={center}
+          cy={center}
+          r={radius}
+          stroke={colors.background.tertiary}
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <Circle
+          cx={center}
+          cy={center}
+          r={radius}
+          stroke={circleColor}
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={strokeDashoffset}
+          transform={`rotate(-90 ${center} ${center})`}
+          strokeLinecap="round"
+        />
+      </Svg>
+      <View style={styles.progressContent}>
+        <Text 
+          style={[
+            styles.dataAmount,
+            isNA && styles.naDataAmount
+          ]} 
+          numberOfLines={1} 
+          adjustsFontSizeToFit
+        >
+          {selectedEsim.data_left_formatted}
+        </Text>
+        <Text style={[
+          styles.dataTotal,
+          isNA && styles.naDataTotal
+        ]} numberOfLines={1}>
+          {selectedEsim.unlimited ? 'Unlimited Data' : `Left of ${selectedEsim.total_volume}`}
+        </Text>
       </View>
-    );
-  };
+    </View>
+  );
+};
 
 
 const TopUpLoadingModal = ({ visible, message, progress }: LoadingState) => (
@@ -859,70 +886,73 @@ const formatTimeLeft = (timeString: string): string => {
         scrollEventThrottle={16}
       >
         {visibleEsims.map((esim, index) => (
-          <View 
-            key={esim.id}
-            style={[styles.cardWrapper, { width: sliderWidth }]}
-          >
-            <TouchableOpacity
-              style={[
-                styles.esimCard,
-                selectedEsim?.id === esim.id && styles.selectedEsimCard
-              ]}
-              onPress={() => {
-                setSelectedEsim(esim);
-                setCurrentPage(index);
-              }}
-            >
-              <View style={styles.countryInfo}>
-                <View style={styles.leftContent}>
-                  <View style={styles.chipIconContainer}>
-                    <Ionicons 
-                      name="hardware-chip-outline" 
-                      size={20} 
-                      color="#FF6B00"
-                      style={styles.chipIcon}
-                    />
-                  </View>
-                 <Text style={styles.countryName}>
-				  {formatPackageName(esim.country || esim.plan_name, esim)}
-				</Text>
-                </View>
-                <View style={styles.flagContainer}>
-                  <FlagIcon 
-                    countryCode={getCountryCode(esim.country)} 
-                    size={40}
-                  />
-                </View>
-              </View>
-              <View style={styles.statusContainer}>
-			  <View style={[
-				styles.statusDot,
-				{ backgroundColor: getStatusColor(esim.status) }
-			  ]} />
-			  <View style={styles.statusRow}>
-				<Text style={[
-				  styles.statusText,
-				  { color: getStatusColor(esim.status) }
-				]}>
-				  {getStatusText(esim.status)}
-				</Text>
-				{esim.time_left !== 'N/A' && (
-				  <View style={styles.timeContainer}>
-					<Ionicons 
-					  name="time-outline" 
-					  size={14} 
-					  color="#888888"
-					/>
-					<Text style={styles.timeText}>
-					  {formatTimeLeft(esim.time_left)}
-					</Text>
-				  </View>
-				)}
-			  </View>
-			</View>
-            </TouchableOpacity>
+  <View 
+    key={esim.id}
+    style={[styles.cardWrapper, { width: sliderWidth }]}
+  >
+    <TouchableOpacity
+      style={[
+        styles.esimCard,
+        selectedEsim?.id === esim.id && styles.selectedEsimCard
+      ]}
+      onPress={() => {
+        setSelectedEsim(esim);
+        setCurrentPage(index);
+      }}
+    >
+      <View style={styles.countryInfo}>
+        <View style={styles.leftContent}>
+          <View style={[
+            styles.chipIconContainer,
+            selectedEsim?.id === esim.id && styles.selectedChipContainer
+          ]}>
+            <Ionicons 
+              name="hardware-chip-outline" 
+              size={20} 
+              color={selectedEsim?.id === esim.id ? colors.stone[50] : '#2196F3'}
+              style={styles.chipIcon}
+            />
           </View>
-        ))}
+          <Text style={styles.countryName}>
+            {formatPackageName(esim.country || esim.plan_name, esim)}
+          </Text>
+        </View>
+        <View style={styles.flagContainer}>
+          <FlagIcon 
+            countryCode={getCountryCode(esim.country)} 
+            size={40}
+          />
+        </View>
+      </View>
+      <View style={styles.statusContainer}>
+        <View style={[
+          styles.statusDot,
+          { backgroundColor: getStatusColor(esim.status) }
+        ]} />
+        <View style={styles.statusRow}>
+          <Text style={[
+            styles.statusText,
+            { color: getStatusColor(esim.status) }
+          ]}>
+            {getStatusText(esim.status)}
+          </Text>
+          {esim.time_left !== 'N/A' && (
+            <View style={styles.timeContainer}>
+              <Ionicons 
+                name="time-outline" 
+                size={14} 
+                color="#888888"
+              />
+              <Text style={styles.timeText}>
+                {formatTimeLeft(esim.time_left)}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  </View>
+))}
       </ScrollView>
 
       <View style={styles.pagination}>
@@ -991,14 +1021,28 @@ const formatTimeLeft = (timeString: string): string => {
     />
 
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-      <Text style={styles.title}>eSIM Details</Text>
-      <TouchableOpacity onPress={() => setShowAllEsims(true)}>
-        <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-    </View>
+  <TouchableOpacity 
+    onPress={() => navigation.goBack()}
+    style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+  >
+    <Ionicons 
+      name="arrow-back" 
+      size={24} 
+      color={colors.icon.header}
+    />
+  </TouchableOpacity>
+  <Text style={styles.title}>eSIM Details</Text>
+  <TouchableOpacity 
+    onPress={() => setShowAllEsims(true)}
+    style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+  >
+    <Ionicons 
+      name="ellipsis-vertical" 
+      size={24} 
+      color={colors.icon.header}
+    />
+  </TouchableOpacity>
+</View>
 
     <ScrollView 
       style={styles.content}
@@ -1039,18 +1083,29 @@ const formatTimeLeft = (timeString: string): string => {
 
       {renderSlider()}
 
-      <TouchableOpacity 
-        style={styles.instructionsButton}
-        onPress={() => {
-          navigation.navigate('Instructions', {
-            iccid: selectedEsim?.iccid
-          });
-        }}
-      >
-        <Ionicons name="download-outline" size={20} color="#FFFFFF" />
-        <Text style={styles.instructionsText}>View Instructions</Text>
-        <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-      </TouchableOpacity>
+     <TouchableOpacity 
+  style={styles.instructionsButton}
+  onPress={() => {
+    navigation.navigate('Shop', {
+      screen: 'Instructions',
+      params: {
+        iccid: selectedEsim?.iccid
+      }
+    });
+  }}
+>
+       <Ionicons 
+    name="download-outline" 
+    size={20} 
+    color={colors.icon.header} 
+  />
+  <Text style={styles.instructionsText}>View Instructions</Text>
+  <Ionicons 
+    name="chevron-forward" 
+    size={20} 
+    color={colors.icon.header} 
+  />
+</TouchableOpacity>
 
       <View style={styles.providerInfo}>
         <Ionicons name="cellular-outline" size={20} color="#BBBBBB" />
@@ -1144,90 +1199,100 @@ const formatTimeLeft = (timeString: string): string => {
     </ScrollView>
 
     <Modal
-      visible={showAllEsims}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowAllEsims(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              onPress={() => setShowAllEsims(false)}
-              style={styles.modalCloseButton}
-            >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>All eSIMs</Text>
-            <View style={styles.modalHeaderSpacer} />
-          </View>
-          
-          <FlatList
-            data={esimData}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                style={[
-                  styles.modalCard,
-                  selectedEsim?.id === item.id && styles.selectedModalCard
-                ]}
-                onPress={() => handleModalSelection(item)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.modalCardContent}>
-                  <View style={styles.countryInfo}>
-                    <View style={styles.leftContent}>
-                      <View style={[
-                        styles.chipIconContainer,
-                        selectedEsim?.id === item.id && styles.selectedChipContainer
-                      ]}>
-                        <Ionicons 
-                          name="hardware-chip-outline" 
-                          size={20} 
-                          color={selectedEsim?.id === item.id ? "#FFFFFF" : "#FF6B00"}
-                          style={styles.chipIcon}
-                        />
-                      </View>
-                     <Text style={styles.countryName}>
-				  {formatPackageName(item.country || item.plan_name, item)}
-				</Text>
-				</View>
-                    <View style={styles.flagContainer}>
-                      <FlagIcon 
-                        countryCode={getCountryCode(item.country)} 
-                        size={40}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.statusContainer}>
-                    <View style={[
-                      styles.statusDot,
-                      { backgroundColor: getStatusColor(item.status) }
-                    ]} />
-                    <View style={styles.statusTextContainer}>
-                      <Text style={[
-                        styles.statusText,
-                        { color: getStatusColor(item.status) }
-                      ]}>
-                        {getStatusText(item.status)}
-                      </Text>
-                      {item.time_left !== 'N/A' && (
-                        <Text style={styles.timeLeft}>
-                          {` — ${item.time_left}`}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={styles.modalList}
-            showsVerticalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={styles.modalCardSeparator} />}
+  visible={showAllEsims}
+  animationType="slide"
+  transparent={true}
+  onRequestClose={() => setShowAllEsims(false)}
+>
+  <View style={styles.modalContainer}>
+    <View style={styles.modalContent}>
+      <View style={styles.modalHeader}>
+        <TouchableOpacity 
+          onPress={() => setShowAllEsims(false)}
+          style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+        >
+          <Ionicons 
+            name="close" 
+            size={24} 
+            color={colors.icon.header}
           />
-        </View>
+        </TouchableOpacity>
+        <Text style={styles.modalTitle}>All eSIMs</Text>
+        <View style={{ width: 40 }} />
       </View>
-    </Modal>
+      
+      <FlatList
+        data={esimData}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            style={[
+              styles.modalCard,
+              selectedEsim?.id === item.id && styles.selectedModalCard
+            ]}
+            onPress={() => handleModalSelection(item)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.modalCardContent}>
+              <View style={styles.countryInfo}>
+                <View style={styles.leftContent}>
+                  <View style={[
+                    styles.chipIconContainer,
+                    selectedEsim?.id === item.id && styles.selectedChipContainer
+                  ]}>
+                    <Ionicons 
+                      name="hardware-chip-outline" 
+                      size={20} 
+                      color={selectedEsim?.id === item.id ? "#FFFFFF" : colors.icon.header}
+                    />
+                  </View>
+                  <Text style={styles.countryName}>
+                    {formatPackageName(item.country || item.plan_name, item)}
+                  </Text>
+                </View>
+                <View style={styles.flagContainer}>
+                  <FlagIcon 
+                    countryCode={getCountryCode(item.country)} 
+                    size={40}
+                  />
+                </View>
+              </View>
+              <View style={styles.statusContainer}>
+                <View style={[
+                  styles.statusDot,
+                  { backgroundColor: getStatusColor(item.status) }
+                ]} />
+                <View style={styles.statusRow}>
+                  <Text style={[
+                    styles.statusText,
+                    { color: getStatusColor(item.status) }
+                  ]}>
+                    {getStatusText(item.status)}
+                  </Text>
+                  {item.time_left !== 'N/A' && (
+                    <View style={styles.timeContainer}>
+                      <Ionicons 
+                        name="time-outline" 
+                        size={14} 
+                        color={colors.text.secondary}
+                      />
+                      <Text style={styles.timeText}>
+                        {formatTimeLeft(item.time_left)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.modalList}
+        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={styles.modalCardSeparator} />}
+      />
+    </View>
+  </View>
+</Modal>
   </SafeAreaView>
   );
 };
@@ -1235,27 +1300,32 @@ const formatTimeLeft = (timeString: string): string => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: colors.background.primary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: colors.background.headerIcon,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.header,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   content: {
     flex: 1,
@@ -1267,8 +1337,8 @@ const styles = StyleSheet.create({
   progressContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 16, // Reduced from 20
-    height: 220, // Reduced from 240
+    marginVertical: 16,
+    height: 220,
   },
   svg: {
     transform: [{ rotate: '-90deg' }],
@@ -1276,18 +1346,18 @@ const styles = StyleSheet.create({
   progressContent: {
     position: 'absolute',
     alignItems: 'center',
-    width: '70%', // Added to control text container width
+    width: '70%',
   },
   dataAmount: {
-    fontSize: 28, // Reduced from 32
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 4,
     textAlign: 'center',
   },
   dataTotal: {
-    fontSize: 12, // Reduced from 14
-    color: '#666666',
+    fontSize: 12,
+    color: colors.text.secondary,
     textAlign: 'center',
   },
   dataTypes: {
@@ -1296,7 +1366,7 @@ const styles = StyleSheet.create({
     gap: 16,
     marginVertical: 24,
   },
-  dataTypeButton: {
+dataTypeButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1306,26 +1376,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+activeDataTypeButton: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)', // Green with 10% opacity
+  },
+  activeDataTypeText: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  inactiveDataTypeText: {
+    color: colors.text.secondary,
+  },
   dataDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  activeDataTypeButton: {
-    backgroundColor: 'rgba(255, 107, 0, 0.1)',
-  },
   dataTypeText: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   activeDataTypeText: {
-    color: '#FF6B00',
-  },
-  inactiveDataTypeText: {
-    color: '#666666',
-  },
-  sliderWrapper: {
-    marginBottom: 24,
+    color: colors.text.primary,
   },
   sliderContainer: {
     marginBottom: 24,
@@ -1337,39 +1409,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: CARD_MARGIN,
     justifyContent: 'center',
   },
- esimCard: {
-    backgroundColor: '#121212',
+  esimCard: {
+    backgroundColor: colors.background.secondary,
     borderRadius: 16,
     padding: 16,
     width: '100%',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: colors.border.light,
   },
   selectedEsimCard: {
-    borderColor: '#FF6B00',
+    borderColor: colors.primary.DEFAULT,
+    backgroundColor: colors.background.tertiary,
   },
-   countryInfo: {
+  countryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  leftContent: {
+leftContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  chipIconContainer: {
-    backgroundColor: 'rgba(255, 107, 0, 0.1)',
+  chipIcon: {
+    transform: [{ rotate: '45deg' }],
+  },
+chipIconContainer: {
+    backgroundColor: 'rgba(33, 150, 243, 0.1)', // Light blue background
     borderRadius: 12,
     padding: 8,
     width: 36,
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  chipIcon: {
-    transform: [{ rotate: '45deg' }],
+    borderWidth: 1,
+    borderColor: 'rgba(33, 150, 243, 0.2)', // Slightly darker border
   },
   flagContainer: {
     width: 40,
@@ -1380,7 +1455,8 @@ const styles = StyleSheet.create({
   countryName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   statusContainer: {
     flexDirection: 'row',
@@ -1393,19 +1469,33 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  statusTextContainer: {
+  statusRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   statusText: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  timeLeft: {
-    fontSize: 14,
-    color: '#666666',
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
- pagination: {
+  timeText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginLeft: 4,
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1417,98 +1507,98 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#333333',
+    backgroundColor: colors.background.light,
   },
   paginationDotActive: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: colors.text.primary,
   },
   instructionsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   instructionsText: {
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   providerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   providerText: {
     marginLeft: 12,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
- topUpContainer: {
+  topUpContainer: {
     marginTop: 24,
     marginBottom: 32,
   },
   topUpTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 16,
     paddingHorizontal: 16,
-  },
-  topUpOptionsScroll: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  topUpOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   planButton: {
     width: 120,
     padding: 16,
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.secondary,
     borderRadius: 12,
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: colors.border.light,
   },
   selectedPlan: {
-    backgroundColor: '#FF6B00',
-    borderColor: '#FF6B00',
+    backgroundColor: colors.background.tertiary,
+    borderColor: colors.primary.DEFAULT,
   },
   planData: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   planDuration: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: colors.text.secondary,
     marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   planPrice: {
     fontSize: 16,
-    color: '#666666',
+    color: colors.text.secondary,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
- selectedPlanText: {
-    color: '#FFFFFF',
+  selectedPlanText: {
+    color: colors.text.primary,
   },
- checkoutButton: {
+  checkoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#FF6B00',
+    backgroundColor: colors.primary.DEFAULT,
     borderRadius: 24,
     marginTop: 24,
     marginHorizontal: 16,
@@ -1521,20 +1611,22 @@ const styles = StyleSheet.create({
   checkoutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.stone[50],
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   checkoutPrice: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.stone[50],
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  modalContainer: {
+ modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#000000',
+    backgroundColor: colors.background.primary,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '80%',
@@ -1546,39 +1638,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#222222',
-  },
-  modalCloseButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#222222',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderBottomColor: colors.border.light,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     textAlign: 'center',
-  },
-  modalHeaderSpacer: {
-    width: 40,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   modalList: {
     padding: 16,
   },
   modalCard: {
-    backgroundColor: '#121212',
+    backgroundColor: colors.background.secondary,
     borderRadius: 16,
-    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: colors.border.light,
     overflow: 'hidden',
   },
   selectedModalCard: {
-    borderColor: '#FF6B00',
-    backgroundColor: '#1A1A1A',
+    borderColor: colors.primary.DEFAULT,
+    backgroundColor: colors.background.tertiary,
   },
   modalCardContent: {
     padding: 16,
@@ -1587,7 +1668,38 @@ const styles = StyleSheet.create({
     height: 12,
   },
 selectedChipContainer: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#2196F3', // Solid blue when selected
+    borderColor: '#2196F3',
+  },
+  chipIconContainer: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    padding: 8,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  timeText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginLeft: 4,
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   loadingContainer: {
     flex: 1,
@@ -1596,98 +1708,68 @@ selectedChipContainer: {
   },
   loadingText: {
     marginTop: 16,
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   errorText: {
-    color: '#FF6B00',
+    color: colors.text.primary,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 16,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   retryButton: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: colors.primary.DEFAULT,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   retryText: {
-    color: '#FFFFFF',
+    color: colors.stone[50],
     fontSize: 16,
     fontWeight: '600',
-  },
-loadingPlans: {
-    marginVertical: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   noPlansText: {
-    color: '#666666',
+    color: colors.text.secondary,
     fontSize: 14,
     textAlign: 'center',
     marginTop: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
- modalOverlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingContent: {
-    alignItems: 'center',
-    gap: 16,
-  },
   loadingMessage: {
-    color: '#FFFFFF',
+    color: colors.text.primary,
     fontSize: 16,
     textAlign: 'center',
     marginTop: 16,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   loadingProgress: {
-    color: '#999999',
+    color: colors.text.secondary,
     fontSize: 14,
     textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
+ naDataAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.slate[400],
+    marginBottom: 4,
+    textAlign: 'center',
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
+  naDataTotal: {
+    fontSize: 12,
+    color: colors.slate[500],
+    textAlign: 'center',
   },
-  statusRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(136, 136, 136, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  timeText: {
-    fontSize: 13,
-    color: '#888888',
-    marginLeft: 4,
-    fontWeight: '500',
-  }
 });
 
 export default MyESimsScreen;
