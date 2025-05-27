@@ -1,8 +1,8 @@
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://esimfly.net/pages/auth';
-const REFERRAL_API_URL = 'https://esimfly.net/pages/business/api/referral';
+const API_URL = 'http://159.100.18.83:3000/api/auth';
+const REFERRAL_API_URL = 'https://esimfly.net/api/business/referral';
 
 interface AuthResponse {
   success: boolean;
@@ -39,7 +39,7 @@ async function handleApiResponse(response: Response): Promise<AuthResponse> {
 }
 
 export async function logout(): Promise<Response> {
-  const url = `${API_URL}/logout.php`;
+  const url = `${API_URL}/logout`;
   console.log('Attempting logout');
 
   try {
@@ -52,6 +52,12 @@ export async function logout(): Promise<Response> {
     console.log('Logout response status:', response.status);
     console.log('Logout response headers:', response.headers);
 
+    // Clear stored token on successful logout
+    if (response.ok) {
+      await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('tokenExpires');
+    }
+
     return response;
   } catch (error) {
     console.error('Logout fetch error:', error);
@@ -62,7 +68,8 @@ export async function logout(): Promise<Response> {
 async function getAuthHeader(): Promise<Headers> {
   const token = await AsyncStorage.getItem('userToken');
   const headers = new Headers({
-    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    'Content-Type': 'application/json',
+    'x-client-type': 'mobile'
   });
   if (token) {
     headers.append('Authorization', `Bearer ${token}`);
@@ -85,33 +92,14 @@ async function makeApiRequest(
     try {
         const headers = await getAuthHeader();
         
-        if (method === 'POST' && body) {
-            // Convert body to form data
-            const formData = new URLSearchParams();
-            Object.entries(body).forEach(([key, value]) => {
-                if (value !== undefined && value !== null) {
-                    formData.append(key, value);
-                }
-            });
-
-            const response = await fetch(url, {
-                method,
-                headers,
-                body: formData.toString()
-            });
-            
-            debugLog('Fetch completed');
-            return await handleApiResponse(response);
-        } else {
-            // Handle GET requests or requests without body
-            const response = await fetch(url, {
-                method,
-                headers
-            });
-            
-            debugLog('Fetch completed');
-            return await handleApiResponse(response);
-        }
+        const response = await fetch(url, {
+            method,
+            headers,
+            body: method === 'POST' && body ? JSON.stringify(body) : undefined
+        });
+        
+        debugLog('Fetch completed');
+        return await handleApiResponse(response);
     } catch (error) {
         debugLog('Fetch error:', error);
         if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -149,7 +137,7 @@ export async function verifyReferralCode(code: string): Promise<ReferralVerifyRe
 
 export async function signIn(email: string, password: string): Promise<AuthResponse> {
   debugLog('Attempting sign in for email:', email);
-  const response = await makeApiRequest('authenticate.php', 'POST', { email, password });
+  const response = await makeApiRequest('login', 'POST', { email, password });
   debugLog('Sign in response:', response);
   return response;
 }
@@ -162,56 +150,44 @@ export async function signUp(
 ): Promise<AuthResponse> {
     debugLog('Attempting sign up for email:', email);
     
-    // First verify the referral code
-    let businessUserId = null;
-    if (referralCode) {
-        try {
-            const verifyResponse = await verifyReferralCode(referralCode);
-            if (verifyResponse.success && verifyResponse.business_user_id) {
-                businessUserId = verifyResponse.business_user_id;
-            } else {
-                throw new Error(verifyResponse.message || 'Invalid referral code');
-            }
-        } catch (error) {
-            debugLog('Error verifying referral code during signup:', error);
-            throw error;
-        }
-    }
-
-    // Create request body with all required fields
-    const formData = new URLSearchParams();
-    formData.append('email', email);
-    formData.append('password', password);
-    formData.append('confirmPassword', password);
-
-    if (referralCode) {
-        formData.append('referral_code', referralCode.trim());
-    }
-
-    if (businessUserId) {
-        formData.append('business_user_id', businessUserId.toString());
-    }
-
-    if (name) {
-        formData.append('name', name);
-    }
-
-    // Make the request
-    const url = `${API_URL}/register_app.php`;
-    debugLog(`Making POST request to ${url}`);
-    debugLog('Request body:', formData.toString());
+    // Make the request to the new API endpoint
+    const requestBody = {
+        name: name || email.split('@')[0],
+        email,
+        password,
+        referralCode: referralCode?.trim()
+    };
+    
+    debugLog('Making POST request to register endpoint');
+    debugLog('Request body:', requestBody);
 
     try {
-        const response = await fetch(url, {
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'x-client-type': 'mobile'
+        });
+        
+        const response = await fetch(`${API_URL}/register`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: formData.toString()
+            headers,
+            body: JSON.stringify(requestBody)
         });
 
         const data = await response.json();
         debugLog('Sign up response:', data);
+        
+        // Store token if returned
+        if (data.token) {
+            await AsyncStorage.setItem('userToken', data.token);
+            await AsyncStorage.setItem('tokenExpires', data.expires_at);
+        }
+        
+        // If there's a message field but no success field, check status
+        if (!data.hasOwnProperty('success') && response.status >= 400) {
+            data.success = false;
+            data.error = data.message || 'Signup failed';
+        }
+        
         return data;
     } catch (error) {
         debugLog('Sign up error:', error);
@@ -235,14 +211,14 @@ export async function deleteAccount(): Promise<AuthResponse> {
 
 export async function refreshToken(): Promise<AuthResponse> {
   debugLog('Attempting token refresh');
-  const response = await makeApiRequest('refresh_token.php', 'POST');
+  const response = await makeApiRequest('refresh-token', 'POST');
   debugLog('Token refresh response:', response);
   return response;
 }
 
 export async function verifyToken(): Promise<AuthResponse> {
   debugLog('Attempting token verification');
-  const response = await makeApiRequest('verify_token.php', 'GET');
+  const response = await makeApiRequest('verify-token', 'GET');
   debugLog('Token verification response:', response);
   return response;
 }

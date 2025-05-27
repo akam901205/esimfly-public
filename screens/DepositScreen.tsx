@@ -74,8 +74,8 @@ const DepositScreen: React.FC = () => {
       `\nPlease describe your issue below:\n`
     );
     
-    const businessEmail = balance?.business_email || 'support@esimforyou.net';
-    const mailtoUrl = `mailto:${businessEmail}?subject=${subject}&body=${body}`;
+    const supportEmail = 'support@esimfly.net';
+    const mailtoUrl = `mailto:${supportEmail}?subject=${subject}&body=${body}`;
     
     try {
       const canOpen = await Linking.canOpenURL(mailtoUrl);
@@ -84,13 +84,13 @@ const DepositScreen: React.FC = () => {
       } else {
         Alert.alert(
           'Contact Support',
-          `Please email us at ${businessEmail} and include your email: ${userEmail}`
+          `Please email us at ${supportEmail} and include your email: ${userEmail}`
         );
       }
     } catch (error) {
       Alert.alert(
         'Error',
-        `Please contact support at ${businessEmail} and include your email: ${userEmail}`
+        `Please contact support at ${supportEmail} and include your email: ${userEmail}`
       );
     }
   };
@@ -177,34 +177,32 @@ const DepositScreen: React.FC = () => {
         let errorMessage = response.message || 'Failed to verify gift card';
         let showSupportOption = false;
 
-        if (response.message && response.message.includes('already been redeemed')) {
-          errorTitle = 'Card Already Used';
-          showSupportOption = true;
-        } else {
-          switch (response.error_code) {
-            case 'CARD_NUMBER_MISSING':
-              errorTitle = 'Invalid Input';
-              errorMessage = 'Please enter a gift card number';
-              break;
-            case 'INVALID_CARD_FORMAT':
-              errorTitle = 'Invalid Format';
-              errorMessage = 'Gift card number must be exactly 6 digits';
-              break;
-            case 'CARD_NOT_FOUND':
-              errorTitle = 'Invalid Card';
-              errorMessage = 'This gift card number does not exist';
-              break;
-            case 'CARD_NOT_AUTHORIZED':
-              errorTitle = 'Unauthorized Card';
-              showSupportOption = true;
-              break;
-            default:
-              showSupportOption = true;
-              if (response.business_email && !errorMessage.includes('contact')) {
-                errorMessage += `\n\nPlease contact support at ${response.business_email}`;
-              }
-              break;
-          }
+        switch (response.error_code) {
+          case 'CARD_NUMBER_MISSING':
+            errorTitle = 'Invalid Input';
+            errorMessage = 'Please enter a gift card number';
+            break;
+          case 'INVALID_CARD_FORMAT':
+            errorTitle = 'Invalid Format';
+            errorMessage = 'Gift card number must be exactly 6 digits';
+            break;
+          case 'CARD_NOT_FOUND':
+            errorTitle = 'Invalid Card';
+            errorMessage = 'This gift card number does not exist';
+            break;
+          case 'CARD_ALREADY_USED':
+            errorTitle = 'Card Already Used';
+            errorMessage = 'This gift card has already been redeemed';
+            showSupportOption = true;
+            break;
+          case 'INSUFFICIENT_BALANCE':
+            errorTitle = 'No Balance';
+            errorMessage = 'This gift card has no remaining balance';
+            break;
+          default:
+            errorTitle = 'Error';
+            showSupportOption = true;
+            break;
         }
 
         Alert.alert(
@@ -306,9 +304,7 @@ const DepositScreen: React.FC = () => {
           <View style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={24} color="#FFB74D" />
             <Text style={styles.infoText}>
-              Gift cards can only be used once and are linked to specific business accounts. 
-              You must be registered under the business that issued this gift card to add the balance. 
-              {lastRequestId ? `\n\nIf you need help, contact your business administrator and reference your email: ${lastRequestId}` : ''}
+              Gift cards can only be used once. Enter your 6-digit gift card code to add the balance to your account.
             </Text>
           </View>
 

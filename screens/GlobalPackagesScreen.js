@@ -16,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { countries } from '../utils/countryData';
 import NetworkModalGlobal from '../components/NetworkModalGlobal';
 import { colors } from '../theme/colors'; //
+import { newApi } from '../api/api';
+import { getNetworks, formatLocationNetworkList } from '../utils/PackageFilters';
 
 const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
 
@@ -109,97 +111,69 @@ const fetchPackages = useCallback(async () => {
   try {
     console.log(`[DEBUG] Fetching packages for: ${globalPackageName}, type: ${packageType}`);
     
-    // Determine which API to use and search term
-    let apiEndpoint;
-    let searchTerm;
-    let isProvider2 = false;
-
-    if (globalPackageName.toLowerCase().includes('139')) {
-      apiEndpoint = `${API_BASE_URL}/get_plans_esimaccess.php`;
-      searchTerm = 'Global139';
-    } else if (globalPackageName.toLowerCase().includes('138')) {
-      apiEndpoint = `${API_BASE_URL}/get_plans_esimaccess.php`;
-      searchTerm = 'Global138';
-    } else if (globalPackageName.toLowerCase().includes('106')) {
-      apiEndpoint = `${API_BASE_URL}/get_plans_esimgo.php`;
-      searchTerm = 'Global';
-      isProvider2 = true;
-    } else if (globalPackageName.toLowerCase().includes('discover global')) {
-      apiEndpoint = `${API_BASE_URL}/get_plans_airalo.php`;
-      searchTerm = 'Global';
-    } else {
-      apiEndpoint = `${API_BASE_URL}/get_plans_esimaccess.php`;
-      searchTerm = 'Global';
-    }
-
-    console.log(`[DEBUG] Using API: ${apiEndpoint}`);
-    console.log(`[DEBUG] Using search term: ${searchTerm}`);
-
-    const response = await axios.get(apiEndpoint, {
-      params: { search: searchTerm, limit: 200 }
+    // Use the new API to fetch global packages
+    const response = await newApi.get('/user/esims/packages', {
+      params: { 
+        type: 'global',
+        limit: 200 
+      }
+    }).catch(error => {
+      console.error('[DEBUG] Package fetch error:', error);
+      return { data: { data: { packages: [] } } };
     });
 
-    let parsedData = typeof response.data === 'string' ? parseIncompleteJSON(response.data) : response.data;
-    const allPackages = parsedData.plans || [];
+    const allPackages = response.data?.data?.packages || [];
 
     console.log(`[DEBUG] Total packages before filtering: ${allPackages.length}`);
     console.log(`[DEBUG] Raw packages:`, allPackages);
 
-    // Updated filtering logic in fetchPackages function
-const filteredPackages = allPackages.filter(pkg => {
-  if (!pkg || !pkg.name) return false;
+    // Map packages to match expected format
+    const mappedPackages = allPackages.map(pkg => ({
+      id: pkg.id,
+      name: pkg.name,
+      price: pkg.price,
+      data: pkg.isUnlimited ? 'Unlimited' : pkg.data,
+      duration: pkg.duration,
+      provider: pkg.provider,
+      unlimited: pkg.isUnlimited,
+      isUnlimited: pkg.isUnlimited,
+      voice_minutes: pkg.voiceMinutes,
+      sms_count: pkg.smsCount,
+      flagUrl: pkg.flagUrl,
+      packageCode: pkg.slug,
+      speed: pkg.speed || '4G',
+      networks: pkg.networks || [],
+      coverage: pkg.coverage || [],
+      coverages: pkg.coverages || [],
+      region: pkg.region || 'Global',
+      regionCountries: pkg.coverage || [],
+      // Add coverage_countries for fallback
+      coverage_countries: pkg.coverage_countries || pkg.coverage || []
+    }));
 
-  const pkgName = pkg.name.trim().toLowerCase();
-  const pkgRegion = (pkg.region || '').trim().toLowerCase();
-  const pkgLocation = (pkg.location || '').trim().toLowerCase();
-  
-  let isTargetPackage = false;
+    // Filter packages based on package type
+    const filteredPackages = mappedPackages.filter(pkg => {
+      if (!pkg || !pkg.name) return false;
 
-  // Log package details for debugging
-  console.log(`[DEBUG] Checking package: Name=${pkgName}, Region=${pkgRegion}, Location=${pkgLocation}`);
-  
-  if (globalPackageName.toLowerCase().includes('discover global')) {
-    // For Discover Global packages, check if we want voice+SMS or regular packages
-    if (packageType === 'voice_sms') {
-      // For voice+SMS, only include Discover+ packages
-      isTargetPackage = 
-        (pkgName.includes('discover+') || pkgRegion.toLowerCase().includes('discover+')) &&
-        (pkg.voice_minutes !== undefined || pkg.sms_count !== undefined);
-    } else {
-      // For regular/unlimited packages, exclude Discover+ packages
-      isTargetPackage = 
-        pkgName.includes('discover global') && 
-        !pkgName.includes('discover+') &&
-        !pkgRegion.toLowerCase().includes('discover+');
-    }
-  } else {
-    // Handle other package types (139, 138, etc.) as before
-    if (globalPackageName.toLowerCase().includes('139')) {
-      isTargetPackage = pkgName.includes('139') || pkgRegion.includes('global139');
-    } else if (globalPackageName.toLowerCase().includes('138')) {
-      isTargetPackage = pkgName.includes('138') || pkgRegion.includes('global138');
-    } else if (globalPackageName.toLowerCase().includes('106')) {
-      isTargetPackage = pkgName.includes('global') || pkgRegion.includes('global');
-    } else if (globalPackageName.toLowerCase().includes('120+')) {
-      isTargetPackage = pkgName.includes('120+') || pkgName.includes('global (120');
-    }
-  }
-
-  // Log matching result
-  console.log(`[DEBUG] Package ${pkgName} isTarget: ${isTargetPackage}, packageType: ${packageType}`);
-
-  // Handle unlimited filtering for non-voice+SMS packages
-  if (packageType !== 'voice_sms') {
-    const isUnlimited = 
-      pkg.unlimited === true || 
-      (typeof pkg.data === 'string' && pkg.data.toLowerCase().includes('unlimited')) ||
-      (typeof pkg.data === 'number' && pkg.data > 1000);
-
-    return isTargetPackage && (packageType === 'unlimited' ? isUnlimited : !isUnlimited);
-  }
-
-  return isTargetPackage;
-});
+      const pkgName = pkg.name.trim().toLowerCase();
+      
+      // Filter based on package type
+      if (packageType === 'voice_sms') {
+        // Only include packages with voice or SMS (check for non-null, non-undefined values)
+        return (pkg.voice_minutes !== null && pkg.voice_minutes !== undefined && pkg.voice_minutes > 0) || 
+               (pkg.sms_count !== null && pkg.sms_count !== undefined && pkg.sms_count > 0);
+      } else if (packageType === 'unlimited') {
+        // Only include unlimited packages
+        return pkg.unlimited || pkg.isUnlimited;
+      } else if (packageType === 'regular') {
+        // Only include regular (non-unlimited, non-voice/SMS) packages
+        return !pkg.unlimited && !pkg.isUnlimited && 
+               (pkg.voice_minutes === null || pkg.voice_minutes === undefined || pkg.voice_minutes === 0) && 
+               (pkg.sms_count === null || pkg.sms_count === undefined || pkg.sms_count === 0);
+      }
+      
+      return true;
+    });
 
     console.log(`[DEBUG] Filtered packages count: ${filteredPackages.length}`);
     filteredPackages.forEach(pkg => {
@@ -311,23 +285,15 @@ const handleNetworkPress = () => {
     return;
   }
 
-  // Determine provider based on package name or globalPackageName
-  let provider;
-  if (globalPackageName?.toLowerCase().includes('discover')) {
-    provider = 'airalo';
-  } else if (globalPackageName?.toLowerCase().includes('106')) {
-    provider = 'esimgo';
-  } else {
-    provider = 'esimaccess';
-  }
-
-  // Add provider to the package data
-  const packageWithProvider = {
-    ...item,
-    provider
-  };
+  console.log('[DEBUG] Package data for modal:', {
+    name: item.name,
+    networks: item.networks?.length,
+    coverage: item.coverage?.length,
+    coverages: item.coverages?.length,
+    provider: item.provider
+  });
   
-  setSelectedPackage(packageWithProvider);
+  setSelectedPackage(item);
   setNetworkModalVisible(true);
 };
 

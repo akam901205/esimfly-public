@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { countries, FlagIcon } from '../utils/countryData';
 import NetworkModal from '../components/NetworkModalSingelCountry';
 import { colors } from '../theme/colors';
+import { newApi } from '../api/api';
 
 const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
 
@@ -242,65 +243,46 @@ const filterOptimalPackages = (packages) => {
       console.log('[DEBUG] Fetching packages for:', { country, packageType });
       setLoading(true);
       
-      // Fetch packages from all providers
-      const [firstResponse, secondResponse, thirdResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/get_plans_esimaccess.php`, {
-          params: { search: country, limit: 100 }
-        }).catch(error => {
-          console.error('[DEBUG] ESIMaccess fetch error:', error);
-          return { data: { plans: [] } };
-        }),
-        axios.get(`${API_BASE_URL}/get_plans_esimgo.php`, {
-          params: { search: country, limit: 100 }
-        }).catch(error => {
-          console.error('[DEBUG] ESIMgo fetch error:', error);
-          return { data: { plans: [] } };
-        }),
-        axios.get(`${API_BASE_URL}/get_plans_airalo.php`, {
-          params: { search: country, limit: 100 }
-        }).catch(error => {
-          console.error('[DEBUG] Airalo fetch error:', error);
-          return { data: { plans: [] } };
-        })
-      ]);
-
-      // Process and combine all plans with provider information
-      let allPackages = [
-        ...firstResponse.data.plans.map(plan => ({ ...plan, provider: 'esimaccess' })),
-        ...secondResponse.data.plans.map(plan => ({ ...plan, provider: 'esimgo' })),
-        ...thirdResponse.data.plans.map(plan => ({ ...plan, provider: 'airalo' }))
-      ].map(plan => {
-        // Normalize data value
-        let dataValue = plan.data;
-        if (typeof dataValue === 'string' && dataValue.toLowerCase() === 'unlimited') {
-          dataValue = Infinity;
-        } else if (typeof dataValue === 'string') {
-          dataValue = parseFloat(dataValue.replace(/[^\d.]/g, ''));
-        } else {
-          dataValue = parseFloat(dataValue) || 0;
+      // Fetch packages from the new API
+      const response = await newApi.get('/user/esims/packages', {
+        params: { 
+          country: country,
+          type: 'country',
+          limit: 100 
         }
+      }).catch(error => {
+        console.error('[DEBUG] Package fetch error:', error);
+        return { data: { data: { packages: [] } } };
+      });
 
-        // Normalize duration
-        let duration = plan.duration;
-        if (typeof duration === 'string') {
-          duration = parseInt(duration.replace(/[^0-9]/g, '')) || 0;
-        } else {
-          duration = parseInt(duration) || 0;
-        }
-
-        // Normalize price
-        let price = typeof plan.price === 'string' ? 
-          parseFloat(plan.price.replace(/[^\d.]/g, '')) : 
-          parseFloat(plan.price) || 0;
+      // Process packages from the new API
+      let allPackages = response.data?.data?.packages || [];
+      
+      // Map the packages to match the expected format
+      allPackages = allPackages.map(plan => {
+        // Map new API fields to expected format
+        const dataValue = plan.isUnlimited ? Infinity : (plan.data || 0);
+        const duration = plan.duration || 0;
+        const price = plan.price || 0;
 
         return {
-          ...plan,
+          id: plan.id,
+          name: plan.name,
+          price: price,
           data: dataValue,
           duration: duration,
-          price: price,
-          unlimited: dataValue === Infinity || plan.unlimited || 
-                    (typeof plan.data === 'string' && plan.data.toLowerCase().includes('unlimited')),
-          networkCount: getNetworkCount(plan)
+          provider: plan.provider,
+          isUnlimited: plan.isUnlimited,
+          voiceMinutes: plan.voiceMinutes,
+          smsCount: plan.smsCount,
+          flagUrl: plan.flagUrl,
+          packageCode: plan.slug,
+          // Add fields that might be needed for network display
+          speed: plan.speed || null,
+          networks: plan.networks || [],
+          coverages: plan.coverages || [],
+          unlimited: dataValue === Infinity || plan.isUnlimited,
+          networkCount: 0 // Will be calculated later
         };
       });
 

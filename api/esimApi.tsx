@@ -1,6 +1,7 @@
 // esimApi.tsx
-import api from './api';
+import api, { newApi } from './api';
 import axios, { AxiosError } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -1061,24 +1062,28 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
 // Add this function to your esimApi
 export const changeEmail = async (data: ChangeEmailData): Promise<ApiResponse<void>> => {
   try {
-    console.log('Changing email');
+    console.log('Changing email to:', data.new_email);
     
-    const response = await api.post('/esimplan/changing_email.php', {
-      current_password: data.current_password,
-      new_email: data.new_email
+    const response = await newApi.post('/user/change-email', {
+      currentPassword: data.current_password,
+      newEmail: data.new_email
     });
 
     console.log('Email change response:', response.data);
 
     if (response.data && response.data.success) {
+      // Update stored email if changed successfully
+      if (response.data.newEmail) {
+        await AsyncStorage.setItem('userEmail', response.data.newEmail);
+      }
       return {
         success: true,
-        message: 'Email changed successfully'
+        message: response.data.message || 'Email changed successfully'
       };
     } else {
       return {
         success: false,
-        message: response.data.message || 'Failed to change email',
+        message: response.data.error || response.data.message || 'Failed to change email',
         error_code: response.data.error_code
       };
     }
@@ -1087,6 +1092,7 @@ export const changeEmail = async (data: ChangeEmailData): Promise<ApiResponse<vo
     console.error('Error changing email:', error);
     return {
       success: false,
+      message: errorInfo.message || 'Failed to change email',
       ...errorInfo
     };
   }
@@ -1095,12 +1101,11 @@ export const changeEmail = async (data: ChangeEmailData): Promise<ApiResponse<vo
 // Add this function to your esimApi object
 export const changePassword = async (data: ChangePasswordData): Promise<ApiResponse<void>> => {
   try {
-    console.log('Changing password');
+    console.log('Changing password...');
     
-    const response = await api.post('/esimplan/changing_password.php', {
-      current_password: data.current_password,
-      new_password: data.new_password,
-      confirm_password: data.confirm_password
+    const response = await newApi.post('/user/change-password', {
+      currentPassword: data.current_password,
+      newPassword: data.new_password
     });
 
     console.log('Password change response:', response.data);
@@ -1108,20 +1113,32 @@ export const changePassword = async (data: ChangePasswordData): Promise<ApiRespo
     if (response.data && response.data.success) {
       return {
         success: true,
-        message: 'Password changed successfully'
+        message: response.data.message || 'Password changed successfully'
       };
     } else {
       return {
         success: false,
-        message: response.data.message || 'Failed to change password',
+        message: response.data.error || response.data.message || 'Failed to change password',
         error_code: response.data.error_code
       };
     }
-  } catch (error) {
-    const errorInfo = handleApiError(error);
+  } catch (error: any) {
     console.error('Error changing password:', error);
+    
+    // Handle specific error response from API
+    if (error.response?.data) {
+      return {
+        success: false,
+        message: error.response.data.error || error.response.data.message || 'Failed to change password',
+        error_code: error.response.data.error_code
+      };
+    }
+    
+    // Fallback to generic error handling
+    const errorInfo = handleApiError(error);
     return {
       success: false,
+      message: errorInfo.message || 'Failed to change password',
       ...errorInfo
     };
   }
@@ -1139,9 +1156,9 @@ const handleApiError = (error: unknown) => {
       business_email: axiosError.response?.data?.business_email
     });
 
-    if (axiosError.response?.data?.message) {
+    if (axiosError.response?.data?.message || axiosError.response?.data?.error) {
       return {
-        message: axiosError.response.data.message,
+        message: axiosError.response.data.error || axiosError.response.data.message,
         user_email: axiosError.response.data.user_email,
         business_email: axiosError.response.data.business_email,
         error_code: axiosError.response.data.error_code
@@ -1171,7 +1188,7 @@ export const registerPushToken = async (data: PushTokenData): Promise<ApiRespons
   try {
     console.log('Registering push token:', data);
     
-    const response = await api.post('/esimplan/register_push_token.php', {
+    const response = await newApi.post('/user/push-token', {
       token: data.token,
       device_type: data.deviceType,
       device_name: data.deviceName
@@ -1182,13 +1199,13 @@ export const registerPushToken = async (data: PushTokenData): Promise<ApiRespons
     if (response.data && response.data.success) {
       return {
         success: true,
-        message: 'Push token registered successfully'
+        message: response.data.message || 'Push token registered successfully'
       };
     } else {
       return {
         success: false,
         message: response.data.message || 'Failed to register push token',
-        error_code: response.data.error_code
+        error_code: response.data.code
       };
     }
   } catch (error) {
@@ -1196,6 +1213,7 @@ export const registerPushToken = async (data: PushTokenData): Promise<ApiRespons
     console.error('Error registering push token:', error);
     return {
       success: false,
+      message: errorInfo.message || 'Failed to register push token',
       ...errorInfo
     };
   }
@@ -1205,7 +1223,7 @@ export const deregisterPushToken = async (token: string): Promise<ApiResponse<vo
   try {
     console.log('Deregistering push token:', token);
     
-    const response = await api.delete('/esimplan/register_push_token.php', {
+    const response = await newApi.delete('/user/push-token', {
       data: { token }
     });
 
@@ -1214,13 +1232,13 @@ export const deregisterPushToken = async (token: string): Promise<ApiResponse<vo
     if (response.data && response.data.success) {
       return {
         success: true,
-        message: 'Push token deregistered successfully'
+        message: response.data.message || 'Push token deregistered successfully'
       };
     } else {
       return {
         success: false,
         message: response.data.message || 'Failed to deregister push token',
-        error_code: response.data.error_code
+        error_code: response.data.code
       };
     }
   } catch (error) {
@@ -1228,6 +1246,7 @@ export const deregisterPushToken = async (token: string): Promise<ApiResponse<vo
     console.error('Error deregistering push token:', error);
     return {
       success: false,
+      message: errorInfo.message || 'Failed to deregister push token',
       ...errorInfo
     };
   }
@@ -1237,9 +1256,8 @@ export const verifyPushToken = async (token: string): Promise<ApiResponse<void>>
   try {
     console.log('Verifying push token:', token);
     
-    const response = await api.post('/esimplan/register_push_token.php', {
-      token,
-      action: 'verify'
+    const response = await newApi.get('/user/push-token', {
+      params: { token }
     });
 
     console.log('Push token verification response:', response.data);
@@ -1247,13 +1265,14 @@ export const verifyPushToken = async (token: string): Promise<ApiResponse<void>>
     if (response.data && response.data.success) {
       return {
         success: true,
-        message: 'Push token verified successfully'
+        message: response.data.message || 'Push token verified successfully',
+        data: response.data.data
       };
     } else {
       return {
         success: false,
         message: response.data.message || 'Failed to verify push token',
-        error_code: response.data.error_code
+        error_code: response.data.code
       };
     }
   } catch (error) {
@@ -1261,6 +1280,7 @@ export const verifyPushToken = async (token: string): Promise<ApiResponse<void>>
     console.error('Error verifying push token:', error);
     return {
       success: false,
+      message: errorInfo.message || 'Failed to verify push token',
       ...errorInfo
     };
   }
@@ -1270,40 +1290,36 @@ export const verifyGiftCard = async (cardNumber: string): Promise<ApiResponse<Gi
   try {
     console.log('Verifying gift card:', cardNumber);
     
-    const response = await api.post('/esimplan/gift_card_verification.php', {
+    const response = await newApi.post('/user/gift-card/redeem', {
       card_number: cardNumber
     });
 
     console.log('Gift card verification response:', response.data);
 
-    if (response.data && response.data.status === 'success') {
+    if (response.data && response.data.success) {
       return {
         success: true,
         data: {
-          status: response.data.status,
+          status: 'success',
           message: response.data.message,
           amount: response.data.data.amount,
-          user_email: response.data.user_email,
-          business_email: response.data.business_email
+          new_balance: response.data.data.new_balance
         }
       };
     } else {
       return {
         success: false,
-        message: response.data.message,
-        error_code: response.data.error_code,
-        user_email: response.data.user_email,
-        business_email: response.data.business_email
+        message: response.data.message || response.data.error,
+        error_code: response.data.error_code
       };
     }
   } catch (error: any) {
-    if (axios.isAxiosError(error) && error.response?.data) {
+    console.error('Error verifying gift card:', error);
+    if (error.response?.data) {
       return {
         success: false,
-        message: error.response.data.message,
-        error_code: error.response.data.error_code,
-        user_email: error.response.data.user_email,
-        business_email: error.response.data.business_email
+        message: error.response.data.message || error.response.data.error,
+        error_code: error.response.data.error_code
       };
     }
     return {
@@ -1316,17 +1332,19 @@ export const verifyGiftCard = async (cardNumber: string): Promise<ApiResponse<Gi
 export const fetchBalance = async (): Promise<ApiResponse<Balance>> => {
   try {
     console.log('Fetching balance');
-    const response = await api.get('/esimplan/get_balance.php');
+    const response = await newApi.get('/user');
     
     console.log('Balance response:', response.data);
     
-    if (response.data && response.data.success) {
+    if (response.data) {
       return {
         success: true,
         data: {
-          balance: Number(response.data.data.balance),
-          currency: response.data.data.currency || 'USD'
-        }
+          balance: Number(response.data.balance) || 0,
+          currency: 'USD'
+        },
+        user_email: response.data.email,
+        business_email: response.data.referralCode ? 'Referred user' : undefined
       };
     } else {
       console.warn('Balance fetch failed:', response.data);
@@ -1345,34 +1363,46 @@ export const fetchBalance = async (): Promise<ApiResponse<Balance>> => {
   }
 };
 
-export const fetchOrders = async (page: number = 1): Promise<ApiResponse<OrdersResponse>> => {
+export const fetchOrders = async (page: number = 1, limit: number = 20): Promise<ApiResponse<OrdersResponse>> => {
   try {
     console.log('Fetching orders for page:', page);
     
-    const response = await api.get('/public_app/api/order/get_orders.php', {
-      params: { page }
+    const response = await newApi.get('/orders', {
+      params: { page, limit }
     });
 
     console.log('Orders response:', response.data);
 
     if (response.data && response.data.success) {
+      // The response is already in the correct format for OrderHistoryScreen
       return {
         success: true,
-        data: response.data
+        data: {
+          success: true,
+          orders: response.data.orders,
+          pagination: response.data.pagination
+        }
       };
     } else {
       console.warn('Orders API returned success: false:', response.data);
       return {
         success: false,
-        message: response.data.message || 'Failed to fetch orders'
+        message: response.data.error || 'Failed to fetch orders'
       };
     }
-  } catch (error) {
-    const errorMessage = handleApiError(error);
+  } catch (error: any) {
     console.error('Error fetching orders:', error);
+    
+    if (error.response?.data) {
+      return {
+        success: false,
+        message: error.response.data.error || error.response.data.message || 'Failed to fetch orders'
+      };
+    }
+    
     return {
       success: false,
-      message: errorMessage
+      message: 'An unexpected error occurred while fetching orders'
     };
   }
 };
@@ -1438,6 +1468,7 @@ export const fetchLatestEsim = async (): Promise<ApiResponse<EsimData>> => {
     };
   }
 };
+
 
 const esimApi = {
   ...stripeApi, // Add Stripe API functions

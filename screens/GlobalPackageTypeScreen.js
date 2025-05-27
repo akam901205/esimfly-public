@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme/colors';
+import { newApi } from '../api/api';
 
 const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
 
@@ -95,34 +96,19 @@ const renderHeader = () => (
 
     try {
       console.log(`[DEBUG] Checking availability for package: ${globalPackageName}`);
-      let response;
-      let isProvider2 = false;
+      
+      // Use the new API to fetch global packages
+      const response = await newApi.get('/user/esims/packages', {
+        params: { 
+          type: 'global',
+          limit: 100 
+        }
+      }).catch(error => {
+        console.error('[DEBUG] Package fetch error:', error);
+        return { data: { data: { packages: [] } } };
+      });
 
-      const searchTerm = getSearchTerm(globalPackageName);
-      console.log(`[DEBUG] Using search term: ${searchTerm}`);
-
-      // Determine which API to use
-      if (globalPackageName.toLowerCase().includes('discover global')) {
-        response = await axios.get(`${API_BASE_URL}/get_plans_airalo.php`, {
-          params: { search: searchTerm, limit: 100 }
-        });
-        console.log('[DEBUG] Fetched data from third API');
-      } else if (globalPackageName.toLowerCase().includes('106')) {
-        response = await axios.get(`${API_BASE_URL}/get_plans_esimgo.php`, {
-          params: { search: searchTerm, limit: 100 }
-        });
-        isProvider2 = true;
-        console.log('[DEBUG] Fetched data from second API (Provider 2)');
-      } else {
-        response = await axios.get(`${API_BASE_URL}/get_plans_esimaccess.php`, {
-          params: { search: searchTerm, limit: 100 }
-        });
-        console.log('[DEBUG] Fetched data from first API');
-      }
-
-      let parsedData = typeof response.data === 'string' ? parseIncompleteJSON(response.data) : response.data;
-      const allPackages = parsedData.plans || [];
-
+      const allPackages = response.data?.data?.packages || [];
       console.log(`[DEBUG] Total packages: ${allPackages.length}`);
 
       let foundUnlimited = false;
@@ -132,20 +118,17 @@ const renderHeader = () => (
         if (!pkg) return;
         
         // Check for unlimited data
-        const isUnlimited = 
-          pkg.unlimited === true || 
-          (typeof pkg.data === 'string' && pkg.data.toLowerCase().includes('unlimited')) ||
-          (typeof pkg.data === 'number' && pkg.data > 1000);
-
-        if (isUnlimited) {
+        if (pkg.isUnlimited === true || 
+            (pkg.name && pkg.name.toLowerCase().includes('unlimited'))) {
           foundUnlimited = true;
           console.log(`[DEBUG] Found unlimited package: ${pkg.name}`);
         }
 
         // Check for voice and SMS capabilities
-        if (pkg.voice_minutes !== undefined || pkg.sms_count !== undefined) {
+        if ((pkg.voiceMinutes !== null && pkg.voiceMinutes !== undefined && pkg.voiceMinutes > 0) || 
+            (pkg.smsCount !== null && pkg.smsCount !== undefined && pkg.smsCount > 0)) {
           foundVoiceSMS = true;
-          console.log(`[DEBUG] Found Voice+SMS package: ${pkg.name}`);
+          console.log(`[DEBUG] Found Voice+SMS package: ${pkg.name}, Voice: ${pkg.voiceMinutes}, SMS: ${pkg.smsCount}`);
         }
       });
 

@@ -13,7 +13,7 @@ interface AuthResponse {
   user?: any;
 }
 
-const API_URL = 'https://esimfly.net/pages/auth';
+const API_URL = 'https://esimfly.net/api/auth';
 const GOOGLE_WEB_CLIENT_ID = '1033438752251-fqjcq85gla40nd9k2tvj61stiuvaem2o.apps.googleusercontent.com';
 const GOOGLE_IOS_CLIENT_ID = '1033438752251-rdl49po6ughkl452ijk0lav7k7cb07vt.apps.googleusercontent.com';
 
@@ -98,35 +98,17 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
     const firebaseToken = await userCredential.user.getIdToken();
     debugLog('Firebase token obtained');
 
-    // First, check server status
-    try {
-      const statusResponse = await fetch(`${API_URL}/mobile/auth/status.php`);
-      const statusData = await handleApiResponse(statusResponse);
-      debugLog('Server status check:', statusData);
-
-      if (!statusData.success) {
-        throw new Error('Server status check failed');
-      }
-    } catch (error) {
-      debugLog('Server status check failed:', error);
-      throw new Error('Unable to connect to authentication server');
-    }
-
     // Send to backend for verification
     try {
-      const response = await fetch(`${API_URL}/mobile/auth/google_callback.php`, {
+      const response = await fetch(`${API_URL}/google-callback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'x-client-type': 'mobile'
         },
         body: JSON.stringify({ 
-          id_token: idToken,
-          firebase_token: firebaseToken,
-          email: signInResult.data?.user?.email,
-          name: signInResult.data?.user?.name,
-          photo: signInResult.data?.user?.photo,
-          user_id: signInResult.data?.user?.id
+          id_token: idToken || firebaseToken
         })
       });
 
@@ -206,16 +188,19 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
     debugLog('Firebase token obtained');
 
     // Send to backend for verification
-    const response = await fetch(`${API_URL}/verify_apple_token.php`, {
+    const response = await fetch(`${API_URL}/apple-callback`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'x-client-type': 'mobile'
       },
       body: JSON.stringify({ 
         id_token: firebaseToken,
-        email: userCredential.user.email,
-        name: userCredential.user.displayName
+        user_data: {
+          email: userCredential.user.email,
+          name: userCredential.user.displayName
+        }
       })
     });
 

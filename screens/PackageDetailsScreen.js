@@ -33,6 +33,9 @@ const PackageDetailsScreen = () => {
   const params = route.params;
   const packageData = params.package;
   const country = params.country;
+  
+  // Debug logging
+  console.log('[DEBUG] PackageDetailsScreen - Full package data:', JSON.stringify(packageData, null, 2));
 
   useEffect(() => {
     setOriginalPrice(packageData.price);
@@ -82,152 +85,139 @@ const PackageDetailsScreen = () => {
 
 	
  const getNetworks = (packageData) => {
+    console.log('[DEBUG] getNetworks packageData:', packageData);
+    const networks = [];
+    
+    // Add speed information if available
+    if (packageData.speed) {
+      networks.push({
+        type: 'speed',
+        value: packageData.speed,
+        icon: 'speedometer-outline'
+      });
+    }
+    
+    // Check different network data structures based on provider
     // Provider 3 (Airalo)
-    if (packageData.packageCode?.startsWith('airalo_')) {
-      const networks = [];
-      if (packageData.speed) {
-        networks.push({
-          type: 'speed',
-          value: packageData.speed,
-          icon: 'speedometer-outline'
+    if (packageData.provider === 'airalo' || packageData.packageCode?.startsWith('airalo_')) {
+      // Use a Set to track unique networks
+      const uniqueNetworkNames = new Set();
+      
+      // First check direct networks array (preferred source)
+      if (packageData.networks && Array.isArray(packageData.networks)) {
+        packageData.networks.forEach(network => {
+          let networkName = '';
+          if (typeof network === 'string') {
+            networkName = network;
+          } else if (network.name) {
+            networkName = network.name;
+          }
+          
+          if (networkName && !uniqueNetworkNames.has(networkName)) {
+            uniqueNetworkNames.add(networkName);
+            networks.push({
+              type: 'network',
+              value: networkName,
+              icon: 'wifi-outline'
+            });
+          }
         });
       }
-      // Add network information from coverages
-      if (packageData.coverages && packageData.coverages.length > 0) {
+      
+      // Only process coverages if we don't have networks yet
+      if (networks.length === 0 && packageData.coverages && packageData.coverages.length > 0) {
         packageData.coverages.forEach(coverage => {
           if (coverage.networks && coverage.networks.length > 0) {
             coverage.networks.forEach(network => {
-              networks.push({
-                type: 'network',
-                value: network.name,
-                icon: 'wifi-outline'
-              });
-            });
-          }
-        });
-      }
-      console.log('Processed networks for provider 3:', networks);
-      return networks;
-    }
-    
-    if (packageData.id?.startsWith('esim_')) {
-      const networks = [];
-      
-      // Process speed information
-      if (packageData.speed) {
-        let speeds;
-        if (typeof packageData.speed === 'string') {
-          speeds = packageData.speed.split(',').map(s => s.trim());
-        } else if (Array.isArray(packageData.speed)) {
-          speeds = packageData.speed;
-        }
-
-        if (speeds && speeds.length > 0) {
-          // Get highest speed
-          const speedHierarchy = ['5G', '4G', '3G', '2G'];
-          let highestSpeed = speeds.reduce((highest, current) => {
-            const currentIndex = speedHierarchy.indexOf(current.toUpperCase());
-            const highestIndex = speedHierarchy.indexOf(highest?.toUpperCase() || '');
-            return currentIndex !== -1 && (currentIndex < highestIndex || highestIndex === -1) 
-              ? current 
-              : highest;
-          }, null);
-
-          if (highestSpeed) {
-            networks.push({
-              type: 'speed',
-              value: highestSpeed.toUpperCase(),
-              icon: 'speedometer-outline'
-            });
-          }
-        }
-      }
-
-      // Process networks information for Provider 2
-      if (packageData.networks && Array.isArray(packageData.networks)) {
-        packageData.networks.forEach(countryNetwork => {
-          // Check if networks is nested inside country object
-          if (countryNetwork.networks && Array.isArray(countryNetwork.networks)) {
-            countryNetwork.networks.forEach(network => {
-              if (network.name) {
+              const networkName = network.name || network;
+              if (networkName && !uniqueNetworkNames.has(networkName)) {
+                uniqueNetworkNames.add(networkName);
                 networks.push({
                   type: 'network',
-                  value: network.name,
-                  icon: 'wifi-outline',
-                  speeds: network.type ? network.type.split(',').map(s => s.trim()) : []
+                  value: networkName,
+                  icon: 'wifi-outline'
                 });
               }
             });
           }
-          // Handle direct network objects
-          else if (countryNetwork.name) {
+        });
+      }
+      
+      console.log('[DEBUG] Processed networks for airalo:', networks);
+      return networks;
+    }
+    
+    // Provider 2 (ESIMGo)
+    if (packageData.provider === 'esimgo' || packageData.id?.startsWith('esim_')) {
+      // Process networks information for ESIMGo
+      if (packageData.networks && Array.isArray(packageData.networks)) {
+        packageData.networks.forEach(network => {
+          if (typeof network === 'string') {
             networks.push({
               type: 'network',
-              value: countryNetwork.name,
+              value: network,
+              icon: 'wifi-outline'
+            });
+          } else if (network.name) {
+            networks.push({
+              type: 'network',
+              value: network.name,
               icon: 'wifi-outline',
-              speeds: countryNetwork.type ? countryNetwork.type.split(',').map(s => s.trim()) : []
+              speeds: network.type ? network.type.split(',').map(s => s.trim()) : []
             });
           }
         });
       }
-      
+      console.log('[DEBUG] Processed networks for esimgo:', networks);
       return networks;
     }
     
-    // Provider 1 (ESIMaccess)
-    const networks = [];
-    
-    // Process speed information
-    if (packageData.speed) {
-      let speeds = packageData.speed.split(/[,\/]/).map(s => s.trim().toUpperCase());
-      
-      // Get highest speed
-      const speedHierarchy = ['5G', '4G', '3G', '2G'];
-      let highestSpeed = speeds.reduce((highest, current) => {
-        const currentIndex = speedHierarchy.indexOf(current);
-        const highestIndex = speedHierarchy.indexOf(highest || '');
-        return currentIndex !== -1 && (currentIndex < highestIndex || highestIndex === -1) 
-          ? current 
-          : highest;
-      }, null);
-
-      if (highestSpeed) {
-        networks.push({
-          type: 'speed',
-          value: highestSpeed,
-          icon: 'speedometer-outline'
+    // Provider 1 (ESIMaccess) or default
+    if (packageData.provider === 'esimaccess' || !packageData.provider) {
+      // Process networks information
+      if (packageData.networks && Array.isArray(packageData.networks)) {
+        packageData.networks.forEach(network => {
+          if (typeof network === 'string') {
+            networks.push({
+              type: 'network',
+              value: network,
+              icon: 'wifi-outline'
+            });
+          } else if (network.name) {
+            networks.push({
+              type: 'network',
+              value: network.name,
+              icon: 'wifi-outline',
+              speeds: network.type ? network.type.split(/[,\/]/).map(t => t.trim().toUpperCase()).filter(t => t !== '') : []
+            });
+          }
         });
       }
+      console.log('[DEBUG] Processed networks for esimaccess:', networks);
     }
 
-    // Process networks information
-    if (packageData.networks && packageData.networks.length > 0) {
-      packageData.networks.forEach(network => {
-        if (typeof network === 'object' && network.name) {
-          const networkEntry = {
-            type: 'network',
-            value: network.name,
-            icon: 'wifi-outline'
-          };
-
-          // Add network type if available
-          if (network.type) {
-            networkEntry.speeds = network.type.split(/[,\/]/)
-              .map(t => t.trim().toUpperCase())
-              .filter(t => t !== '');
-          }
-
-          networks.push(networkEntry);
-        } else if (typeof network === 'string') {
-          networks.push({
-            type: 'network',
-            value: network,
-            icon: 'wifi-outline'
-          });
-        }
-      });
+    // If no networks found, return a default message
+    if (networks.length === 0) {
+      console.log('[DEBUG] No networks found, returning default message');
+      // Return different messages based on provider
+      let defaultMessage = 'Multiple operators available';
+      
+      if (packageData.provider === 'airalo') {
+        defaultMessage = 'Coverage provided by local operators';
+      } else if (packageData.provider === 'esimgo') {
+        defaultMessage = 'Premium network coverage';
+      } else if (packageData.provider === 'esimaccess') {
+        defaultMessage = 'Wide network coverage';
+      }
+      
+      return [{
+        type: 'info',
+        value: defaultMessage,
+        icon: 'wifi-outline'
+      }];
     }
 
+    console.log('[DEBUG] Final networks:', networks);
     return networks;
   };
 

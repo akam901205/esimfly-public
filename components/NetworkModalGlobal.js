@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { FlagIcon, countries } from '../utils/countryData';
 import { colors } from '../theme/colors';
+import { getNetworks, formatLocationNetworkList } from '../utils/PackageFilters';
 
 const ITEMS_PER_PAGE = 15;
 
@@ -32,116 +33,143 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
     return foundCountry ? foundCountry.name : code;
   }, []);
 
-  const processCountries = useMemo(() => {
-    let countriesList = [];
+  // Helper function to get country code
+  const getCountryCode = useCallback((countryName) => {
+    if (!countryName) return '';
     
-    if (packageData.provider === 'esimgo') {
-      const networksByCountry = new Map();
-      
-      (packageData.networks || []).forEach(countryNetwork => {
-        if (countryNetwork?.networks && Array.isArray(countryNetwork.networks)) {
-          const countryName = countryNetwork.country_name;
-          const countryIso = countryNetwork.country_iso;
-          
-          if (!networksByCountry.has(countryIso)) {
-            networksByCountry.set(countryIso, []);
+    const country = countries.find(c => 
+      c.name.toLowerCase() === countryName.toLowerCase()
+    );
+    
+    if (country) return country.id.toLowerCase();
+    
+    const countryMappings = {
+      'united states': 'us',
+      'united kingdom': 'gb',
+      'south korea': 'kr',
+      'north macedonia': 'mk',
+      'czech republic': 'cz',
+      'bosnia and herzegovina': 'ba',
+      'trinidad and tobago': 'tt',
+      'antigua and barbuda': 'ag',
+      'saint kitts and nevis': 'kn',
+      'saint vincent and the grenadines': 'vc',
+      'democratic republic of the congo': 'cd',
+      'central african republic': 'cf'
+    };
+    
+    const normalized = countryName.toLowerCase();
+    return countryMappings[normalized] || countryName.substring(0, 2).toLowerCase();
+  }, []);
+
+  const processCountries = useMemo(() => {
+    // Check if we have processed data
+    if (packageData.processedLocationNetworkList) {
+      return packageData.processedLocationNetworkList;
+    }
+    
+    // Otherwise, process the data
+    const provider = packageData.provider || (globalPackageName?.toLowerCase().includes('discover') ? 'airalo' : 
+                                             globalPackageName?.toLowerCase().includes('106') ? 'esimgo' : 'esimaccess');
+    
+    const packageWithProvider = {
+      ...packageData,
+      provider
+    };
+    
+    let locationNetworkList = formatLocationNetworkList(packageWithProvider);
+    
+    // If we have coverages data from the API, use it
+    if (packageData.coverages && Array.isArray(packageData.coverages) && packageData.coverages.length > 0) {
+      // Create country name map from regionCountries if available
+      const countryNameMap = new Map();
+      if (packageData.regionCountries && Array.isArray(packageData.regionCountries)) {
+        packageData.regionCountries.forEach(country => {
+          if (country.code) {
+            countryNameMap.set(country.code.toLowerCase(), country.name);
+            countryNameMap.set(country.code.toUpperCase(), country.name);
           }
-          
-          countryNetwork.networks.forEach(network => {
-            networksByCountry.get(countryIso).push({
-              operatorName: network.name || 'Network Operator',
-              networkType: network.type || packageData.speed || '4G'
-            });
-          });
+        });
+      }
+      
+      return packageData.coverages.map(coverage => {
+        // Try to get the proper country name
+        let countryName = coverage.name;
+        const countryCode = coverage.code || coverage.name;
+        
+        // If coverage.name is a country code, map it to the full name
+        if (countryName && countryName.length <= 3 && countryNameMap.size > 0) {
+          const mappedName = countryNameMap.get(countryName) || countryNameMap.get(countryName.toUpperCase()) || countryNameMap.get(countryName.toLowerCase());
+          if (mappedName) {
+            countryName = mappedName;
+          }
         }
-      });
-
-      countriesList = (packageData.coverage || []).map(country => {
-        const countryIso = country?.iso || '';
-        const networks = networksByCountry.get(countryIso) || [{
-          operatorName: 'Default Network',
-          networkType: packageData.speed || '4G'
-        }];
-
+        
         return {
-          locationName: getCountryName(countryIso),
-          countryCode: countryIso?.toLowerCase(),
-          operatorList: networks
+          locationName: countryName,
+          countryCode: countryCode?.toLowerCase() || getCountryCode(countryName),
+          operatorList: coverage.networks && coverage.networks.length > 0 
+            ? coverage.networks.map(network => ({
+                operatorName: network.name || 'Network',
+                networkType: network.type || packageData.speed || '4G'
+              }))
+            : [{
+                operatorName: 'Multiple networks available',
+                networkType: packageData.speed || '4G'
+              }]
         };
       });
-
-    } else if (packageData.provider === 'airalo') {
-      const uniqueCountries = new Set();
-      (packageData.networks || []).forEach(network => {
-        if (network?.country && !uniqueCountries.has(network.country)) {
-          uniqueCountries.add(network.country);
-          const networksList = (packageData.networks || [])
-            .filter(n => n.country === network.country)
-            .map(n => ({
-              operatorName: n?.name || 'Network Operator',
-              networkType: n?.types?.[0] || '4G'
-            }));
-          
-          countriesList.push({
-            locationName: getCountryName(network.country),
-            countryCode: network.country.toLowerCase(),
-            operatorList: networksList
-          });
-        }
-      });
-    } else {
-      const networksByLocation = {};
-      
-      const validLocations = new Set((packageData.regionCountries || []).map(code => {
-        return getCountryName(code);
-      }));
-
-      (packageData.networks || []).forEach(network => {
-        const locationName = getCountryName(network?.location || '');
-        
-        if (validLocations.has(locationName)) {
-          if (!networksByLocation[locationName]) {
-            networksByLocation[locationName] = new Set();
-          }
-          networksByLocation[locationName].add(network?.name || 'Network Operator');
-        }
-      });
-      
-      Object.entries(networksByLocation).forEach(([locationName, networks]) => {
-        const countryCode = packageData.regionCountries.find(code => 
-          getCountryName(code) === locationName
-        );
-        
-        if (networks.size > 0) {
-          const operatorList = Array.from(networks).map(networkName => ({
-            operatorName: networkName,
-            networkType: packageData.speed || '4G'
-          }));
-
-          countriesList.push({
-            locationName,
-            countryCode: (countryCode || '').toLowerCase(),
-            operatorList
-          });
-        }
-      });
-
-      packageData.regionCountries.forEach(countryCode => {
-        const locationName = getCountryName(countryCode);
-        if (!networksByLocation[locationName]) {
-          countriesList.push({
-            locationName,
-            countryCode: countryCode.toLowerCase(),
-            operatorList: []
-          });
-        }
-      });
     }
-
-    return countriesList.sort((a, b) => 
-      (a.locationName || '').localeCompare(b.locationName || '')
-    );
-  }, [packageData, getCountryName]);
+    
+    // If we have regionCountries, use it to fix country names
+    if (packageData.regionCountries && Array.isArray(packageData.regionCountries) && packageData.regionCountries.length > 0) {
+      // Create a map of country codes to names
+      const countryNameMap = new Map();
+      packageData.regionCountries.forEach(country => {
+        if (country.code) {
+          countryNameMap.set(country.code.toLowerCase(), country.name);
+          countryNameMap.set(country.code.toUpperCase(), country.name); // Also map uppercase
+          // Also map by name in case locationName is already a name
+          countryNameMap.set(country.name.toLowerCase(), country.name);
+        }
+      });
+      
+      console.log('[DEBUG] Sample locationNetworkList before name mapping:', locationNetworkList.slice(0, 3));
+      console.log('[DEBUG] Country name map sample:', Array.from(countryNameMap.entries()).slice(0, 5));
+      
+      // Update the location names
+      locationNetworkList = locationNetworkList.map(item => {
+        let countryName = item.locationName;
+        
+        // Try multiple approaches to find the country name
+        const possibleKeys = [
+          item.locationName,
+          item.locationName?.toLowerCase(),
+          item.locationName?.toUpperCase(),
+          item.countryCode,
+          item.countryCode?.toLowerCase(),
+          item.countryCode?.toUpperCase()
+        ].filter(Boolean);
+        
+        for (const key of possibleKeys) {
+          if (countryNameMap.has(key)) {
+            countryName = countryNameMap.get(key);
+            console.log(`[DEBUG] Mapped ${item.locationName} -> ${countryName}`);
+            break;
+          }
+        }
+        
+        return {
+          ...item,
+          locationName: countryName
+        };
+      });
+      
+      console.log('[DEBUG] Sample locationNetworkList after name mapping:', locationNetworkList.slice(0, 3));
+    }
+    
+    return locationNetworkList;
+  }, [packageData, globalPackageName, getCountryCode]);
 
   const handleLoadMore = () => {
     setDisplayedItems(prev => prev + ITEMS_PER_PAGE);

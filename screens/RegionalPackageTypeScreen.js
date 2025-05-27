@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme/colors';
+import { newApi } from '../api/api';
 
 const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
 
@@ -30,72 +31,30 @@ const RegionalPackageTypeScreen = () => {
   const checkUnlimitedAvailability = useCallback(async () => {
     try {
       console.log(`[DEBUG] Checking availability for region: ${region}`);
-      let allPackages = [];
-
-      if (region === 'Middle East and Africa') {
-        const [meResponse, africaResponse] = await Promise.all([
-          Promise.all([
-            axios.get(`${API_BASE_URL}/get_plans_esimaccess.php`, { params: { search: 'middle east', limit: 50 } }).catch(() => ({ data: { plans: [] } })),
-            axios.get(`${API_BASE_URL}/get_plans_esimgo.php`, { params: { search: 'middle east', limit: 50 } }).catch(() => ({ data: { plans: [] } })),
-            axios.get(`${API_BASE_URL}/get_plans_airalo.php`, { params: { search: 'middle east', limit: 50 } }).catch(() => ({ data: { plans: [] } }))
-          ]),
-          Promise.all([
-            axios.get(`${API_BASE_URL}/get_plans_esimaccess.php`, { params: { search: 'africa', limit: 50 } }).catch(() => ({ data: { plans: [] } })),
-            axios.get(`${API_BASE_URL}/get_plans_esimgo.php`, { params: { search: 'africa', limit: 50 } }).catch(() => ({ data: { plans: [] } })),
-            axios.get(`${API_BASE_URL}/get_plans_airalo.php`, { params: { search: 'africa', limit: 50 } }).catch(() => ({ data: { plans: [] } }))
-          ])
-        ]);
-
-        meResponse.forEach(response => {
-          if (response.data?.plans) {
-            allPackages = [...allPackages, ...response.data.plans];
-          }
-        });
-        
-        africaResponse.forEach(response => {
-          if (response.data?.plans) {
-            allPackages = [...allPackages, ...response.data.plans];
-          }
-        });
-      } else {
-        const searchTerm = getSearchTerm(region);
-        const [firstResponse, secondResponse, thirdResponse] = await Promise.all([
-          axios.get(`${API_BASE_URL}/get_plans_esimaccess.php`, { params: { search: searchTerm, limit: 50 } }).catch(() => ({ data: { plans: [] } })),
-          axios.get(`${API_BASE_URL}/get_plans_esimgo.php`, { params: { search: searchTerm, limit: 50 } }).catch(() => ({ data: { plans: [] } })),
-          axios.get(`${API_BASE_URL}/get_plans_airalo.php`, { params: { search: searchTerm, limit: 50 } }).catch(() => ({ data: { plans: [] } }))
-        ]);
-        
-        allPackages = [
-          ...(firstResponse.data?.plans || []),
-          ...(secondResponse.data?.plans || []),
-          ...(thirdResponse.data?.plans || [])
-        ];
-      }
-
-      const filteredPackages = allPackages.filter(pkg => {
-        if (!pkg) return false;
-        const pkgName = (pkg.name || '').toLowerCase();
-        const pkgRegion = (pkg.region || '').toLowerCase();
-        
-        if (region === 'Middle East and Africa') {
-          return pkgName.includes('middle east') || pkgName.includes('africa') || pkgRegion.includes('middle east') || pkgRegion.includes('africa') || pkgName.includes('mena');
+      
+      // Use the new API to fetch packages based on region
+      const response = await newApi.get('/user/esims/packages', {
+        params: { 
+          region: region,
+          type: 'regional',
+          limit: 100 
         }
-
-        switch (region.toLowerCase()) {
-          case 'europe': return pkgRegion === 'europe' || pkgName.includes('europe');
-          case 'asia': return pkgRegion === 'asia' || pkgName.includes('asia');
-          case 'latin america': return pkgRegion === 'latin america' || pkgName.includes('latin america') || pkgRegion.includes('latam') || pkgName.includes('latam');
-          case 'africa': return (pkgRegion.includes('africa') || pkgName.includes('africa')) && !['Central African Republic', 'South Africa'].some(country => pkgName.toLowerCase().includes(country.toLowerCase()));
-          default: return pkgRegion === region.toLowerCase() || pkgName.includes(region.toLowerCase());
-        }
+      }).catch(error => {
+        console.error('[DEBUG] Package fetch error:', error);
+        return { data: { data: { packages: [] } } };
       });
 
-      const unlimitedExists = filteredPackages.some(pkg => {
-        if (!pkg) return false;
-        const dataValue = pkg.data ? pkg.data.toString().toLowerCase() : '';
-        return dataValue.includes('unlimited') || dataValue === '0' || parseFloat(dataValue) > 1000;
+      const allPackages = response.data?.data?.packages || [];
+      
+      console.log(`[DEBUG] Found ${allPackages.length} packages for region ${region}`);
+
+      // Check if any packages are unlimited
+      const unlimitedExists = allPackages.some(pkg => {
+        return pkg.isUnlimited === true || 
+               (pkg.name && pkg.name.toLowerCase().includes('unlimited'));
       });
 
+      console.log(`[DEBUG] Has unlimited packages: ${unlimitedExists}`);
       setHasUnlimited(unlimitedExists);
     } catch (error) {
       console.error('[DEBUG] Error checking unlimited availability:', error);

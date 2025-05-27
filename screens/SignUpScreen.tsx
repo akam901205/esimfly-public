@@ -11,7 +11,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { signUp, verifyReferralCode } from '../api/authApi';
+import { signUp } from '../api/authApi';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../AppNavigator';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -31,40 +31,17 @@ export default function SignUpScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null);
-  const [businessUserId, setBusinessUserId] = useState<number | null>(null);
+  const [name, setName] = useState('');
 
-  const handleReferralCodeChange = async (code: string) => {
+  const handleReferralCodeChange = (code: string) => {
     setReferralCode(code.toUpperCase());
-    if (code.length >= 8) {
-      setIsVerifyingCode(true);
-      try {
-        const response = await verifyReferralCode(code);
-        setReferralCodeValid(response.success);
-        if (response.success && response.business_user_id) {
-          setBusinessUserId(response.business_user_id);
-        } else {
-          setBusinessUserId(null);
-        }
-      } catch (error) {
-        setReferralCodeValid(false);
-        setBusinessUserId(null);
-        console.error('Error verifying code:', error);
-      } finally {
-        setIsVerifyingCode(false);
-      }
-    } else {
-      setReferralCodeValid(null);
-      setBusinessUserId(null);
-    }
   };
 
   const handleSignUp = async () => {
     // Basic validation
-    if (!email || !password || !confirmPassword || !referralCode) {
+    if (!name || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'All fields are required');
       return;
     }
@@ -74,20 +51,28 @@ export default function SignUpScreen({ navigation }: Props) {
       return;
     }
 
-    if (!referralCodeValid) {
-      Alert.alert('Error', 'Please enter a valid referral code');
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await signUp(email, password, referralCode);
+      // Pass name and optional referral code to signUp
+      const response = await signUp(email, password, referralCode || undefined, name);
       if (response.success) {
         Alert.alert('Success', 'Account created successfully', [
           { text: 'OK', onPress: () => navigation.replace('Login') }
         ]);
       } else {
-        Alert.alert('Error', response.error || 'Failed to create account');
+        Alert.alert('Error', response.error || response.message || 'Failed to create account');
       }
     } catch (error) {
       Alert.alert('Error', error.message || 'An unexpected error occurred');
@@ -96,19 +81,6 @@ export default function SignUpScreen({ navigation }: Props) {
     }
   };
 
-  const getReferralCodeIcon = () => {
-    if (isVerifyingCode) return 'timer-outline';
-    if (referralCodeValid === true) return 'checkmark-circle-outline';
-    if (referralCodeValid === false) return 'close-circle-outline';
-    return 'gift-outline';
-  };
-
-  const getReferralCodeIconColor = () => {
-    if (isVerifyingCode) return colors.text.tertiary;
-    if (referralCodeValid === true) return colors.success;
-    if (referralCodeValid === false) return colors.accent.DEFAULT;
-    return colors.accent.DEFAULT;
-  };
 
   return (
     <>
@@ -126,29 +98,21 @@ export default function SignUpScreen({ navigation }: Props) {
           <Text style={styles.title}>Create Your Account</Text>
           <Text style={styles.subtitle}>Sign up to get started</Text>
 
-          {/* Referral Code Input */}
-         <View style={styles.inputContainer}>
-            <Icon
-              name={getReferralCodeIcon()}
-              size={20}
-              color={getReferralCodeIconColor()}
-              style={[styles.inputIcon, { color: getReferralCodeIconColor() }]}
-            />
+          {/* Name Input */}
+          <View style={styles.inputContainer}>
+            <Icon name="person-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
             <TextInput
               style={styles.input}
-              placeholder="Enter Referral Code"
+              placeholder="Full Name"
               placeholderTextColor={colors.text.tertiary}
-              value={referralCode}
-              onChangeText={handleReferralCodeChange}
-              autoCapitalize="characters"
-              editable={!isVerifyingCode && !isLoading}
-              maxLength={8}
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              editable={!isLoading}
             />
-            {isVerifyingCode && (
-              <ActivityIndicator size="small" color={colors.text.tertiary} style={styles.inputIcon} />
-            )}
           </View>
 
+          {/* Email Input */}
           <View style={styles.inputContainer}>
             <Icon name="mail-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
             <TextInput
@@ -203,13 +167,28 @@ export default function SignUpScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
 
+          {/* Referral Code Input (Optional) */}
+          <View style={styles.inputContainer}>
+            <Icon name="gift-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
+            <TextInput
+              style={styles.input}
+              placeholder="Referral Code (Optional)"
+              placeholderTextColor={colors.text.tertiary}
+              value={referralCode}
+              onChangeText={handleReferralCodeChange}
+              autoCapitalize="characters"
+              editable={!isLoading}
+              maxLength={8}
+            />
+          </View>
+
           <TouchableOpacity
             style={[
               styles.button,
-              (!referralCodeValid || isLoading) && styles.buttonDisabled
+              isLoading && styles.buttonDisabled
             ]}
             onPress={handleSignUp}
-            disabled={!referralCodeValid || isLoading}
+            disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color={colors.background.primary} />

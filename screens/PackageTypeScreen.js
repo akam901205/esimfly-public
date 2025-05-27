@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme/colors';
+import { newApi } from '../api/api';
 
 const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
 
@@ -22,101 +23,48 @@ const PackageTypeScreen = () => {
   const checkUnlimitedAvailability = async () => {
     try {
       console.log(`[DEBUG] Checking plans for country: ${country}`);
-      let allPackages = [];
+      
+      // Fetch packages from the new API
+      const response = await newApi.get('/user/esims/packages', {
+        params: { 
+          country: country,
+          type: 'country',
+          limit: 100 
+        }
+      }).catch(error => {
+        console.error('[DEBUG] Package fetch error:', error);
+        return { data: { data: { packages: [] } } };
+      });
 
-      const [firstResponse, secondResponse, thirdResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/get_plans_esimaccess.php`, { 
-          params: { search: country, limit: 100 } 
-        }).catch(() => ({ data: { plans: [] } })),
-        axios.get(`${API_BASE_URL}/get_plans_esimgo.php`, { 
-          params: { search: country, limit: 100 } 
-        }).catch(() => ({ data: { plans: [] } })),
-        axios.get(`${API_BASE_URL}/get_plans_airalo.php`, { 
-          params: { search: country, limit: 100 } 
-        }).catch(() => ({ data: { plans: [] } }))
-      ]);
+      console.log('[DEBUG] API Response:', response.data);
 
-      console.log('[DEBUG] EsimGo Raw Response:', secondResponse.data);
+      const allPackages = response.data?.data?.packages || [];
 
-      const processFirstProviderPlans = (plans) => {
-        return (plans || []).map(plan => ({
-          ...plan,
-          provider: 'esimaccess',
-          unlimited: plan.unlimited || false
-        }));
-      };
-
-      const processSecondProviderPlans = (plans) => {
-        return (plans || []).map(plan => {
-          console.log('[DEBUG] Processing EsimGo Plan:', plan);
-          return {
-            ...plan,
-            provider: 'esimgo',
-            name: plan.name || '',
-            region: plan.region || '',
-            unlimited: plan.is_unlimited === 1 || plan.is_unlimited === true,
-            is_unlimited: plan.is_unlimited
-          };
-        });
-      };
-
-      const processThirdProviderPlans = (plans) => {
-        return (plans || []).map(plan => ({
-          ...plan,
-          provider: 'airalo',
-          unlimited: plan.unlimited || false
-        }));
-      };
-
-      const firstPlans = processFirstProviderPlans(firstResponse.data?.plans);
-      const secondPlans = processSecondProviderPlans(secondResponse.data?.plans);
-      const thirdPlans = processThirdProviderPlans(thirdResponse.data?.plans);
-
-      console.log('[DEBUG] EsimAccess Plans Count:', firstPlans.length);
-      console.log('[DEBUG] EsimGo Plans Count:', secondPlans.length);
-      console.log('[DEBUG] Airalo Plans Count:', thirdPlans.length);
-
-      allPackages = [...firstPlans, ...secondPlans, ...thirdPlans];
+      console.log('[DEBUG] Total packages received:', allPackages.length);
 
       console.log(`[DEBUG] Total packages before filtering: ${allPackages.length}`);
 
-      const filteredPackages = allPackages.filter(pkg => {
-        if (!pkg) return false;
-        const searchCountry = country.toLowerCase();
-        const pkgRegion = (pkg.region || '').toLowerCase();
-        const pkgName = (pkg.name || '').toLowerCase();
-
-        const matches = pkgRegion.includes(searchCountry) || 
-                       pkgName.includes(searchCountry);
-        
-        if (matches) {
-          console.log('[DEBUG] Matched package:', {
-            name: pkg.name,
-            region: pkg.region,
-            unlimited: pkg.unlimited,
-            is_unlimited: pkg.is_unlimited,
-            provider: pkg.provider
-          });
-        }
-        
-        return matches;
-      });
+      // Packages are already filtered by country from the API, so we just need to check for unlimited
+      const filteredPackages = allPackages;
+      
+      console.log('[DEBUG] Sample packages:', allPackages.slice(0, 3).map(pkg => ({
+        name: pkg.name,
+        isUnlimited: pkg.isUnlimited,
+        provider: pkg.provider,
+        data: pkg.data
+      })));
 
       console.log(`[DEBUG] Filtered packages: ${filteredPackages.length}`);
 
       const unlimitedExists = filteredPackages.some(pkg => {
-        const isUnlimited = 
-          pkg.unlimited || 
-          pkg.is_unlimited === 1 || 
-          pkg.is_unlimited === true ||
+        const isUnlimited = pkg.isUnlimited === true ||
           (pkg.name && pkg.name.toLowerCase().includes('unlimited'));
 
         if (isUnlimited) {
           console.log('[DEBUG] Found unlimited package:', {
             name: pkg.name,
             provider: pkg.provider,
-            unlimited: pkg.unlimited,
-            is_unlimited: pkg.is_unlimited
+            isUnlimited: pkg.isUnlimited
           });
         }
 

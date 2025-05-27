@@ -42,7 +42,7 @@ export default function WelcomeScreen({ navigation }: Props) {
   };
 
   const handleSupportedDevicesClick = () => {
-    Linking.openURL('https://esimfly.net/pages/supported-devices.php');
+    Linking.openURL('https://esimfly.net/compatible-devices');
   };
 
   const navigateToAuth = () => {
