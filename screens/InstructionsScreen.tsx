@@ -170,9 +170,11 @@ const InstructionsScreen = () => {
   const initializeScreen = async () => {
     setLoading(true);
     try {
-      if (params.iccid) {
+      if (params.iccid || params.esimId) {
         // Fetching from My eSIMs
-        const response = await esimApi.fetchEsimDetails(params.iccid);
+        // Use esimId if available, otherwise fall back to iccid
+        const identifier = params.esimId ? params.esimId.toString() : params.iccid;
+        const response = await esimApi.fetchEsimDetails(identifier);
         if (response.success && response.data) {
           const details = response.data;
           setEsimDetails({

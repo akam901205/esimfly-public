@@ -1,13 +1,13 @@
 const ENV = {
   development: {
-    STRIPE_PUBLISHABLE_KEY: "pk_test_51QkpsjRsiK4Lxqyaz4hBVr6NyGJyM0Byyv4r2NDdPnhPaJbq6sRAlJZjij56Cmoaw5RRlMBHqLGePsFBFQC7UCzE003139zcQn",
+    STRIPE_PUBLISHABLE_KEY: "pk_test_51RG2D2QWsnHfV82B6REWVQkt54sufye1qezd220k5KnIUEhTZ8zSgK3qcbkiwv7uQ736MVCperOxslEenpj0yTK700Gv9z9Gs1",
     MERCHANT_ID: "merchant.net.esimfly.user.app",
     apiUrl: "https://esimfly.net",
-    webhookUrl: "https://esimfly.net/pages/public_app/api/payments/webhook.php"
+    webhookUrl: "https://esimfly.net/api/stripe/webhook"
   },
   production: {
     // Production keys for later
-    STRIPE_PUBLISHABLE_KEY: "your_live_key_here",
+    STRIPE_PUBLISHABLE_KEY: "pk_test_51RG2D2QWsnHfV82B6REWVQkt54sufye1qezd220k5KnIUEhTZ8zSgK3qcbkiwv7uQ736MVCperOxslEenpj0yTK700Gv9z9Gs1",
     MERCHANT_ID: "merchant.net.esimfly.user.app",
     apiUrl: "https://esimfly.net",
     webhookUrl: "https://esimfly.net/api/stripe/webhook"

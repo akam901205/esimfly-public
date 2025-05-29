@@ -12,7 +12,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { ToastProvider } from './components/ToastNotification';
 
 // Stripe configuration
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_51QkpsjRsiK4Lxqyaz4hBVr6NyGJyM0Byyv4r2NDdPnhPaJbq6sRAlJZjij56Cmoaw5RRlMBHqLGePsFBFQC7UCzE003139zcQn';
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RG2D2QWsnHfV82B6REWVQkt54sufye1qezd220k5KnIUEhTZ8zSgK3qcbkiwv7uQ736MVCperOxslEenpj0yTK700Gv9z9Gs1';
 const STRIPE_MERCHANT_ID = 'merchant.net.esimfly.user.app';
 
 // Declare global variable to track app state

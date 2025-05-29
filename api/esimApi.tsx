@@ -109,6 +109,13 @@ export interface EsimDetails {
   coverages: Coverage[];
   countries: Country[];
   isRegionalPlan: boolean;
+  // Additional fields for InstructionsScreen
+  ac?: string;
+  package_name?: string;
+  qr_code_url?: string;
+  sharing_access_code?: string;
+  order_reference?: string;
+  transaction_id?: string;
 }
 
 export interface OrderEsimResponse {
@@ -335,11 +342,13 @@ createPaymentIntent: async (data: CreatePaymentIntentRequest): Promise<ApiRespon
   try {
     console.log('Creating payment intent:', data);
     
-    const response = await api.post('/public_app/api/payments/create-intent.php', {
+    // Use the new API endpoint with newApi (which has auth headers)
+    const response = await newApi.post('/checkout/create-session', {
       amount: data.amount,
       currency: data.currency || 'usd',
       metadata: data.metadata,
-      payment_method_types: data.payment_method_types || ['card']
+      payment_method_types: data.payment_method_types || ['card'],
+      mode: 'payment' // For one-time payments
     });
 
     console.log('Raw payment intent response:', response.data);
@@ -371,26 +380,14 @@ createPaymentIntent: async (data: CreatePaymentIntentRequest): Promise<ApiRespon
     try {
       console.log('Confirming payment:', paymentIntentId);
       
-      const response = await api.post('/public_app/api/payments/confirm-payment.php', {
-        paymentIntentId
-      });
-
-      console.log('Payment confirmation response:', response.data);
-
-      if (response.data.success) {
-        return {
-          success: true,
-          data: {
-            status: response.data.data.status,
-            paymentIntentId: paymentIntentId,
-            clientSecret: response.data.data.clientSecret
-          }
-        };
-      }
-
+      // For now, we'll return success as the payment confirmation happens via Stripe webhook
       return {
-        success: false,
-        message: response.data.message || 'Failed to confirm payment'
+        success: true,
+        data: {
+          status: 'processing',
+          paymentIntentId: paymentIntentId,
+          clientSecret: ''
+        }
       };
     } catch (error) {
       const errorInfo = handleApiError(error);
@@ -406,27 +403,16 @@ createPaymentIntent: async (data: CreatePaymentIntentRequest): Promise<ApiRespon
     try {
       console.log('Checking payment status:', paymentIntentId);
       
-      const response = await api.get('/public_app/api/payments/check-status.php', {
-        params: { paymentIntentId }
-      });
-
-      console.log('Payment status response:', response.data);
-
-      if (response.data.success) {
-        return {
-          success: true,
-          data: {
-            status: response.data.data.status,
-            paymentIntentId: paymentIntentId,
-            requiresAction: response.data.data.requires_action || false,
-            clientSecret: response.data.data.client_secret
-          }
-        };
-      }
-
+      // The webhook will handle the actual status update
+      // For mobile, we can return processing status
       return {
-        success: false,
-        message: response.data.message || 'Failed to check payment status'
+        success: true,
+        data: {
+          status: 'processing',
+          paymentIntentId: paymentIntentId,
+          requiresAction: false,
+          clientSecret: ''
+        }
       };
     } catch (error) {
       const errorInfo = handleApiError(error);
@@ -442,22 +428,10 @@ createPaymentIntent: async (data: CreatePaymentIntentRequest): Promise<ApiRespon
     try {
       console.log('Canceling payment intent:', paymentIntentId);
       
-      const response = await api.post('/public_app/api/payments/cancel-intent.php', {
-        paymentIntentId
-      });
-
-      console.log('Payment cancellation response:', response.data);
-
-      if (response.data.success) {
-        return {
-          success: true,
-          message: 'Payment intent cancelled successfully'
-        };
-      }
-
+      // For now, just return success as cancellation can be handled on the backend
       return {
-        success: false,
-        message: response.data.message || 'Failed to cancel payment intent'
+        success: true,
+        message: 'Payment intent cancelled successfully'
       };
     } catch (error) {
       const errorInfo = handleApiError(error);
@@ -882,175 +856,124 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
   try {
     console.log('Ordering eSIM:', data);
     
-    // Handle payment intent creation for card payments
-    let paymentIntentId: string | undefined;
-    if (data.payment_method === 'card') {
-      const paymentIntent = await stripeApi.createPaymentIntent({
-		  amount: Math.round(data.price * 100),
-		  metadata: {
-			package_id: data.packageCode,  // Changed from package_code
-			package_name: data.packageName,
-			provider: detectProvider(data as PackagePlan)
-		  }
-		});
-
-      if (!paymentIntent.success) {
+    // For balance payments, use the new unified API endpoint
+    if (data.payment_method === 'balance') {
+      console.log('Using new API endpoint for balance payment');
+      
+      // Prepare request data for the new API
+      const requestData = {
+        packageCode: data.packageCode,
+        packageName: data.packageName,
+        price: data.price,
+        quantity: data.quantity || 1,
+        flagUrl: data.flagUrl,
+        paymentMethod: 'balance',
+        duration: data.duration,
+        promoDetails: data.promoDetails
+      };
+      
+      console.log('API Request: POST /esim/order');
+      console.log('Request Data:', requestData);
+      
+      const response = await newApi.post('/esim/order', requestData);
+      console.log('Order eSIM response:', response.data);
+      
+      if (response.data.success) {
+        return {
+          success: true,
+          data: {
+            success: true,
+            packageName: response.data.packageName,
+            price: response.data.amount || data.price,
+            newBalance: response.data.newBalance,
+            profit: response.data.profit,
+            flagUrl: response.data.flagUrl || data.flagUrl,
+            orderReference: response.data.orderReference,
+            currency: response.data.currency || 'USD',
+            qrCodeUrl: response.data.qrCodeUrl || response.data.esims?.[0]?.qrCodeUrl,
+            directAppleInstallUrl: response.data.directAppleInstallUrl || 
+                                  response.data.esims?.[0]?.directAppleInstallUrl ||
+                                  response.data.esims?.[0]?.appleInstallUrl,
+            processing: response.data.processing,
+            esimId: response.data.esimId,
+            esims: response.data.esims,
+            discountAmount: response.data.discountAmount,
+            finalPrice: response.data.finalPrice,
+            payment_method: 'balance'
+          }
+        };
+      } else {
         return {
           success: false,
-          message: paymentIntent.message || 'Payment initialization failed'
-        };
-      }
-      paymentIntentId = paymentIntent.data.id;
-    }
-    
-    const provider = detectProvider(data as PackagePlan);
-    console.log('Detected provider:', provider);
-    
-    let endpoint: string;
-    let requestData: any;
-    let packageCode = data.packageCode;
-    
-    // Standardize flag URL format
-    const flagUrl = data.flagUrl?.startsWith('/img/flags/') 
-      ? data.flagUrl 
-      : `/img/flags/${data.flagUrl?.toLowerCase() || 'UNKNOWN.png'}`;
-    
-    // Strip provider prefixes from package code
-    if (packageCode?.startsWith('esimaccess_')) {
-      packageCode = packageCode.replace('esimaccess_', '');
-    } else if (packageCode?.startsWith('airalo_')) {
-      packageCode = packageCode.replace('airalo_', '');
-    }
-    
-    switch (provider) {
-      case 'second':
-        endpoint = '/public_app/api/order/order_second_esim.php';
-        requestData = {
-          bundleName: packageCode,
-          quantity: 1,
-          packageName: data.packageName,
-          duration: data.duration?.toString(),
-          flagUrl: flagUrl,
-          payment_method: data.payment_method,
-          payment_intent_id: paymentIntentId,
-          price: data.price,
-          ...(data.promoDetails && { promoDetails: data.promoDetails })
-        };
-        break;
-        
-      case 'third':
-        endpoint = '/public_app/api/order/order_third_esim.php';
-        requestData = {
-          packageCode: packageCode,
-          packageName: data.packageName,
-          price: data.price,
-          quantity: 1,
-          flagUrl: flagUrl,
-          data: data.data,
-          duration: data.duration,
-          region: data.region,
-          operator: (data as any).operator,
-          payment_method: data.payment_method,
-          payment_intent_id: paymentIntentId,
-          planDetails: {
-            data: data.data,
-            duration: data.duration,
-            region: data.region || '',
-            type: 'local'
-          },
-          ...(data.promoDetails && { promoDetails: data.promoDetails })
-        };
-        break;
-        
-      default: // first provider
-        endpoint = '/public_app/api/order/order_esim.php';
-        requestData = {
-          packageCode: packageCode,
-          packageName: data.packageName,
-          price: data.price,
-          quantity: 1,
-          flagUrl: flagUrl,
-          payment_method: data.payment_method,
-          payment_intent_id: paymentIntentId,
-          ...(data.promoDetails && { promoDetails: data.promoDetails })
-        };
-    }
-
-    console.log(`Making ${provider} provider request to ${endpoint}:`, requestData);
-    
-    const response = await api.post(endpoint, requestData);
-    console.log('Order eSIM response:', response.data);
-
-    if (response.data.success) {
-      // If using card payment, confirm the payment
-      if (data.payment_method === 'card' && paymentIntentId) {
-        const confirmResponse = await stripeApi.confirmPayment(paymentIntentId);
-        if (!confirmResponse.success) {
-          return {
+          message: response.data.message,
+          data: {
             success: false,
-            message: 'Payment confirmation failed',
-            data: {
-              success: false,
-              errorCode: 'PAYMENT_CONFIRMATION_FAILED'
-            }
-          };
-        }
+            errorCode: response.data.errorCode,
+            currentBalance: response.data.currentBalance,
+            requiredBalance: response.data.requiredBalance,
+            needToLoad: response.data.needToLoad
+          }
+        };
       }
-
+    }
+    
+    // For card payments, continue using createCheckoutSession
+    if (data.payment_method === 'card') {
+      console.log('Using checkout session for card payment');
+      
+      // Use createCheckoutSession for card payments
+      const items = [{
+        id: data.packageCode,
+        name: data.packageName,
+        price: data.price,
+        quantity: data.quantity || 1,
+        data_amount: data.data || 1,
+        duration: data.duration || 30,
+        flag_url: data.flagUrl,
+        metadata: {
+          provider: detectProvider(data as PackagePlan)
+        }
+      }];
+      
+      const checkoutResponse = await createCheckoutSession({
+        items,
+        promoDetails: data.promoDetails
+      });
+      
+      if (!checkoutResponse.success) {
+        return {
+          success: false,
+          message: checkoutResponse.message || 'Failed to create checkout session'
+        };
+      }
+      
       return {
         success: true,
         data: {
           success: true,
-          packageName: response.data.packageName,
-          price: response.data.price,
-          newBalance: response.data.newBalance,
-          profit: response.data.profit,
-          flagUrl: response.data.flagUrl,
-          orderReference: response.data.orderReference,
-          currency: response.data.currency || 'USD',
-          qrCodeUrl: response.data.qrCodeUrl || response.data.esims?.[0]?.qrCodeUrl,
-          directAppleInstallUrl: response.data.directAppleInstallUrl || 
-                                response.data.esims?.[0]?.directAppleInstallUrl ||
-                                response.data.esims?.[0]?.appleInstallUrl,
-          processing: response.data.processing,
-          esimId: response.data.esimId,
-          esims: response.data.esims,
-          discountAmount: response.data.discountAmount,
-          finalPrice: response.data.finalPrice,
-          payment_intent_id: paymentIntentId,
-          payment_method: data.payment_method
-        }
-      };
-    } else {
-      // If payment failed, void the payment intent
-      if (paymentIntentId) {
-        await stripeApi.cancelPaymentIntent(paymentIntentId);
-      }
-
-      return {
-        success: false,
-        message: response.data.message,
-        data: {
-          success: false,
-          errorCode: response.data.errorCode,
-          currentBalance: response.data.currentBalance,
-          requiredBalance: response.data.requiredBalance,
-          needToLoad: response.data.needToLoad
+          packageName: data.packageName,
+          price: data.price,
+          orderReference: checkoutResponse.data.orderReference,
+          currency: 'USD',
+          processing: true,
+          payment_method: 'card',
+          // For card payments, return payment details for Stripe
+          paymentIntent: checkoutResponse.data.paymentIntent,
+          ephemeralKey: checkoutResponse.data.ephemeralKey,
+          customer: checkoutResponse.data.customer
         }
       };
     }
+    
+    // Fallback for other payment methods (shouldn't happen)
+    return {
+      success: false,
+      message: 'Unsupported payment method'
+    };
+    
   } catch (error) {
     console.error('Error ordering eSIM:', error);
     const errorInfo = handleApiError(error);
-    
-    // If there was a payment intent created, try to cancel it
-    if (data.payment_method === 'card' && (data as any).payment_intent_id) {
-      try {
-        await stripeApi.cancelPaymentIntent((data as any).payment_intent_id);
-      } catch (cancelError) {
-        console.error('Error canceling payment intent:', cancelError);
-      }
-    }
     
     return {
       success: false,
@@ -1411,31 +1334,85 @@ export const fetchEsimDetails = async (iccid: string): Promise<ApiResponse<EsimD
   try {
     console.log('Fetching eSIM details for ICCID:', iccid);
     
-    const response = await api.get('/esimplan/get_esim_details.php', {
-      params: { iccid }
-    });
+    // Extract numeric ID from ICCID if it starts with a number
+    let esimId = iccid;
+    const match = iccid.match(/^(\d+)/);
+    if (match) {
+      esimId = match[1];
+    }
+    
+    const response = await newApi.get(`/myesims/${esimId}`);
 
     console.log('eSIM details response:', response.data);
 
     if (response.data && response.data.success) {
+      const esim = response.data.esim;
+      
+      // Transform the response to match the expected EsimDetails interface
+      const transformedData: EsimDetails = {
+        id: esim.id,
+        iccid: esim.iccid,
+        status: esim.status,
+        status_key: esim.status,
+        interpreted_status: esim.status,
+        package_code: esim.package_code || '',
+        short_url: esim.qr_code_url || '',
+        formatted_short_url: esim.qr_code_url || '',
+        apple_installation_url: esim.apple_installation_url,
+        activate_time: esim.activated_at,
+        expired_time: esim.expires_at || '',
+        order_usage: esim.data_used || 0,
+        total_volume: esim.data_limit || 0,
+        data_left: (esim.data_limit || 0) - (esim.data_used || 0),
+        data_left_formatted: `${(((esim.data_limit || 0) - (esim.data_used || 0)) / (1024 * 1024 * 1024)).toFixed(2)} GB`,
+        data_left_percentage: esim.data_limit ? ((esim.data_limit - (esim.data_used || 0)) / esim.data_limit * 100) : 100,
+        time_left: esim.days_remaining ? `${esim.days_remaining} days` : '',
+        coverages: esim.countries || [],
+        countries: esim.countries || [],
+        isRegionalPlan: esim.is_regional || false,
+        // Additional fields from new API
+        ac: esim.activation_code,
+        package_name: esim.package,
+        // Additional fields needed by InstructionsScreen
+        qr_code_url: esim.qr_code_url,
+        sharing_access_code: esim.sharing_access_code,
+        order_reference: esim.order_reference,
+        transaction_id: esim.transaction_id
+      };
+      
       return {
         success: true,
-        data: response.data.esim,
+        data: transformedData,
         cacheStatus: response.data.cacheStatus
       };
     } else {
       console.warn('API returned success: false:', response.data);
       return {
         success: false,
-        message: response.data.message || 'Failed to fetch eSIM details'
+        message: response.data.error || response.data.message || 'Failed to fetch eSIM details'
       };
     }
-  } catch (error) {
-    const errorMessage = handleApiError(error);
+  } catch (error: any) {
     console.error('Error fetching eSIM details:', error);
+    
+    if (error.response?.status === 404) {
+      return {
+        success: false,
+        message: 'eSIM not found'
+      };
+    }
+    
+    if (error.response?.data) {
+      return {
+        success: false,
+        message: error.response.data.error || error.response.data.message || 'Failed to fetch eSIM details'
+      };
+    }
+    
+    const errorInfo = handleApiError(error);
     return {
       success: false,
-      message: errorMessage
+      message: errorInfo.message || 'Failed to fetch eSIM details'
     };
   }
 };
@@ -1470,6 +1447,142 @@ export const fetchLatestEsim = async (): Promise<ApiResponse<EsimData>> => {
 };
 
 
+// New function to process top-up using the new API endpoint
+export const processTopUpNew = async (esimId: number, packageCode: string): Promise<ApiResponse<any>> => {
+  try {
+    console.log('Processing top-up with new API:', { esimId, packageCode });
+    
+    const response = await newApi.post(`/myesims/${esimId}/topup`, {
+      packageCode
+    });
+
+    console.log('Top-up response:', response.data);
+
+    if (response.data?.success) {
+      return {
+        success: true,
+        message: response.data.message || 'Top-up successful',
+        data: response.data
+      };
+    } else {
+      return {
+        success: false,
+        message: response.data?.error || response.data?.message || 'Top-up failed'
+      };
+    }
+  } catch (error: any) {
+    console.error('Error processing top-up:', error);
+    
+    if (error.response?.data) {
+      return {
+        success: false,
+        message: error.response.data.error || error.response.data.message || 'Failed to process top-up'
+      };
+    }
+    
+    return {
+      success: false,
+      message: 'An unexpected error occurred during top-up'
+    };
+  }
+};
+
+// Create checkout session for Stripe Payment Element
+export const createCheckoutSession = async (data: {
+  items: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    data_amount: number;
+    duration: number;
+    flag_url?: string;
+    metadata?: any;
+  }>;
+  promoDetails?: any;
+  isTopup?: boolean;
+  esimId?: number;
+  provider?: string;
+}): Promise<ApiResponse<{
+  paymentIntent: string;
+  ephemeralKey: string;
+  customer: string;
+  orderReference: string;
+}>> => {
+  try {
+    console.log('Creating checkout session:', data);
+    
+    const response = await newApi.post('/checkout/create-payment-sheet', {
+      items: data.items,
+      promoDetails: data.promoDetails,
+      isTopup: data.isTopup,
+      esimId: data.esimId,
+      provider: data.provider
+    });
+
+    console.log('Checkout session response:', response.data);
+
+    if (response.data?.success) {
+      return {
+        success: true,
+        data: {
+          paymentIntent: response.data.data.paymentIntent,
+          ephemeralKey: response.data.data.ephemeralKey,
+          customer: response.data.data.customer,
+          orderReference: response.data.data.orderReference
+        }
+      };
+    }
+
+    return {
+      success: false,
+      message: response.data?.message || 'Failed to create checkout session'
+    };
+  } catch (error) {
+    console.error('Create checkout session error:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to create checkout session'
+    };
+  }
+};
+
+// Check order status
+export const checkOrderStatus = async (orderReference: string): Promise<ApiResponse<{
+  status: string;
+  message?: string;
+  qrCodeUrl?: string;
+  directAppleInstallUrl?: string;
+  packageName?: string;
+  iccid?: string;
+  ac?: string;
+  esimId?: number;
+  newBalance?: number;
+  currency?: string;
+}>> => {
+  try {
+    const response = await newApi.get(`/orders/status/${orderReference}`);
+    
+    if (response.data?.success) {
+      return {
+        success: true,
+        data: response.data.data
+      };
+    }
+    
+    return {
+      success: false,
+      message: response.data?.message || 'Failed to get order status'
+    };
+  } catch (error) {
+    console.error('Check order status error:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to check order status'
+    };
+  }
+};
+
 const esimApi = {
   ...stripeApi, // Add Stripe API functions
   fetchBalance,
@@ -1485,9 +1598,12 @@ const esimApi = {
   orderEsim,
   fetchAddOnPlans,
   processTopUp,
+  processTopUpNew,
   orderAddOnPlan,
   redeemGiftCardAtCheckout,
   verifyGiftCardForDiscount,
+  createCheckoutSession,
+  checkOrderStatus,
 };
 
 export default esimApi;

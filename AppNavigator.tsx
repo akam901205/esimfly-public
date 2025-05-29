@@ -38,6 +38,7 @@ import DepositScreen from './screens/DepositScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import PrivacyScreen from './screens/PrivacyScreen';
 import TermsScreen from './screens/TermsScreen';
+import OrderProcessingScreen from './screens/OrderProcessingScreen';
 
 // Configure platform-specific settings for dark theme
 async function configureNavigationBar() {
@@ -182,6 +183,9 @@ export type ShopStackParamList = {
     orderNumber?: string;
     iccid?: string;
   };
+  OrderProcessing: {
+    orderReference: string;
+  };
 };
 
 export type ProfileStackParamList = {
@@ -274,6 +278,7 @@ function ShopNavigator() {
       <ShopStack.Screen name="Checkout" component={CheckoutScreen} options={{ presentation: 'modal' }} />
       <ShopStack.Screen name="Terms" component={TermsScreen} options={{ presentation: 'modal' }} />
       <ShopStack.Screen name="Instructions" component={InstructionsScreen} options={{ presentation: 'modal' }} />
+      <ShopStack.Screen name="OrderProcessing" component={OrderProcessingScreen} options={{ presentation: 'modal' }} />
     </ShopStack.Navigator>
   );
 }
