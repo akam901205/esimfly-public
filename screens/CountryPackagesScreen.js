@@ -19,13 +19,11 @@ import NetworkModal from '../components/NetworkModalSingelCountry';
 import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
 
-const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
-
 const packageColors = [['#f4f4f5', '#f4f4f5']];
 
 const ICON_COLORS = {
-  network: '#007AFF',
-  speed: '#2563eb',  // Changed to a richer blue
+  network: '#FF6B00',
+  speed: '#FF6B00',
 };
 
 const CountryPackagesScreen = () => {
@@ -429,15 +427,15 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
       <Ionicons 
         name="arrow-back" 
         size={24} 
-        color={colors.icon.header} 
+        color="#374151" 
       />
     </TouchableOpacity>
     <Text style={styles.headerTitle}>{country} Plans</Text>
     <View style={styles.headerIcon}>
       <Ionicons 
-        name="cash-outline" 
+        name="pricetag-outline" 
         size={24} 
-        color={colors.icon.header} 
+        color="#374151" 
       />
     </View>
   </View>
@@ -543,7 +541,12 @@ const renderPackageItem = ({ item, index }) => {
               onPress={handlePackagePress} 
               style={styles.buyButton}
             >
-              <Text style={styles.buyButtonText}>BUY NOW</Text>
+              <View style={styles.buyButtonContent}>
+                <View style={styles.buyButtonIconContainer}>
+                  <Ionicons name="cart-outline" size={18} color="#FF6B00" />
+                </View>
+                <Text style={styles.buyButtonText}>BUY NOW</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -554,6 +557,10 @@ const renderPackageItem = ({ item, index }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#F8F9FA', '#F3F4F6']}
+        style={styles.backgroundGradient}
+      />
       {renderHeader()}
       <FlatList
 	  data={packages}
@@ -563,7 +570,7 @@ const renderPackageItem = ({ item, index }) => {
 	  ListEmptyComponent={() => (
 		<View style={styles.emptyStateContainer}>
 		  {loading ? (
-			<ActivityIndicator size="large" color="#FF6B6B" />
+			<ActivityIndicator size="large" color="#FF6B00" />
 		  ) : (
 			<Text style={styles.noPackagesText}>
 			  No packages available for this selection.
@@ -589,30 +596,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
-    header: {
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.background.primary,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    borderBottomColor: '#E5E7EB',
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border.header,
+    borderColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontFamily: 'Quicksand-Bold',
+    flex: 1,
+    textAlign: 'center',
   },
   listContainer: {
     padding: 16,
@@ -622,12 +638,20 @@ const styles = StyleSheet.create({
     height: 20,
   },
 packageItem: {
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
-    padding: 16,
-    backgroundColor: colors.background.secondary,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border.light,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   packageHeader: {
     flexDirection: 'row',
@@ -648,15 +672,16 @@ packageItem: {
   speedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.tertiary,
+    backgroundColor: '#FF6B0010',
     borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   speedText: {
     marginLeft: 4,
     fontSize: 12,
-    color: colors.text.secondary,
+    color: '#FF6B00',
+    fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   packageDetails: {
@@ -666,51 +691,68 @@ packageItem: {
   },
   dataAmount: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    fontWeight: '700',
+    color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   validityPeriod: {
     fontSize: 14,
-    color: colors.text.secondary,
+    color: '#6B7280',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginTop: 4,
+    fontWeight: '500',
   },
 priceContainer: {
     alignItems: 'flex-end',
     minWidth: 120, // Ensure consistent width for price container
   },
   priceText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FF6B00',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginBottom: 8,
   },
 buyButton: {
-    borderRadius: 8,
+    borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#2196f3', // Changed to green
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 100,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     ...Platform.select({
       ios: {
-        shadowColor: '#15803d', // Darker green for shadow
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
       },
       android: {
         elevation: 3,
       },
     }),
   },
+  buyButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  buyButtonIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#FF6B0010',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   buyButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.stone[50], // Using white color for contrast
+    fontWeight: '700',
+    color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -859,18 +901,19 @@ buyButton: {
   },
 networkButton: {
     marginTop: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: colors.stone[100],
+    backgroundColor: '#FF6B0010',
     borderWidth: 1,
-    borderColor: colors.stone[200],
+    borderColor: '#FF6B0020',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
     ...Platform.select({
       ios: {
-        shadowColor: colors.stone[900],
+        shadowColor: '#FF6B00',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 3,
@@ -883,7 +926,7 @@ networkButton: {
   networkButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.stone[600],
+    color: '#FF6B00',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginLeft: 4,
   },

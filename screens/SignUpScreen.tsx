@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,25 +7,40 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   Dimensions,
+  Keyboard,
+  TouchableWithoutFeedback,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { signUp } from '../api/authApi';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../AppNavigator';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { RouteProp } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { signUp } from '../api/authApi';
 import { colors } from '../theme/colors';
 
+type RootStackParamList = {
+  SignUp: undefined;
+  Login: undefined;
+};
+
 type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
+type SignUpScreenRouteProp = RouteProp<RootStackParamList, 'SignUp'>;
 
 type Props = {
   navigation: SignUpScreenNavigationProp;
+  route: SignUpScreenRouteProp;
 };
 
 const { width } = Dimensions.get('window');
 
-export default function SignUpScreen({ navigation }: Props) {
+const SignUpScreen: React.FC<Props> = ({ navigation }) => {
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,280 +48,518 @@ export default function SignUpScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [name, setName] = useState('');
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  
+  // Input refs for focus management
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
+  const referralRef = useRef<TextInput>(null);
 
-  const handleReferralCodeChange = (code: string) => {
-    setReferralCode(code.toUpperCase());
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateForm = () => {
+    let errors = {
+      fullName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    };
+    let isValid = true;
+
+    if (!fullName.trim()) {
+      errors.fullName = 'Full name is required';
+      isValid = false;
+    }
+
+    if (!email.trim()) {
+      errors.email = 'Email is required';
+      isValid = false;
+    } else if (!validateEmail(email)) {
+      errors.email = 'Please enter a valid email';
+      isValid = false;
+    }
+
+    if (!password) {
+      errors.password = 'Password is required';
+      isValid = false;
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+      isValid = false;
+    }
+
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+      isValid = false;
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+      isValid = false;
+    }
+
+    setValidationErrors(errors);
+
+    if (!isValid) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+
+    return isValid;
   };
 
   const handleSignUp = async () => {
-    // Basic validation
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'All fields are required');
+    Keyboard.dismiss();
+    
+    if (!validateForm()) {
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
-      return;
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsLoading(true);
+
     try {
-      // Pass name and optional referral code to signUp
-      const response = await signUp(email, password, referralCode || undefined, name);
+      const response = await signUp(email, password, referralCode || undefined, fullName);
+      
       if (response.success) {
-        Alert.alert('Success', 'Account created successfully', [
-          { text: 'OK', onPress: () => navigation.replace('Login') }
-        ]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          'Success',
+          'Your account has been created successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login'),
+            },
+          ],
+        );
       } else {
-        Alert.alert('Error', response.error || response.message || 'Failed to create account');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert('Sign Up Failed', response.message || 'An error occurred during sign up.');
       }
     } catch (error) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const renderInputField = (
+    placeholder: string,
+    value: string,
+    onChangeText: (text: string) => void,
+    icon: keyof typeof Ionicons.glyphMap,
+    ref?: React.RefObject<TextInput>,
+    nextRef?: React.RefObject<TextInput>,
+    secureTextEntry?: boolean,
+    showToggle?: boolean,
+    onToggle?: () => void,
+    error?: string,
+    autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters',
+    keyboardType?: 'default' | 'email-address',
+    maxLength?: number,
+  ) => {
+    const isFocused = focusedInput === placeholder;
+    const hasError = !!error;
+    
+    return (
+      <View
+        style={[
+          styles.inputContainer,
+          isFocused && styles.inputContainerFocused,
+          hasError && styles.inputContainerError,
+        ]}
+      >
+        <View style={styles.inputWrapper}>
+          <Ionicons
+            name={icon}
+            size={20}
+            color={hasError ? '#ef4444' : isFocused ? colors.stone[800] : colors.text.secondary}
+            style={styles.inputIcon}
+          />
+          <TextInput
+            ref={ref}
+            style={[styles.input, hasError && styles.inputError]}
+            placeholder={placeholder}
+            placeholderTextColor={colors.text.secondary}
+            value={value}
+            onChangeText={(text) => {
+              onChangeText(text);
+              if (error) {
+                setValidationErrors(prev => ({ ...prev, [placeholder.toLowerCase().replace(' ', '')]: '' }));
+              }
+            }}
+            secureTextEntry={secureTextEntry}
+            autoCapitalize={autoCapitalize}
+            keyboardType={keyboardType}
+            maxLength={maxLength}
+            onFocus={() => {
+              setFocusedInput(placeholder);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            onBlur={() => setFocusedInput(null)}
+            onSubmitEditing={() => nextRef?.current?.focus()}
+            returnKeyType={nextRef ? 'next' : 'done'}
+            editable={!isLoading}
+            selectionColor={colors.stone[800]}
+            underlineColorAndroid="transparent"
+            autoCorrect={false}
+          />
+          {showToggle && (
+            <TouchableOpacity
+              onPress={() => {
+                onToggle?.();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={styles.eyeIcon}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name={secureTextEntry ? 'eye-off' : 'eye'}
+                size={20}
+                color={colors.text.secondary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+        {hasError && (
+          <View>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
-    <>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background.tertiary} />
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="chevron-back" size={24} color={colors.text.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sign Up</Text>
-          <View style={styles.rightPlaceholder} />
-        </View>
-
-        <View style={styles.content}>
-          <Text style={styles.title}>Create Your Account</Text>
-          <Text style={styles.subtitle}>Sign up to get started</Text>
-
-          {/* Name Input */}
-          <View style={styles.inputContainer}>
-            <Icon name="person-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              placeholderTextColor={colors.text.tertiary}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              editable={!isLoading}
-            />
-          </View>
-
-          {/* Email Input */}
-          <View style={styles.inputContainer}>
-            <Icon name="mail-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor={colors.text.tertiary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!isLoading}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Icon name="lock-closed-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={colors.text.tertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              editable={!isLoading}
-            />
-            <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setShowPassword(!showPassword)}
-              disabled={isLoading}
-            >
-              <Icon name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.text.tertiary} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Icon name="lock-closed-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              placeholderTextColor={colors.text.tertiary}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              editable={!isLoading}
-            />
-            <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              disabled={isLoading}
-            >
-              <Icon name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.text.tertiary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Referral Code Input (Optional) */}
-          <View style={styles.inputContainer}>
-            <Icon name="gift-outline" size={20} color={colors.accent.DEFAULT} style={[styles.inputIcon, { color: colors.accent.DEFAULT }]} />
-            <TextInput
-              style={styles.input}
-              placeholder="Referral Code (Optional)"
-              placeholderTextColor={colors.text.tertiary}
-              value={referralCode}
-              onChangeText={handleReferralCodeChange}
-              autoCapitalize="characters"
-              editable={!isLoading}
-              maxLength={8}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.button,
-              isLoading && styles.buttonDisabled
-            ]}
-            onPress={handleSignUp}
-            disabled={isLoading}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <LinearGradient
+          colors={[colors.background.primary, colors.background.secondary]}
+          style={styles.gradient}
+        />
+        
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            {isLoading ? (
-              <ActivityIndicator color={colors.background.primary} />
-            ) : (
-              <Text style={styles.buttonText}>Sign Up</Text>
-            )}
-          </TouchableOpacity>
+            <View style={styles.content}>
+              {/* Header */}
+              <View style={styles.header}>
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    navigation.goBack();
+                  }}
+                  style={styles.backButton}
+                >
+                  <BlurView intensity={20} style={styles.backButtonBlur}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+                  </BlurView>
+                </TouchableOpacity>
+                
+                <View style={styles.logoContainer}>
+                  <View style={styles.logoCircle}>
+                    <Ionicons name="person-add" size={40} color={colors.stone[800]} />
+                  </View>
+                </View>
+                
+                <Text style={styles.title}>Create Account</Text>
+                <Text style={styles.subtitle}>Join us to start your journey</Text>
+              </View>
 
-          <View style={styles.signInContainer}>
-            <Text style={styles.signInText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.signInLink}>Sign In</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    </>
+              {/* Form */}
+              <View style={styles.formContainer}>
+                {renderInputField(
+                  'Full Name',
+                  fullName,
+                  setFullName,
+                  'person-outline',
+                  undefined,
+                  emailRef,
+                  false,
+                  false,
+                  undefined,
+                  validationErrors.fullName,
+                  'words',
+                )}
+
+                {renderInputField(
+                  'Email',
+                  email,
+                  setEmail,
+                  'mail-outline',
+                  emailRef,
+                  passwordRef,
+                  false,
+                  false,
+                  undefined,
+                  validationErrors.email,
+                  'none',
+                  'email-address',
+                )}
+
+                {renderInputField(
+                  'Password',
+                  password,
+                  setPassword,
+                  'lock-closed-outline',
+                  passwordRef,
+                  confirmPasswordRef,
+                  !showPassword,
+                  true,
+                  () => setShowPassword(!showPassword),
+                  validationErrors.password,
+                  'none',
+                )}
+
+                {renderInputField(
+                  'Confirm Password',
+                  confirmPassword,
+                  setConfirmPassword,
+                  'lock-closed-outline',
+                  confirmPasswordRef,
+                  referralRef,
+                  !showConfirmPassword,
+                  true,
+                  () => setShowConfirmPassword(!showConfirmPassword),
+                  validationErrors.confirmPassword,
+                  'none',
+                )}
+
+                {renderInputField(
+                  'Referral Code (Optional)',
+                  referralCode,
+                  (text) => setReferralCode(text.toUpperCase()),
+                  'gift-outline',
+                  referralRef,
+                  undefined,
+                  false,
+                  false,
+                  undefined,
+                  '',
+                  'characters',
+                  'default',
+                  8,
+                )}
+
+                {/* Sign Up Button */}
+                <TouchableOpacity
+                  style={[styles.signUpButton, isLoading && styles.signUpButtonDisabled]}
+                  onPress={handleSignUp}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={colors.stone[50]} />
+                  ) : (
+                    <Text style={styles.signUpButtonText}>Create Account</Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Login Link */}
+                <View style={styles.loginContainer}>
+                  <Text style={styles.loginText}>Already have an account?</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      navigation.navigate('Login');
+                    }}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.loginLink}>Sign In</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    </TouchableWithoutFeedback>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.tertiary,
+    backgroundColor: colors.background.primary,
   },
-  buttonDisabled: {
-    backgroundColor: colors.text.tertiary,
-    opacity: 0.7,
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 56,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+  keyboardAvoidingView: {
+    flex: 1,
   },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    color: colors.text.primary,
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Quicksand',
-  },
-  rightPlaceholder: {
-    width: 40,
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 30,
   },
   content: {
     flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    zIndex: 1,
+  },
+  backButtonBlur: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    overflow: 'hidden',
+  },
+  logoContainer: {
+    marginBottom: 20,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.background.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary.DEFAULT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
     color: colors.text.primary,
-    fontFamily: 'Quicksand',
+    marginBottom: 8,
+    fontFamily: 'Quicksand-Bold',
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 30,
     color: colors.text.secondary,
-    fontFamily: 'Quicksand',
+    fontFamily: 'Quicksand-Regular',
+  },
+  formContainer: {
+    flex: 1,
   },
   inputContainer: {
+    marginBottom: 20,
+    borderRadius: 12,
+    backgroundColor: colors.background.secondary,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inputContainerFocused: {
+    borderColor: colors.stone[800],
+    borderWidth: 2,
+    shadowColor: colors.stone[800],
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  inputContainerError: {
+    borderColor: '#ef4444',
+  },
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-    marginBottom: 20,
+    paddingHorizontal: 16,
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 40,
+    height: 50,
     color: colors.text.primary,
     fontSize: 16,
-    fontFamily: 'Quicksand',
+    fontFamily: 'Quicksand-Regular',
+    outlineStyle: 'none',
+  },
+  inputError: {
+    color: '#ef4444',
   },
   eyeIcon: {
-    padding: 10,
+    padding: 8,
   },
-  button: {
-    backgroundColor: colors.primary.DEFAULT,
-    paddingVertical: 15,
-    borderRadius: 25,
+  errorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 16,
+    marginBottom: 4,
+    fontFamily: 'Quicksand-Regular',
+  },
+  signUpButton: {
+    backgroundColor: colors.stone[800],
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
+    marginBottom: 24,
+    shadowColor: colors.stone[900],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  buttonText: {
-    color: colors.background.primary,
+  signUpButtonDisabled: {
+    opacity: 0.7,
+  },
+  signUpButtonText: {
+    color: colors.stone[50],
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Quicksand',
+    fontWeight: '600',
+    fontFamily: 'Quicksand-SemiBold',
   },
-  signInContainer: {
+  loginContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
+    marginTop: 24,
   },
-  signInText: {
+  loginText: {
     color: colors.text.secondary,
     fontSize: 14,
-    fontFamily: 'Quicksand',
+    marginRight: 4,
+    fontFamily: 'Quicksand-Regular',
   },
-  signInLink: {
-    color: colors.primary.DEFAULT,
+  loginLink: {
+    color: colors.stone[800],
     fontSize: 14,
-    fontWeight: 'bold',
-    fontFamily: 'Quicksand',
+    fontWeight: '600',
+    fontFamily: 'Quicksand-SemiBold',
   },
 });
+
+export default SignUpScreen;

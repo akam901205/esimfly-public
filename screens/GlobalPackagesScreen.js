@@ -19,18 +19,10 @@ import { colors } from '../theme/colors'; //
 import { newApi } from '../api/api';
 import { getNetworks, formatLocationNetworkList } from '../utils/PackageFilters';
 
-const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
-
 const ICON_COLORS = {
-  header: colors.icon.header,    // For header icons
-  network: '#007AFF',           // For card icons (matching regional)
-  speed: '#2563eb',            // Keep blue for speed indicator
+  network: '#1F2937',
+  speed: '#FF6B00',
 };
-
-
-const packageColors = [
-  [colors.background.secondary, colors.background.secondary], // Using the same color for both gradient stops to match regional
-];
 
 const GlobalPackagesScreen = () => {
   const [packages, setPackages] = useState([]);
@@ -236,11 +228,11 @@ const fetchPackages = useCallback(async () => {
 const renderHeader = () => (
   <View style={styles.header}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
-      <Ionicons name="arrow-back" size={24} color={ICON_COLORS.header} />
+      <Ionicons name="arrow-back" size={24} color="#374151" />
     </TouchableOpacity>
     <Text style={styles.headerTitle}>{globalPackageName || 'Global Plans'}</Text>
     <View style={styles.headerIcon}>
-      <Ionicons name="globe-outline" size={24} color={ICON_COLORS.header} />
+      <Ionicons name="globe-outline" size={24} color="#374151" />
     </View>
   </View>
 );
@@ -260,8 +252,6 @@ const formatDuration = (duration) => {
   };
 
 const renderPackageItem = ({ item, index }) => {
-  const gradientColors = packageColors[index % packageColors.length];
-  
   const getCountryCount = (item) => {
     const pkgName = item.name?.toLowerCase() || '';
     
@@ -399,23 +389,22 @@ const handleNetworkPress = () => {
   return (
     <TouchableOpacity
       onPress={navigateToDetails}
-      activeOpacity={0.7}
+      activeOpacity={0.9}
     >
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.packageItem}
-      >
+      <View style={styles.packageItem}>
         <View style={styles.packageHeader}>
           <View style={styles.regionInfo}>
-            <Ionicons name="globe-outline" size={24} color={ICON_COLORS.network} />
+            <View style={styles.globeIconContainer}>
+              <Ionicons name="globe-outline" size={18} color="#FF6B00" />
+            </View>
             <Text style={styles.regionName}>Global</Text>
           </View>
           {item.speed && (
             <View style={[styles.speedContainer, { backgroundColor: `${ICON_COLORS.speed}15` }]}>
-              <Ionicons name="cellular" size={16} color={ICON_COLORS.speed} />
-              <Text style={[styles.speedText, { color: ICON_COLORS.speed }]}>{item.speed}</Text>
+              <Ionicons name="speedometer-outline" size={16} color={ICON_COLORS.speed} />
+              <Text style={[styles.speedText, { color: ICON_COLORS.speed }]}>
+                {item.speed.toUpperCase()}
+              </Text>
             </View>
           )}
         </View>
@@ -435,7 +424,7 @@ const handleNetworkPress = () => {
               style={styles.networkButton}
             >
               <View style={styles.networkContent}>
-                <Ionicons name="globe-outline" size={16} color={ICON_COLORS.network} />
+                <Ionicons name="cellular-outline" size={16} color={ICON_COLORS.network} />
                 <Text style={styles.networkButtonText}>
                   {getCountryCount(item)} Countries
                 </Text>
@@ -448,11 +437,16 @@ const handleNetworkPress = () => {
               onPress={navigateToDetails}
               style={styles.buyButton}
             >
-              <Text style={styles.buyButtonText}>BUY NOW</Text>
+              <View style={styles.buyButtonContent}>
+                <View style={styles.buyButtonIconContainer}>
+                  <Ionicons name="cart-outline" size={16} color="#FF6B00" />
+                </View>
+                <Text style={styles.buyButtonText}>BUY NOW</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -460,7 +454,11 @@ const handleNetworkPress = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
+        <LinearGradient
+          colors={['#F8F9FA', '#F3F4F6']}
+          style={styles.backgroundGradient}
+        />
+        <ActivityIndicator size="large" color="#FF6B00" />
       </SafeAreaView>
     );
   }
@@ -475,6 +473,10 @@ const handleNetworkPress = () => {
 
  return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#F8F9FA', '#F3F4F6']}
+        style={styles.backgroundGradient}
+      />
       {renderHeader()}
       <FlatList
         data={packages}
@@ -482,10 +484,13 @@ const handleNetworkPress = () => {
         keyExtractor={(item, index) => `${item.packageCode}-${index}`}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={() => (
-          <Text style={styles.noPackagesText}>
-            No packages available for {globalPackageName || 'selected plan'}.
-          </Text>
+          <View style={styles.emptyStateContainer}>
+            <Text style={styles.noPackagesText}>
+              No packages available for {globalPackageName || 'selected plan'}.
+            </Text>
+          </View>
         )}
+        ListFooterComponent={<View style={styles.listFooter} />}
       />
       {networkModalVisible && selectedPackage && (
         <NetworkModalGlobal
@@ -507,44 +512,59 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
- header: {
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.background.primary,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    borderBottomColor: '#E5E7EB',
   },
- headerIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.background.headerIcon,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border.header,
-    },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text.primary,
-    fontFamily: 'Quicksand',
+    fontFamily: 'Quicksand-Bold',
+    flex: 1,
+    textAlign: 'center',
   },
   listContainer: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 90 : 70,
+    paddingBottom: Platform.OS === 'ios' ? 80 : 60,
   },
   packageItem: {
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
-    padding: 16,
-    elevation: 3,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   packageHeader: {
     flexDirection: 'row',
@@ -560,21 +580,22 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 18,
     color: colors.text.primary,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   speedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#FF6B0010',
     borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   speedText: {
-    color: '#FF6B6B',
     marginLeft: 4,
-    fontSize: 14,
-    fontFamily: 'Quicksand',
+    fontSize: 12,
+    color: '#FF6B00',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   packageDetails: {
     flexDirection: 'row',
@@ -583,54 +604,81 @@ const styles = StyleSheet.create({
   },
   dataAmount: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   validityPeriod: {
     fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: 'Quicksand',
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginTop: 4,
+    fontWeight: '500',
   },
   priceContainer: {
     alignItems: 'flex-end',
+    minWidth: 120,
   },
   priceText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.text.primary,  // Updated to use theme's primary text color
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FF6B00',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginBottom: 8,
   },
   buyButton: {
-      borderRadius: 8,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      backgroundColor: '#2196f3',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minWidth: 100,
-      ...Platform.select({
-        ios: {
-          shadowColor: '#15803d',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        },
-        android: {
-          elevation: 3,
-        },
-      }),
-    },
-    buyButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.stone[50],
-      fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-      textAlign: 'center',
-      letterSpacing: 0.5,
-    },
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 90,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  buyButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  buyButtonIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: '#FF6B0010',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  globeIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#FF6B0010',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  buyButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
   networkStatsContainer: {
     marginTop: 8,
     flexDirection: 'row',
@@ -643,94 +691,67 @@ const styles = StyleSheet.create({
   statsText: {
     color: colors.text.secondary,
     fontSize: 12,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginLeft: 4,
   },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   errorText: {
-    color: '#FF6B6B',
+    color: colors.text.secondary,
     fontSize: 16,
     textAlign: 'center',
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginBottom: 8,
   },
   noPackagesText: {
     color: colors.text.secondary,
     fontSize: 16,
     textAlign: 'center',
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginTop: 20,
   },
   listFooter: {
     height: 20,
   },
-  buttonContainer: {
+  networkButton: {
     marginTop: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-    elevation: 3,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
- networkButton: {
-      marginTop: 8,
-      borderRadius: 8,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      backgroundColor: colors.stone[100],
-      borderWidth: 1,
-      borderColor: colors.stone[200],
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      ...Platform.select({
-        ios: {
-          shadowColor: colors.stone[900],
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 3,
-        },
-        android: {
-          elevation: 1,
-        },
-      }),
-    },
-    networkContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    networkButtonText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.stone[600],
-      fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-      marginLeft: 4,
-    },
-  button: {
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    elevation: 3,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  buttonContent: {
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+  networkButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    marginLeft: 6,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    marginLeft: 4,
+  },
+  networkContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Dimensions,
   SafeAreaView,
- Platform
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +18,9 @@ import { AuthContext } from '../api/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import esimApi from '../api/esimApi';
 import { notificationManager } from '../components/NotificationManager';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { colors } from '../theme/colors';
 
 const { height } = Dimensions.get('window');
@@ -192,13 +196,21 @@ const EditProfileScreen: React.FC = () => {
 
  return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <LinearGradient
+        colors={[colors.background.primary, colors.background.secondary]}
+        style={styles.gradient}
+      />
       <View style={[styles.content, { height: height - insets.top }]}>
         <View style={styles.header}>
 		  <TouchableOpacity 
-			style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
-			onPress={() => navigation.goBack()}
+			style={styles.headerIcon}
+			onPress={() => {
+			  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+			  navigation.goBack();
+			}}
 		  >
-			<Ionicons name="arrow-back" size={24} color={colors.icon.header} />
+			<Ionicons name="arrow-back" size={24} color="#333" />
 		  </TouchableOpacity>
 		  <Text style={styles.headerTitle}>Edit Profile</Text>
 		  <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
@@ -215,11 +227,11 @@ const EditProfileScreen: React.FC = () => {
             <Ionicons
 		  name="lock-closed-outline"
 		  size={20}
-		  color={activeTab === 'password' ? colors.primary.DEFAULT : colors.text.secondary}
+		  color={colors.text.secondary}
 		/>
             <Text style={[
               styles.tabText,
-              activeTab === 'password' && styles.activeTabText
+              false
             ]}>
               Change Password
             </Text>
@@ -235,11 +247,11 @@ const EditProfileScreen: React.FC = () => {
             <Ionicons
 			  name="mail-outline"
 			  size={20}
-			  color={activeTab === 'email' ? colors.primary.DEFAULT : colors.text.secondary}
+			  color={colors.text.secondary}
 			/>
             <Text style={[
               styles.tabText,
-              activeTab === 'email' && styles.activeTabText
+              false
             ]}>
               Change Email
             </Text>
@@ -274,12 +286,15 @@ const EditProfileScreen: React.FC = () => {
                     />
                     <TouchableOpacity
                       style={styles.eyeIcon}
-                      onPress={() => togglePasswordVisibility('current')}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        togglePasswordVisibility('current');
+                      }}
                     >
                       <Ionicons
                         name={showPasswords.current ? "eye-off" : "eye"}
-                        size={24}
-                        color="#888"
+                        size={22}
+                        color="#6B7280"
                       />
                     </TouchableOpacity>
                   </View>
@@ -298,12 +313,15 @@ const EditProfileScreen: React.FC = () => {
                     />
                     <TouchableOpacity
                       style={styles.eyeIcon}
-                      onPress={() => togglePasswordVisibility('new')}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        togglePasswordVisibility('new');
+                      }}
                     >
                       <Ionicons
                         name={showPasswords.new ? "eye-off" : "eye"}
-                        size={24}
-                        color="#888"
+                        size={22}
+                        color="#6B7280"
                       />
                     </TouchableOpacity>
                   </View>
@@ -322,12 +340,15 @@ const EditProfileScreen: React.FC = () => {
                     />
                     <TouchableOpacity
                       style={styles.eyeIcon}
-                      onPress={() => togglePasswordVisibility('confirm')}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        togglePasswordVisibility('confirm');
+                      }}
                     >
                       <Ionicons
                         name={showPasswords.confirm ? "eye-off" : "eye"}
-                        size={24}
-                        color="#888"
+                        size={22}
+                        color="#6B7280"
                       />
                     </TouchableOpacity>
                   </View>
@@ -414,6 +435,13 @@ const EditProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
@@ -434,17 +462,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border.header,
+    borderColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontFamily: 'Quicksand-Bold',
     flex: 1,
     textAlign: 'center',
   },
@@ -465,16 +493,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   activeTab: {
-    borderBottomColor: colors.primary.DEFAULT,
+    borderBottomColor: '#333',
   },
   tabText: {
     color: colors.text.secondary,
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-  activeTabText: {
-    color: colors.primary.DEFAULT,
+    fontFamily: 'Quicksand-SemiBold',
   },
   card: {
     backgroundColor: colors.background.secondary,
@@ -526,8 +551,8 @@ const styles = StyleSheet.create({
     top: 15,
   },
   button: {
-    backgroundColor: colors.primary.DEFAULT,
-    borderRadius: 8,
+    backgroundColor: '#333',
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 10,
@@ -536,10 +561,10 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: colors.stone[50],
+    color: '#ffffff',
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: '600',
+    fontFamily: 'Quicksand-SemiBold',
   },
 });
 

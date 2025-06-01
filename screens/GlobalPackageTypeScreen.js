@@ -12,10 +12,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import LottieView from 'lottie-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
 
-const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
 
 const GlobalPackageTypeScreen = () => {
   const [hasUnlimited, setHasUnlimited] = useState(false);
@@ -72,7 +72,7 @@ const renderHeader = () => (
       <Ionicons 
         name="arrow-back" 
         size={24} 
-        color={colors.icon.header} 
+        color="#374151" 
       />
     </TouchableOpacity>
     <Text style={styles.headerTitle}>{globalPackageName}</Text>
@@ -80,7 +80,7 @@ const renderHeader = () => (
       <Ionicons 
         name="globe-outline" 
         size={24} 
-        color={colors.icon.header} 
+        color="#374151" 
       />
     </View>
   </View>
@@ -159,9 +159,13 @@ const renderHeader = () => (
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#F8F9FA', '#F3F4F6']}
+          style={styles.backgroundGradient}
+        />
         {renderHeader()}
         <View style={styles.content}>
-          <ActivityIndicator size="large" color="#FF6B6B" />
+          <ActivityIndicator size="large" color="#FF6B00" />
         </View>
       </SafeAreaView>
     );
@@ -170,6 +174,10 @@ const renderHeader = () => (
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#F8F9FA', '#F3F4F6']}
+          style={styles.backgroundGradient}
+        />
         {renderHeader()}
         <View style={styles.content}>
           <LottieView
@@ -191,75 +199,117 @@ const renderHeader = () => (
   }
 
   return (
-  <SafeAreaView style={styles.container}>
-    {/* We should place comments outside JSX or wrap them in a Text component if needed */}
-    {renderHeader()}
-    <View style={styles.content}>
-      <LottieView
-        source={require('../assets/Animation - datapacke.json')}
-        autoPlay
-        loop
-        style={styles.lottieAnimation}
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#F8F9FA', '#F3F4F6']}
+        style={styles.backgroundGradient}
       />
-      <TouchableOpacity style={styles.button} onPress={() => navigateToPackages('regular')}>
-		  <Text style={styles.buttonText}>Regular Data</Text>
-		</TouchableOpacity>
-		{hasUnlimited && (
-		  <TouchableOpacity 
-			style={[styles.button, styles.unlimitedButton]} 
-			onPress={() => navigateToPackages('unlimited')}
-		  >
-			<Text style={styles.buttonText}>Unlimited Data</Text>
-		  </TouchableOpacity>
-		)}
-		{hasVoiceSMS && (
-		  <TouchableOpacity 
-			style={[styles.button, styles.unlimitedButton]} 
-			onPress={() => navigateToPackages('voice_sms')}
-		  >
-			<Text style={styles.buttonText}>Data + Voice + SMS</Text>
-		  </TouchableOpacity>
-		)}
-    </View>
-  </SafeAreaView>
-);
+      {renderHeader()}
+      <View style={styles.content}>
+        <LottieView
+          source={require('../assets/Animation - datapacke.json')}
+          autoPlay
+          loop
+          style={styles.lottieAnimation}
+        />
+        
+        <TouchableOpacity
+          style={styles.buttonCard}
+          onPress={() => navigateToPackages('regular')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.buttonContent}>
+            <View style={styles.buttonIconContainer}>
+              <Ionicons name="cellular" size={24} color="#FF6B00" />
+            </View>
+            <View style={styles.buttonTextContainer}>
+              <Text style={styles.buttonTitle}>Regular Data</Text>
+              <Text style={styles.buttonSubtitle}>Choose from available packages</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
+        
+        {hasUnlimited && (
+          <TouchableOpacity
+            style={[styles.buttonCard, { marginTop: 16 }]}
+            onPress={() => navigateToPackages('unlimited')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.buttonContent}>
+              <View style={styles.buttonIconContainer}>
+                <Ionicons name="infinite" size={24} color="#FF6B00" />
+              </View>
+              <View style={styles.buttonTextContainer}>
+                <Text style={styles.buttonTitle}>Unlimited Data</Text>
+                <Text style={styles.buttonSubtitle}>No limits, maximum freedom</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        )}
+        
+        {hasVoiceSMS && (
+          <TouchableOpacity
+            style={[styles.buttonCard, { marginTop: 16 }]}
+            onPress={() => navigateToPackages('voice_sms')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.buttonContent}>
+              <View style={styles.buttonIconContainer}>
+                <Ionicons name="call" size={24} color="#FF6B00" />
+              </View>
+              <View style={styles.buttonTextContainer}>
+                <Text style={styles.buttonTitle}>Data + Voice + SMS</Text>
+                <Text style={styles.buttonSubtitle}>Complete connectivity package</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
+    </SafeAreaView>
+  );
 };
 
 
 const styles = StyleSheet.create({
-container: {
+  container: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border.header,
+    borderColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    maxWidth: '70%', // Prevent long titles from overlapping
+    fontFamily: 'Quicksand-Bold',
+    flex: 1,
     textAlign: 'center',
-  },
-  voiceSmsButton: {
-    backgroundColor: '#FF8C42',
   },
   content: {
     flex: 1,
@@ -270,59 +320,78 @@ container: {
   lottieAnimation: {
     width: 200,
     height: 200,
-    marginBottom: 20,
+    marginBottom: 40,
   },
-  button: {
-  backgroundColor: colors.slate[600],
-  paddingVertical: 15,
-  paddingHorizontal: 30,
-  borderRadius: 25,
-  marginVertical: 10,
-  width: '80%',
-  alignItems: 'center',
-  shadowColor: colors.stone[900],
-  shadowOffset: {
-    width: 0,
-    height: 2,
-  },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-  elevation: 5,
-},
-unlimitedButton: {
-  backgroundColor: colors.slate[700],
-},
-buttonText: {
-  color: colors.stone[50],
-  fontSize: 18,
-  fontWeight: 'bold',
-  fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-},
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-    fontFamily: 'Quicksand',
-  },
-  retryButton: {
-    backgroundColor: '#FF6B6B',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+  buttonCard: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    gap: 16,
+  },
+  buttonIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FF6B0010',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonTextContainer: {
+    flex: 1,
+  },
+  buttonTitle: {
+    color: '#1F2937',
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  buttonSubtitle: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  errorText: {
+    color: colors.text.secondary,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  retryButton: {
+    backgroundColor: '#FF6B00',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 24,
+    shadowColor: '#FF6B00',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: 'Quicksand',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

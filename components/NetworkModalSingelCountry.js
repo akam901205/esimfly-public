@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,50 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
+  Platform,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
-const ICON_COLORS = {
-  cellular: '#32CD32',
-  speed: '#32CD32',
-  closeButton: '#FF3B30',
-};
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const NetworkModal = ({ visible, onClose, networks = [] }) => {
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Reset position to 0 (full height) before showing
+      slideAnim.setValue(0);
+      scaleAnim.setValue(1);
+      
+      // Only animate fade in
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: screenHeight,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
   const groupedNetworks = networks.reduce((acc, network) => {
     if (network.type === 'speed') {
       acc.speed = network.value;
@@ -27,86 +60,203 @@ const NetworkModal = ({ visible, onClose, networks = [] }) => {
     return acc;
   }, {});
 
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: screenHeight,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => onClose());
+  };
+
   return (
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <View style={[styles.iconContainer, { backgroundColor: `${ICON_COLORS.cellular}15` }]}>
-              <Ionicons name="cellular-outline" size={24} color={ICON_COLORS.cellular} />
-            </View>
-            <Text style={styles.modalTitle}>Supported Networks</Text>
-            <TouchableOpacity 
-              onPress={onClose} 
-              style={[styles.closeButton, { backgroundColor: `${ICON_COLORS.closeButton}15` }]}
-            >
-              <Ionicons name="close" size={24} color={ICON_COLORS.closeButton} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.networkList}>
-            <View style={styles.coverageCard}>
-              <View style={styles.coverageHeader}>
-                <View style={[styles.coverageIcon, { backgroundColor: `${ICON_COLORS.cellular}15` }]}>
-                  <Ionicons name="cellular-outline" size={24} color={ICON_COLORS.cellular} />
-                </View>
-                <Text style={styles.coverageTitle}>Network Coverage</Text>
+      <Animated.View 
+        style={[
+          styles.modalOverlay,
+          {
+            opacity: fadeAnim,
+          }
+        ]}
+      >
+        <TouchableOpacity 
+          style={styles.backdrop} 
+          activeOpacity={1} 
+          onPress={handleClose}
+        />
+        
+        <Animated.View 
+          style={[
+            styles.modalContainer,
+            {
+              transform: [
+                { translateY: slideAnim }
+              ],
+            }
+          ]}
+        >
+          <LinearGradient
+            colors={['#FFFFFF', '#FAFAFA']}
+            style={styles.modalContent}
+          >
+            {/* Drag Indicator */}
+            <View style={styles.dragIndicator} />
+            
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <LinearGradient
+                colors={['#FF6B00', '#FF8533']}
+                style={styles.headerIconContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialCommunityIcons name="access-point-network" size={28} color="#FFFFFF" />
+              </LinearGradient>
+              
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.modalTitle}>Network Coverage</Text>
+                <Text style={styles.modalSubtitle}>
+                  {groupedNetworks.operators?.length || 0} operators available
+                </Text>
               </View>
+              
+              <TouchableOpacity 
+                onPress={handleClose} 
+                style={styles.closeButton}
+                activeOpacity={0.7}
+              >
+                <BlurView intensity={100} tint="light" style={styles.closeButtonBlur}>
+                  <Ionicons name="close" size={22} color="#374151" />
+                </BlurView>
+              </TouchableOpacity>
+            </View>
 
-              <View style={styles.statsContainer}>
-                <View style={styles.statItem}>
-                  <Ionicons name="cellular-outline" size={20} color={ICON_COLORS.cellular} />
-                  <Text style={[styles.statValue, { color: ICON_COLORS.cellular }]}>
+            {/* Quick Stats */}
+            <View style={styles.quickStats}>
+              <LinearGradient
+                colors={['#FFF7ED', '#FEF3C7']}
+                style={styles.statCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.statIcon}>
+                  <Ionicons name="cellular" size={24} color="#F59E0B" />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={styles.statNumber}>
                     {groupedNetworks.operators?.length || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Operators</Text>
+                  <Text style={styles.statLabel}>Networks</Text>
                 </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Ionicons name="speedometer-outline" size={20} color={ICON_COLORS.speed} />
-                  <Text style={[styles.statValue, { color: ICON_COLORS.speed }]}>
-                    {groupedNetworks.speed || '4G/LTE'}
-                  </Text>
-                  <Text style={styles.statLabel}>Network Type</Text>
-                </View>
-              </View>
+              </LinearGradient>
 
-              <Text style={styles.coverageDescription}>
-                This package provides coverage with {groupedNetworks.operators?.length || 0} operators 
-                with {groupedNetworks.speed || '4G/LTE'} connectivity where available.
-              </Text>
+              <LinearGradient
+                colors={['#EFF6FF', '#DBEAFE']}
+                style={styles.statCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.statIcon}>
+                  <Ionicons name="speedometer" size={24} color="#3B82F6" />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={styles.statNumber}>
+                    {groupedNetworks.speed || '5G/LTE'}
+                  </Text>
+                  <Text style={styles.statLabel}>Speed</Text>
+                </View>
+              </LinearGradient>
             </View>
 
-            {groupedNetworks.operators?.map((network, index) => (
-              <View key={index} style={styles.networkItem}>
-                <Ionicons 
-                  name="cellular-outline" 
-                  size={20} 
-                  color={ICON_COLORS.cellular}
-                  style={styles.networkIcon} 
-                />
-                <View style={styles.networkContent}>
-                  <Text style={styles.networkName}>{network.value}</Text>
-                  {network.speeds && (
-                    <Text style={[styles.networkSpeed, { color: ICON_COLORS.speed }]}>
-                      {Array.isArray(network.speeds) ? network.speeds.join(', ') : network.speeds}
-                    </Text>
-                  )}
+            {/* Network List */}
+            <ScrollView 
+              style={styles.networkList}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.networkListContent}
+            >
+              {groupedNetworks.operators?.length > 0 ? (
+                <>
+                  <Text style={styles.sectionTitle}>Available Networks</Text>
+                  {groupedNetworks.operators.map((network, index) => (
+                    <View key={index} style={styles.networkItem}>
+                      <LinearGradient
+                        colors={['#FFFFFF', '#F9FAFB']}
+                        style={styles.networkCard}
+                      >
+                        <View style={styles.networkIconContainer}>
+                          <LinearGradient
+                            colors={['#FF6B00', '#FF8533']}
+                            style={styles.networkIconGradient}
+                          >
+                            <Ionicons name="wifi" size={20} color="#FFFFFF" />
+                          </LinearGradient>
+                        </View>
+                        
+                        <View style={styles.networkInfo}>
+                          <Text style={styles.networkName}>{network.value}</Text>
+                          {network.speeds && (
+                            <View style={styles.speedBadges}>
+                              {(Array.isArray(network.speeds) ? network.speeds : [network.speeds]).map((speed, idx) => (
+                                <View key={idx} style={styles.speedBadge}>
+                                  <Text style={styles.speedBadgeText}>{speed}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                        
+                        <View style={styles.networkStatus}>
+                          <View style={styles.statusDot} />
+                          <Text style={styles.statusText}>Active</Text>
+                        </View>
+                      </LinearGradient>
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIconContainer}>
+                    <Ionicons name="cellular-outline" size={48} color="#9CA3AF" />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Network Details</Text>
+                  <Text style={styles.emptyDescription}>
+                    Network information will be available after purchase
+                  </Text>
                 </View>
-              </View>
-            ))}
-          </ScrollView>
+              )}
+            </ScrollView>
 
-          <TouchableOpacity style={styles.gotItButton} onPress={onClose}>
-            <Text style={styles.gotItText}>Got it</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            {/* Bottom Action */}
+            <View style={styles.bottomContainer}>
+              <TouchableOpacity 
+                style={styles.gotItButton}
+                onPress={handleClose}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[colors.stone[800], colors.stone[700]]}
+                  style={styles.gotItButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.gotItText}>Got it</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 };
@@ -114,153 +264,291 @@ const NetworkModal = ({ visible, onClose, networks = [] }) => {
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContainer: {
+    width: '100%',
+  },
   modalContent: {
-    backgroundColor: colors.background.primary,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    minHeight: '50%',
-    padding: 20,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    height: '100%',
+    paddingTop: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  dragIndicator: {
+    width: 48,
+    height: 5,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 16,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingBottom: 20,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    shadowColor: '#FF6B00',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginLeft: 16,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    flex: 1,
-    fontFamily: 'Quicksand',
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    letterSpacing: -0.5,
+  },
+  modalSubtitle: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    marginTop: 2,
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  closeButtonBlur: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  networkList: {
-    marginBottom: 20,
+  quickStats: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    gap: 12,
   },
-  coverageCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  coverageHeader: {
+  statCard: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  coverageIcon: {
-    width: 40,
-    height: 40,
+    padding: 16,
     borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  statIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  coverageTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
+  statContent: {
+    flex: 1,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.border.light,
-    marginBottom: 16,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'Quicksand',
-    marginVertical: 8,
+  statNumber: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
   statLabel: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: 'Quicksand',
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    marginTop: 2,
   },
-  statDivider: {
-    width: 1,
-    height: '80%',
-    backgroundColor: colors.border.light,
+  networkList: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
-  coverageDescription: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: 'Quicksand',
-    lineHeight: 20,
+  networkListContent: {
+    paddingBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#374151',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    marginBottom: 16,
+    marginLeft: 4,
   },
   networkItem: {
+    marginBottom: 12,
+  },
+  networkCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.border.light,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  networkIcon: {
-    marginRight: 12,
+  networkIconContainer: {
+    marginRight: 14,
   },
-  networkContent: {
+  networkIconGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  networkInfo: {
     flex: 1,
   },
   networkName: {
     fontSize: 16,
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    letterSpacing: -0.2,
   },
-  networkSpeed: {
-    fontSize: 14,
-    fontFamily: 'Quicksand',
-    marginTop: 4,
+  speedBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+    gap: 6,
   },
-  noNetworkText: {
-    fontSize: 16,
-    color: colors.text.secondary,
+  speedBadge: {
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  speedBadgeText: {
+    fontSize: 12,
+    color: '#C2410C',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  networkStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 13,
+    color: '#059669',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#374151',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    marginBottom: 8,
+  },
+  emptyDescription: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
     textAlign: 'center',
-    fontFamily: 'Quicksand',
+    paddingHorizontal: 40,
+    lineHeight: 22,
+  },
+  bottomContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
   gotItButton: {
-    backgroundColor: colors.stone[800],
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: colors.stone[800],
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  gotItButtonGradient: {
+    paddingVertical: 18,
     alignItems: 'center',
-    marginTop: 'auto',
   },
   gotItText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.background.primary,
-    fontFamily: 'Quicksand',
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    letterSpacing: 0.3,
   },
 });
 

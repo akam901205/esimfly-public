@@ -1,291 +1,402 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  TouchableOpacity, 
-  Image, 
-  Switch,
-  Dimensions,
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
   ScrollView,
-  Platform
+  SafeAreaView,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
+  Animated,
+  Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { AuthContext } from '../api/AuthContext';
-import { logout as apiLogout } from '../api/authApi';
-import { useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import esimApi from '../api/esimApi';
+import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
-import type { BalanceData } from '../api/esimApi';
-import NotificationService from '../services/notificationService';
-import { notificationManager } from '../components/NotificationManager';
+import { AuthContext } from '../api/AuthContext';
+import * as esimApi from '../api/esimApi';
+import { logout } from '../api/authApi';
 import { colors } from '../theme/colors';
+import notificationService from '../services/notificationService';
 
-const TAB_BAR_HEIGHT = 84;
-const WINDOW_HEIGHT = Dimensions.get('window').height;
+const { width } = Dimensions.get('window');
 
-const ProfileScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const auth = useContext(AuthContext);
-  const insets = useSafeAreaInsets();
-  const [balance, setBalance] = useState<BalanceData | null>(null);
+interface BalanceResponse {
+  success: boolean;
+  data?: {
+    balance: number;
+    currency: string;
+  };
+}
+
+interface MenuItemProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle?: string;
+  onPress: () => void;
+  showArrow?: boolean;
+  color?: string;
+  isLast?: boolean;
+}
+
+const ProfileScreen: React.FC = ({ navigation }: any) => {
+  const auth = React.useContext(AuthContext);
+  const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [expoPushToken, setExpoPushToken] = useState<string>('');
+  const [expoPushToken, setExpoPushToken] = useState('');
 
-  const getFormattedBalance = () => {
-    if (isLoadingBalance) return 'Loading...';
-    if (!balance?.balance) return '$0.00';
-    return `$${Number(balance.balance).toFixed(2)}`;
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const headerScale = useRef(new Animated.Value(1)).current;
+  const cardAnimations = useRef([...Array(6)].map(() => new Animated.Value(1))).current;
+
+  useEffect(() => {
+    checkNotificationPermissions();
+  }, []);
+
+  const checkNotificationPermissions = async () => {
+    const isEnabled = await notificationService.isNotificationsEnabled();
+    setNotificationsEnabled(isEnabled);
+    if (isEnabled) {
+      const token = await notificationService.getCurrentToken();
+      if (token) setExpoPushToken(token);
+    }
   };
 
-  const fetchUserBalance = async () => {
+  const fetchBalance = async () => {
     try {
-      const response = await esimApi.fetchBalance();
-      if (response.success && response.data) {
-        setBalance(response.data);
+      const balanceData = await esimApi.fetchBalance();
+      console.log('Balance data:', balanceData);
+      if (balanceData.success && balanceData.data) {
+        setBalance(balanceData);
       } else {
-        console.warn('Failed to fetch balance:', response.message);
+        console.warn('Invalid balance data:', balanceData);
+        setBalance(null);
       }
     } catch (error) {
       console.error('Error fetching balance:', error);
+      setBalance(null);
     } finally {
       setIsLoadingBalance(false);
     }
   };
 
-  const checkNotificationStatus = async () => {
-    try {
-      const isEnabled = await NotificationService.isNotificationsEnabled();
-      setNotificationsEnabled(isEnabled);
-      if (isEnabled) {
-        const token = await NotificationService.getCurrentToken();
-        if (token) setExpoPushToken(token);
-      }
-    } catch (error) {
-      console.error('Error checking notification status:', error);
-    }
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchBalance();
+    }, [])
+  );
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await fetchBalance();
+    setIsRefreshing(false);
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              await logout();
+              await auth.signOut();
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   const toggleNotifications = async () => {
-    try {
-      if (!notificationsEnabled) {
-        if (Platform.OS === 'ios') {
-          const { status } = await Notifications.requestPermissionsAsync({
-            ios: {
-              allowAlert: true,
-              allowBadge: true,
-              allowSound: true,
-              allowAnnouncements: true,
-            },
-          });
-
-          if (status !== 'granted') {
-            notificationManager.warning(
-              'Permission Required',
-              'Please enable notifications in your device settings to receive updates'
-            );
-            return;
-          }
-        }
-
-        const token = await NotificationService.registerForPushNotifications(true);
-        if (token) {
-          setExpoPushToken(token);
-          setNotificationsEnabled(true);
-          await AsyncStorage.setItem('notificationPermissionStatus', 'granted');
-          notificationManager.updatePermissionStatus(true);
-          
-          notificationManager.success(
-            'Notifications Enabled',
-            'You will now receive notifications from our app'
-          );
-        }
-      } else {
-        const success = await NotificationService.deregisterPushNotifications();
-        if (success) {
-          setExpoPushToken('');
-          setNotificationsEnabled(false);
-          await AsyncStorage.setItem('notificationPermissionStatus', 'denied');
-          notificationManager.updatePermissionStatus(false);
-          
-          notificationManager.info(
-            'Notifications Disabled',
-            'You will no longer receive notifications from our app'
-          );
-        }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!notificationsEnabled) {
+      const token = await notificationService.registerForPushNotifications();
+      if (token) {
+        setExpoPushToken(token);
+        setNotificationsEnabled(true);
       }
-    } catch (error) {
-      console.error('Error toggling notifications:', error);
-      notificationManager.error('Error', 'Failed to update notification settings');
+    } else {
+      await notificationService.deregisterPushNotifications();
+      setNotificationsEnabled(false);
+      setExpoPushToken('');
     }
   };
 
-  useEffect(() => {
-    const initializeScreen = async () => {
-      await NotificationService.initialize();
-      await checkNotificationStatus();
-      await fetchUserBalance();
+  const MenuItem: React.FC<MenuItemProps> = ({ 
+    icon, 
+    title, 
+    subtitle, 
+    onPress, 
+    showArrow = true, 
+    color,
+    isLast = false 
+  }) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }).start();
     };
 
-    initializeScreen();
-
-    const foregroundSubscription = Notifications.addNotificationReceivedListener(
-      notification => {
-        if (global.isAppForegrounded && Platform.OS === 'ios') {
-          const { title, body, data } = notification.request.content;
-          notificationManager.show(
-            title || 'New Notification',
-            body || '',
-            data?.type || 'default',
-            data?.duration || 5000
-          );
-        }
-      }
-    );
-
-    const backgroundSubscription = Notifications.addNotificationResponseReceivedListener(
-      response => {
-        console.log('Notification tapped:', response);
-        const { data } = response.notification.request.content;
-        if (data?.screen) {
-          navigation.navigate(data.screen);
-        }
-      }
-    );
-
-    const focusSubscription = navigation.addListener('focus', () => {
-      fetchUserBalance();
-      checkNotificationStatus();
-    });
-
-    return () => {
-      if (foregroundSubscription) foregroundSubscription.remove();
-      if (backgroundSubscription) backgroundSubscription.remove();
-      focusSubscription();
+    const handlePressOut = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
     };
-  }, [navigation]);
 
-  if (!auth) {
-    console.error('AuthContext is not available');
-    return null;
-  }
+    return (
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <TouchableOpacity
+          style={[styles.menuItem, isLast && styles.menuItemLast]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onPress();
+          }}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.9}
+        >
+          <View style={styles.menuItemLeft}>
+            <View style={styles.menuIconContainer}>
+              <Ionicons name={icon} size={24} color={color || '#333'} />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuItemTitle}>{title}</Text>
+              {subtitle && <Text style={styles.menuItemSubtitle}>{subtitle}</Text>}
+            </View>
+          </View>
+          {showArrow && (
+            <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
-  const { signOut, userEmail } = auth;
+  const formatBalance = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
 
-  const handleLogout = async () => {
-    try {
-      const response = await apiLogout();
-      if (response.status === 200 || response.status === 302) {
-        await signOut();
-        notificationManager.info('Logged Out', 'You have been successfully logged out');
-      } else {
-        console.error('Unexpected logout response:', response);
-        notificationManager.error('Logout Failed', 'An unexpected error occurred. Please try again.');
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-      notificationManager.error('Logout Error', 'An unexpected error occurred. Please try again.');
-    }
+  const getInitials = (email: string) => {
+    return email ? email.charAt(0).toUpperCase() : 'U';
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={[styles.content, { height: WINDOW_HEIGHT - insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
-        </View>
+      <StatusBar barStyle="dark-content" />
+      <LinearGradient
+        colors={[colors.background.primary, colors.background.secondary]}
+        style={styles.gradient}
+      />
+      
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary.DEFAULT}
+          />
+        }
+      >
+        <View style={styles.content}>
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <LinearGradient
+              colors={['#f8f9fa', '#ffffff']}
+              style={styles.headerGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            >
+              <View style={styles.profileInfo}>
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{getInitials(auth.userEmail || '')}</Text>
+                  </View>
+                  <View style={styles.onlineDot} />
+                </View>
+                
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>{auth.userEmail?.split('@')[0] || 'User'}</Text>
+                  <Text style={styles.userEmail}>{auth.userEmail}</Text>
+                </View>
+              </View>
 
-        <ScrollView 
-          style={styles.scrollContent}
-          contentContainerStyle={[
-            styles.scrollContentContainer,
-            { paddingBottom: TAB_BAR_HEIGHT + insets.bottom }
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.profileInfo}>
-            <Image
-              source={require('../assets/images/sim-card.png')}
-              style={[styles.avatar, { resizeMode: 'contain' }]}
-            />
-            <Text style={styles.email}>{userEmail || 'johndoe@example.com'}</Text>
-            <View style={styles.balanceContainer}>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
-              <Text style={styles.balanceAmount}>{getFormattedBalance()}</Text>
+              {/* Balance Card */}
+              <BlurView intensity={20} style={styles.balanceCard}>
+                <View style={styles.balanceContent}>
+                  <Text style={styles.balanceLabel}>Available Balance</Text>
+                  
+                  {isLoadingBalance ? (
+                    <View style={styles.balanceLoadingContainer}>
+                      <ActivityIndicator size="small" color="#333" />
+                    </View>
+                  ) : (
+                    <Text style={styles.balanceAmount}>
+                      {balance?.data ? formatBalance(balance.data.balance, balance.data.currency) : '$0.00'}
+                    </Text>
+                  )}
+                </View>
+              </BlurView>
+            </LinearGradient>
+          </View>
+
+
+          {/* Menu Sections */}
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <View style={styles.menuCard}>
+              <MenuItem
+                icon="person-outline"
+                title="Edit Profile"
+                subtitle="Update your personal information"
+                onPress={() => navigation.navigate('EditProfile')}
+                color={colors.primary.DEFAULT}
+              />
+              <MenuItem
+                icon="receipt-outline"
+                title="Order History"
+                subtitle="View your past purchases"
+                onPress={() => navigation.navigate('OrderHistory')}
+                color="#10b981"
+              />
+              <MenuItem
+                icon="card-outline"
+                title="Payment Methods"
+                subtitle="Manage your payment options"
+                onPress={() => navigation.navigate('PaymentMethods')}
+                color="#f59e0b"
+              />
+              <MenuItem
+                icon="gift-outline"
+                title="Redeem Gift Card"
+                subtitle="Add balance using gift card code"
+                onPress={() => navigation.navigate('Deposit')}
+                color="#ec4899"
+                isLast
+              />
             </View>
           </View>
-          
-          <View style={styles.options}>
-  <TouchableOpacity 
-    style={styles.option}
-    onPress={() => navigation.navigate('Deposit')}
-  >
-    <Ionicons name="wallet-outline" size={24} color={colors.icon.header} />
-    <Text style={styles.optionText}>Add Balance</Text>
-    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
-  </TouchableOpacity>
 
-  <TouchableOpacity 
-    style={styles.option}
-    onPress={() => navigation.navigate('EditProfile')}
-  >
-    <Ionicons name="person-outline" size={24} color={colors.icon.header} />
-    <Text style={styles.optionText}>Edit Profile</Text>
-    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
-  </TouchableOpacity>
-
-  <TouchableOpacity 
-    style={styles.option}
-    onPress={() => navigation.navigate('OrderHistory')}
-  >
-    <Ionicons name="receipt-outline" size={24} color={colors.icon.header} />
-    <Text style={styles.optionText}>Order History</Text>
-    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
-  </TouchableOpacity>
-  
-  <TouchableOpacity style={styles.option}>
-    <Ionicons name="notifications-outline" size={24} color={colors.icon.header} />
-    <Text style={styles.optionText}>Notifications</Text>
-    <Switch
-      value={notificationsEnabled}
-      onValueChange={toggleNotifications}
-      trackColor={{ false: colors.background.light, true: '#4CAF50' }}
-      thumbColor={notificationsEnabled ? colors.stone[50] : colors.stone[200]}
-      ios_backgroundColor={colors.background.light}
-    />
-  </TouchableOpacity>
-
-  <TouchableOpacity 
-    style={styles.option}
-    onPress={() => navigation.navigate('Privacy')}
-  >
-    <Ionicons name="shield-outline" size={24} color={colors.icon.header} />
-    <Text style={styles.optionText}>Privacy</Text>
-    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
-  </TouchableOpacity>
-
-  <TouchableOpacity 
-    style={styles.option}
-    onPress={() => navigation.navigate('Terms')}
-  >
-    <Ionicons name="document-text-outline" size={24} color={colors.icon.header} />
-    <Text style={styles.optionText}>Terms of Service</Text>
-    <Ionicons name="chevron-forward" size={24} color={colors.text.secondary} />
-  </TouchableOpacity>
-</View>
-
-          <View style={styles.logoutButtonContainer}>
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Text style={styles.logoutText}>Log Out</Text>
-            </TouchableOpacity>
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>Preferences</Text>
+            <View style={styles.menuCard}>
+              <View style={styles.menuItem}>
+                <View style={styles.menuItemLeft}>
+                  <View style={styles.menuIconContainer}>
+                    <Ionicons name="notifications-outline" size={24} color="#8b5cf6" />
+                  </View>
+                  <View style={styles.menuTextContainer}>
+                    <Text style={styles.menuItemTitle}>Push Notifications</Text>
+                    <Text style={styles.menuItemSubtitle}>Get updates about your eSIMs</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={toggleNotifications}
+                  style={[
+                    styles.toggle,
+                    notificationsEnabled && styles.toggleActive,
+                  ]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.toggleDot,
+                      notificationsEnabled && styles.toggleDotActive,
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-        </ScrollView>
-      </View>
+
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>Support & Legal</Text>
+            <View style={styles.menuCard}>
+              <MenuItem
+                icon="help-circle-outline"
+                title="Help Center"
+                subtitle="Get help and support"
+                onPress={() => navigation.navigate('Support')}
+                color="#06b6d4"
+              />
+              <MenuItem
+                icon="shield-checkmark-outline"
+                title="Privacy Policy"
+                onPress={() => navigation.navigate('Privacy')}
+                color="#10b981"
+              />
+              <MenuItem
+                icon="document-text-outline"
+                title="Terms of Service"
+                onPress={() => navigation.navigate('Terms')}
+                color="#6366f1"
+                isLast
+              />
+            </View>
+          </View>
+
+          {/* Danger Zone */}
+          <View style={styles.menuSection}>
+            <Text style={[styles.sectionTitle, { color: '#ef4444' }]}>Danger Zone</Text>
+            <View style={styles.menuCard}>
+              <MenuItem
+                icon="trash-outline"
+                title="Delete Account"
+                subtitle="Permanently delete your account"
+                onPress={() => navigation.navigate('DeleteAccount')}
+                color="#ef4444"
+                isLast
+              />
+            </View>
+          </View>
+
+          {/* Sign Out Button */}
+          <TouchableOpacity
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+
+          {/* Version Info */}
+          <Text style={styles.versionText}>Version 1.0.0</Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -295,119 +406,238 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
   content: {
-    flex: 1,
+    paddingBottom: 40,
   },
-  header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-    backgroundColor: colors.background.primary,
+  headerSection: {
+    marginBottom: 24,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-  scrollContent: {
-    flex: 1,
-  },
-  scrollContentContainer: {
+  headerGradient: {
     paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   profileInfo: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 10,
-    backgroundColor: colors.background.secondary,
-    overflow: 'hidden',
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    marginBottom: 5,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-  email: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    marginBottom: 15,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-  balanceContainer: {
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    padding: 15,
-    borderRadius: 12,
-    width: '100%',
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  balanceLabel: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    marginBottom: 5,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-  balanceAmount: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-  options: {
-    marginTop: 20,
-  },
-option: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10b981',
+    borderWidth: 3,
+    borderColor: '#ffffff',
+  },
+  userInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: 4,
+    fontFamily: 'Quicksand-SemiBold',
+  },
+  userEmail: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontFamily: 'Quicksand-Regular',
+  },
+  balanceCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: -8,
+  },
+  balanceContent: {
+    padding: 24,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  balanceLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Quicksand-Medium',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  addButton: {
+    padding: 4,
+  },
+  balanceAmount: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 24,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    textAlign: 'center',
+  },
+  balanceLoadingContainer: {
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  menuSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: 12,
+    fontFamily: 'Quicksand-SemiBold',
+  },
+  menuCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
-    backgroundColor: colors.background.secondary,
   },
-  optionText: {
+  menuItemLast: {
+    borderBottomWidth: 0,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    marginLeft: 15,
+  },
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  menuTextContainer: {
+    flex: 1,
+  },
+  menuItemTitle: {
     fontSize: 16,
+    fontWeight: '500',
     color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginBottom: 2,
+    fontFamily: 'Quicksand-Medium',
   },
- optionIcon: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
+  menuItemSubtitle: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontFamily: 'Quicksand-Regular',
+  },
+  toggle: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.border.light,
+    padding: 2,
     justifyContent: 'center',
   },
-  chevronIcon: {
+  toggleActive: {
+    backgroundColor: '#333',
+  },
+  toggleDot: {
     width: 24,
     height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.background.primary,
+    transform: [{ translateX: 0 }],
+  },
+  toggleDotActive: {
+    transform: [{ translateX: 20 }],
+  },
+  signOutButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
-  logoutButtonContainer: {
-    padding: 20,
-    marginTop: 20,
-  },
-  logoutButton: {
-    padding: 15,
-    backgroundColor: '#FF6347', // Keep this color for logout button as warning
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: colors.stone[50],
+  signOutText: {
+    marginLeft: 8,
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: '600',
+    color: '#ef4444',
+    fontFamily: 'Quicksand-SemiBold',
+  },
+  versionText: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors.text.tertiary,
+    marginTop: 24,
+    fontFamily: 'Quicksand-Regular',
   },
 });
 

@@ -170,6 +170,12 @@ export default {
           setSystemLocaleReporting: true,
           distributionMode: 'development'
         }
+      ],
+      [
+        'expo-document-picker',
+        {
+          iCloudContainerEnvironment: 'Production'
+        }
       ]
     ],
     experiments: {

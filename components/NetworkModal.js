@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,29 +7,71 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlagIcon } from '../utils/countryData';
 import { colors } from '../theme/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
-const ICON_COLORS = {
-  cellular: '#32CD32',
-  speed: '#32CD32',
-  closeButton: '#FF3B30',
-};
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [] }) => {
   const [activeTab, setActiveTab] = useState('coverage');
   const [selectedCountry, setSelectedCountry] = useState(null);
+  
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    if (visible) {
+      slideAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: screenHeight,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
 
   // Filter out Sint Eustatius And Saba from the locationNetworkList
   const filteredLocationNetworkList = locationNetworkList.filter(
     country => country.locationName !== 'Sint Eustatius And Saba'
   );
 
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: screenHeight,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => onClose());
+  };
+  
   const getNetworkStats = () => {
     const operators = networks.filter(n => n.type !== 'speed');
-    const speed = networks.find(n => n.type === 'speed')?.value || '4G/LTE';
+    const speed = networks.find(n => n.type === 'speed')?.value || '5G/LTE';
     return { operators, speed };
   };
 
@@ -37,55 +79,78 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
     const { operators, speed } = getNetworkStats();
 
     return (
-      <ScrollView style={styles.networkList}>
-        <View style={styles.coverageCard}>
-          <View style={styles.coverageHeader}>
-            <View style={[styles.coverageIcon, { backgroundColor: `${ICON_COLORS.cellular}15` }]}>
-              <Ionicons name="cellular-outline" size={24} color={ICON_COLORS.cellular} />
+      <ScrollView 
+        style={styles.contentList}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+      >
+        <View style={styles.networkStatsContainer}>
+          <LinearGradient
+            colors={['#FFF7ED', '#FEF3C7']}
+            style={styles.networkStatCard}
+          >
+            <View style={styles.networkStatIcon}>
+              <Ionicons name="cellular" size={24} color="#F59E0B" />
             </View>
-            <Text style={styles.coverageTitle}>Network Coverage</Text>
-          </View>
-
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Ionicons name="cellular-outline" size={20} color={ICON_COLORS.cellular} />
-              <Text style={[styles.statValue, { color: ICON_COLORS.cellular }]}>
+            <View style={styles.networkStatContent}>
+              <Text style={styles.networkStatValue}>
                 {operators.length}
               </Text>
-              <Text style={styles.statLabel}>Operators</Text>
+              <Text style={styles.networkStatLabel}>Total Networks</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons name="speedometer-outline" size={20} color={ICON_COLORS.speed} />
-              <Text style={[styles.statValue, { color: ICON_COLORS.speed }]}>
+          </LinearGradient>
+          
+          <LinearGradient
+            colors={['#EFF6FF', '#DBEAFE']}
+            style={styles.networkStatCard}
+          >
+            <View style={styles.networkStatIcon}>
+              <Ionicons name="speedometer" size={24} color="#3B82F6" />
+            </View>
+            <View style={styles.networkStatContent}>
+              <Text style={styles.networkStatValue}>
                 {speed}
               </Text>
-              <Text style={styles.statLabel}>Network Type</Text>
+              <Text style={styles.networkStatLabel}>Max Speed</Text>
             </View>
-          </View>
-
-          <Text style={styles.coverageDescription}>
-            This package provides coverage with {operators.length} operators 
-            with {speed} connectivity where available.
-          </Text>
+          </LinearGradient>
         </View>
 
+        <Text style={styles.sectionTitle}>Available Networks</Text>
+        
         {operators.map((network, index) => (
-          <View key={index} style={styles.networkItem}>
-            <Ionicons 
-              name="cellular-outline" 
-              size={20} 
-              color={ICON_COLORS.cellular} 
-              style={styles.networkIcon} 
-            />
-            <View style={styles.networkContent}>
-              <Text style={styles.networkName}>{network.value}</Text>
-              {network.speeds && (
-                <Text style={[styles.networkSpeed, { color: ICON_COLORS.speed }]}>
-                  {Array.isArray(network.speeds) ? network.speeds.join(', ') : network.speeds}
-                </Text>
-              )}
-            </View>
+          <View key={index} style={styles.networkItemContainer}>
+            <LinearGradient
+              colors={['#FFFFFF', '#F9FAFB']}
+              style={styles.networkCard}
+            >
+              <View style={styles.networkIconContainer}>
+                <LinearGradient
+                  colors={['#FF6B00', '#FF8533']}
+                  style={styles.networkIconGradient}
+                >
+                  <Ionicons name="wifi" size={20} color="#FFFFFF" />
+                </LinearGradient>
+              </View>
+              
+              <View style={styles.networkInfo}>
+                <Text style={styles.networkName}>{network.value}</Text>
+                {network.speeds && (
+                  <View style={styles.speedBadges}>
+                    {(Array.isArray(network.speeds) ? network.speeds : [network.speeds]).map((speed, idx) => (
+                      <View key={idx} style={styles.speedBadge}>
+                        <Text style={styles.speedBadgeText}>{speed}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+              
+              <View style={styles.networkStatus}>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusText}>Active</Text>
+              </View>
+            </LinearGradient>
           </View>
         ))}
       </ScrollView>
@@ -99,38 +164,57 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
       <TouchableOpacity 
         style={[styles.countryItem, isSelected && styles.selectedCountryItem]}
         onPress={() => setSelectedCountry(isSelected ? null : country)}
+        activeOpacity={0.7}
       >
-        <View style={styles.countryItemContent}>
-          <View style={styles.countryFlag}>
-            <FlagIcon 
-              countryCode={country.countryCode}
-              size={24}
-            />
-          </View>
-          <View style={styles.countryItemInfo}>
-            <Text style={styles.countryName}>{country.locationName}</Text>
-            <Text style={styles.operatorCount}>
-              {country.operatorList.length} {country.operatorList.length === 1 ? 'operator' : 'operators'}
-            </Text>
-          </View>
-          <Text style={[styles.networkTypeText, { color: ICON_COLORS.cellular }]}>
-            {country.operatorList.some(op => op.networkType.includes('5G')) ? '5G' : '4G'}
-          </Text>
-        </View>
-        
-        {isSelected && (
-          <View style={styles.operatorList}>
-            {country.operatorList.map((operator, index) => (
-              <View key={index} style={styles.operatorItem}>
-                <Ionicons name="cellular-outline" size={16} color={ICON_COLORS.cellular} />
-                <Text style={styles.operatorName}>{operator.operatorName}</Text>
-                <Text style={[styles.operatorSpeed, { color: ICON_COLORS.speed }]}>
-                  {operator.networkType}
+        <LinearGradient
+          colors={isSelected ? ['#FFF7ED', '#FEF3C7'] : ['#FFFFFF', '#F9FAFB']}
+          style={styles.countryGradient}
+        >
+          <View style={styles.countryItemContent}>
+            <View style={styles.countryFlag}>
+              <FlagIcon 
+                countryCode={country.countryCode}
+                size={36}
+              />
+            </View>
+            <View style={styles.countryItemInfo}>
+              <Text style={styles.countryName}>{country.locationName}</Text>
+              <View style={styles.operatorBadge}>
+                <Ionicons name="wifi" size={14} color="#6B7280" />
+                <Text style={styles.operatorCount}>
+                  {country.operatorList.length} networks
                 </Text>
               </View>
-            ))}
+            </View>
+            <View style={[styles.networkTypeBadge, country.operatorList.some(op => op.networkType.includes('5G')) && styles.badge5G]}>
+              <Ionicons name="speedometer" size={16} color={country.operatorList.some(op => op.networkType.includes('5G')) ? '#3B82F6' : '#FF6B00'} />
+              <Text style={[styles.networkTypeText, country.operatorList.some(op => op.networkType.includes('5G')) && styles.text5G]}>
+                {country.operatorList.some(op => op.networkType.includes('5G')) ? '5G' : '4G'}
+              </Text>
+            </View>
           </View>
-        )}
+          
+          {isSelected && (
+            <View style={styles.operatorList}>
+              {country.operatorList.map((operator, index) => (
+                <View key={index} style={styles.operatorItem}>
+                  <LinearGradient
+                    colors={['#FF6B00', '#FF8533']}
+                    style={styles.operatorIcon}
+                  >
+                    <Ionicons name="cellular" size={12} color="#FFFFFF" />
+                  </LinearGradient>
+                  <Text style={styles.operatorName}>{operator.operatorName}</Text>
+                  <View style={styles.operatorSpeedBadge}>
+                    <Text style={styles.operatorSpeed}>
+                      {operator.networkType}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
@@ -139,60 +223,129 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <View style={[styles.iconContainer, { backgroundColor: `${ICON_COLORS.cellular}15` }]}>
-              <Ionicons name="cellular-outline" size={24} color={ICON_COLORS.cellular} />
+      <Animated.View 
+        style={[
+          styles.modalOverlay,
+          {
+            opacity: fadeAnim,
+          }
+        ]}
+      >
+        <TouchableOpacity 
+          style={styles.backdrop} 
+          activeOpacity={1} 
+          onPress={handleClose}
+        />
+        
+        <Animated.View 
+          style={[
+            styles.modalContainer,
+            {
+              transform: [
+                { translateY: slideAnim }
+              ],
+            }
+          ]}
+        >
+          <LinearGradient
+            colors={['#FFFFFF', '#FAFAFA']}
+            style={styles.modalContent}
+          >
+            {/* Drag Indicator */}
+            <View style={styles.dragIndicator} />
+            
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <LinearGradient
+                colors={['#FF6B00', '#FF8533']}
+                style={styles.headerIconContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialCommunityIcons name="map-marker-multiple" size={28} color="#FFFFFF" />
+              </LinearGradient>
+              
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.modalTitle}>Regional Coverage</Text>
+                <Text style={styles.modalSubtitle}>
+                  {filteredLocationNetworkList?.length || 0} countries covered
+                </Text>
+              </View>
+              
+              <TouchableOpacity 
+                onPress={handleClose} 
+                style={styles.closeButton}
+                activeOpacity={0.7}
+              >
+                <BlurView intensity={100} tint="light" style={styles.closeButtonBlur}>
+                  <Ionicons name="close" size={22} color="#374151" />
+                </BlurView>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.modalTitle}>Networks & Coverage</Text>
-            <TouchableOpacity 
-              onPress={onClose} 
-              style={[styles.closeButton, { backgroundColor: `${ICON_COLORS.closeButton}15` }]}
-            >
-              <Ionicons name="close" size={24} color={ICON_COLORS.closeButton} />
-            </TouchableOpacity>
-          </View>
 
-          <View style={styles.tabContainer}>
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'coverage' && styles.activeTab]}
-              onPress={() => setActiveTab('coverage')}
-            >
-              <Text style={[styles.tabText, activeTab === 'coverage' && styles.activeTabText]}>
-                Coverage
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'networks' && styles.activeTab]}
-              onPress={() => setActiveTab('networks')}
-            >
-              <Text style={[styles.tabText, activeTab === 'networks' && styles.activeTabText]}>
-                Networks
-              </Text>
-            </TouchableOpacity>
-          </View>
+            {/* Tab Switcher */}
+            <View style={styles.tabContainer}>
+              <LinearGradient
+                colors={['#F3F4F6', '#E5E7EB']}
+                style={styles.tabBackground}
+              >
+                <TouchableOpacity 
+                  style={[styles.tab, activeTab === 'coverage' && styles.activeTab]}
+                  onPress={() => setActiveTab('coverage')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tabText, activeTab === 'coverage' && styles.activeTabText]}>
+                    Coverage
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.tab, activeTab === 'networks' && styles.activeTab]}
+                  onPress={() => setActiveTab('networks')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tabText, activeTab === 'networks' && styles.activeTabText]}>
+                    Networks
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
 
-          {activeTab === 'networks' ? renderNetworksTab() : (
-            <ScrollView style={styles.networkList}>
-              {filteredLocationNetworkList?.map((country, index) => (
-                <View key={index}>{renderCountryItem(country)}</View>
-              ))}
-            </ScrollView>
-          )}
+            {/* Content */}
+            {activeTab === 'networks' ? renderNetworksTab() : (
+              <ScrollView 
+                style={styles.contentList}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.listContent}
+              >
+                {filteredLocationNetworkList?.map((country, index) => (
+                  <View key={index}>{renderCountryItem(country)}</View>
+                ))}
+              </ScrollView>
+            )}
 
-          <TouchableOpacity 
-			  style={styles.gotItButton}
-			  onPress={onClose}
-			  activeOpacity={0.8}
-			>
-            <Text style={styles.gotItText}>Got it</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            {/* Bottom Action */}
+            <View style={styles.bottomContainer}>
+              <TouchableOpacity 
+                style={styles.gotItButton}
+                onPress={handleClose}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[colors.stone[800], colors.stone[700]]}
+                  style={styles.gotItButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.gotItText}>Got it</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 };
@@ -200,241 +353,434 @@ const NetworkModal = ({ visible, onClose, networks = [], locationNetworkList = [
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContainer: {
+    width: '100%',
+  },
   modalContent: {
-    backgroundColor: colors.background.primary,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    minHeight: '50%',
-    maxHeight: '90%',
-    padding: 20,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    height: '100%',
+    paddingTop: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  dragIndicator: {
+    width: 48,
+    height: 5,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 16,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 0,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingBottom: 20,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    backgroundColor: colors.background.headerIcon,
+    shadowColor: '#FF6B00',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginLeft: 16,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    flex: 1,
-    fontFamily: 'Quicksand',
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    letterSpacing: -0.5,
+  },
+  modalSubtitle: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    marginTop: 2,
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  closeButtonBlur: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background.headerIcon,
   },
   tabContainer: {
-    flexDirection: 'row',
+    paddingHorizontal: 20,
     marginBottom: 20,
-    borderRadius: 12,
-    backgroundColor: colors.background.tertiary,
+  },
+  tabBackground: {
+    flexDirection: 'row',
+    borderRadius: 16,
     padding: 4,
   },
   tab: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
   },
   activeTab: {
-    backgroundColor: colors.stone[800],
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   tabText: {
     fontSize: 16,
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    fontWeight: '600',
   },
   activeTabText: {
-    color: colors.stone[50],
-    fontWeight: 'bold',
+    color: '#FF6B00',
+    fontWeight: '700',
   },
-  networkList: {
-    marginBottom: 20,
+  contentList: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
-  coverageCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
+  listContent: {
+    paddingBottom: 20,
+  },
+  // Networks tab styles
+  networkStatsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  networkStatCard: {
+    flex: 1,
     padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border.light,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  coverageHeader: {
+  networkStatIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  networkStatContent: {
+    alignItems: 'center',
+  },
+  networkStatValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  networkStatLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#374151',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    marginBottom: 16,
+    marginLeft: 4,
+  },
+  networkItemContainer: {
+    marginBottom: 12,
+  },
+  networkCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  coverageIcon: {
+  networkIconContainer: {
+    marginRight: 14,
+  },
+  networkIconGradient: {
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    backgroundColor: colors.background.headerIcon,
   },
-  coverageTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.border.light,
-    marginBottom: 16,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
-    marginVertical: 8,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: 'Quicksand',
-  },
-  statDivider: {
-    width: 1,
-    height: '80%',
-    backgroundColor: colors.border.light,
-  },
-  coverageDescription: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: 'Quicksand',
-    lineHeight: 20,
-  },
-  networkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  networkIcon: {
-    marginRight: 12,
-  },
-  networkContent: {
+  networkInfo: {
     flex: 1,
   },
   networkName: {
     fontSize: 16,
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    letterSpacing: -0.2,
   },
-  networkSpeed: {
-    fontSize: 14,
-    fontFamily: 'Quicksand',
-    marginTop: 4,
-    color: colors.text.secondary,
+  speedBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+    gap: 6,
   },
-  countryItem: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+  speedBadge: {
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border.light,
+    borderColor: '#FED7AA',
+  },
+  speedBadgeText: {
+    fontSize: 12,
+    color: '#C2410C',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  networkStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 13,
+    color: '#059669',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  // Country item styles
+  countryItem: {
+    marginBottom: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   selectedCountryItem: {
-    borderColor: colors.stone[800],
+    shadowColor: '#FF6B00',
+    shadowOpacity: 0.2,
+    elevation: 6,
+  },
+  countryGradient: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   countryItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
   },
   countryFlag: {
-    marginRight: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   countryItemInfo: {
     flex: 1,
   },
   countryName: {
-    fontSize: 16,
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
-    fontWeight: 'bold',
+    fontSize: 17,
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  operatorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   operatorCount: {
     fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: 'Quicksand',
-    marginTop: 2,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    fontWeight: '500',
+  },
+  networkTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  badge5G: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
   },
   networkTypeText: {
     fontSize: 14,
-    fontFamily: 'Quicksand',
-    color: colors.text.secondary,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    fontWeight: '700',
+    color: '#C2410C',
+  },
+  text5G: {
+    color: '#2563EB',
   },
   operatorList: {
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.light,
-    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 8,
   },
   operatorItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  operatorIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   operatorName: {
     fontSize: 14,
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
-    marginLeft: 8,
+    color: '#374151',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
     flex: 1,
+    fontWeight: '500',
+  },
+  operatorSpeedBadge: {
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
   },
   operatorSpeed: {
-    fontSize: 14,
-    fontFamily: 'Quicksand',
-    color: colors.text.secondary,
+    fontSize: 12,
+    color: '#C2410C',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  // Bottom container
+  bottomContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
   gotItButton: {
-    backgroundColor: colors.stone[800],
-    borderRadius: 25,
-    padding: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: colors.stone[800],
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  gotItButtonGradient: {
+    paddingVertical: 18,
     alignItems: 'center',
-    marginTop: 'auto',
-    marginBottom: Platform.OS === 'ios' ? 10 : 0,
   },
   gotItText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.background.primary,
-    fontFamily: 'Quicksand',
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    letterSpacing: 0.3,
   },
 });
 

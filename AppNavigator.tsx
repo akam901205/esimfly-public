@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
 import NotificationService from './services/notificationService';
 import CustomTabBar from './components/CustomTabBar';
+import LoadingScreen from './components/LoadingScreen';
 
 // Import all screens
 import WelcomeScreen from './screens/WelcomeScreen';
@@ -39,6 +40,8 @@ import EditProfileScreen from './screens/EditProfileScreen';
 import PrivacyScreen from './screens/PrivacyScreen';
 import TermsScreen from './screens/TermsScreen';
 import OrderProcessingScreen from './screens/OrderProcessingScreen';
+import SupportScreen from './screens/SupportScreen';
+import DeleteAccountScreen from './screens/DeleteAccountScreen';
 
 // Configure platform-specific settings for dark theme
 async function configureNavigationBar() {
@@ -195,6 +198,8 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   Privacy: undefined;
   Terms: undefined;
+  Support: undefined;
+  DeleteAccount: undefined;
 };
 
 export type MainTabParamList = {
@@ -249,6 +254,8 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="Privacy" component={PrivacyScreen} />
       <ProfileStack.Screen name="Terms" component={TermsScreen} />
+      <ProfileStack.Screen name="Support" component={SupportScreen} />
+      <ProfileStack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -430,17 +437,7 @@ function AppNavigator() {
   }, []);
 
   if (auth.isLoading) {
-    return (
-      <View style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        backgroundColor: '#1E1E1E'
-      }}>
-        <StatusBar barStyle="light-content" backgroundColor="#1E1E1E" />
-        <ActivityIndicator size="large" color="#FF6B6B" />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (

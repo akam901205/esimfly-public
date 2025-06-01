@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,15 +8,26 @@ import {
   TouchableOpacity, 
   Modal, 
   ScrollView,
-  Platform 
+  Platform,
+  Animated,
+  Dimensions,
+  StatusBar,
+  TextInput
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { colors } from '../theme/colors';
+
+const { width, height } = Dimensions.get('window');
 
 const guides = [
   {
     id: '1',
     title: 'How to activate your eSIM',
+    description: 'Step-by-step activation guide',
+    color: '#4F46E5',
     content: [
       {
         subtitle: 'Before you begin',
@@ -53,6 +64,8 @@ const guides = [
   {
     id: '2',
     title: 'Understanding our packages',
+    description: 'Features and selection tips',
+    color: '#10B981',
     content: [
       {
         subtitle: 'Unlimited Package Features',
@@ -91,6 +104,8 @@ const guides = [
   {
     id: '3',
     title: 'Troubleshooting guide',
+    description: 'Fix common issues',
+    color: '#F59E0B',
     content: [
       {
         subtitle: 'Connection issues',
@@ -126,6 +141,8 @@ const guides = [
   {
     id: '4',
     title: 'Device compatibility',
+    description: 'Supported devices & settings',
+    color: '#8B5CF6',
     content: [
       {
         subtitle: 'Compatible devices',
@@ -151,6 +168,8 @@ const guides = [
   {
     id: '5',
     title: 'Travel tips',
+    description: 'Before and during your trip',
+    color: '#06B6D4',
     content: [
       {
         subtitle: 'Before your trip',
@@ -177,6 +196,8 @@ const guides = [
   {
     id: '6',
     title: 'Data management',
+    description: 'Monitor and save data',
+    color: '#EF4444',
     content: [
       {
         subtitle: 'Monitoring usage',
@@ -203,6 +224,8 @@ const guides = [
   {
     id: '7',
     title: 'Security guidelines',
+    description: 'Keep your eSIM secure',
+    color: '#059669',
     content: [
       {
         subtitle: 'eSIM security',
@@ -229,6 +252,8 @@ const guides = [
  {
     id: '8',
     title: 'Understanding eSIM Technology',
+    description: 'How electronic SIMs work',
+    color: '#7C3AED',
     content: [
       {
         subtitle: 'What is eSIM?',
@@ -265,6 +290,8 @@ const guides = [
   {
     id: '9',
     title: 'Enhanced Security Guide',
+    description: 'Advanced protection tips',
+    color: '#DC2626',
     content: [
       {
         subtitle: 'eSIM Security Features',
@@ -311,6 +338,8 @@ const guides = [
   {
     id: '10',
     title: 'Package Details',
+    description: 'All about our offerings',
+    color: '#0891B2',
     content: [
       {
         subtitle: 'Unlimited Package',
@@ -350,6 +379,8 @@ const guides = [
   {
     id: '11',
     title: 'Frequently Asked Questions',
+    description: 'Common queries answered',
+    color: '#EA580C',
     content: [
       {
         subtitle: 'General Questions',
@@ -386,6 +417,8 @@ const guides = [
   {
     id: '12',
     title: 'Coverage & Network',
+    description: 'Network information',
+    color: '#6366F1',
     content: [
       {
         subtitle: 'Network Technology',
@@ -422,6 +455,8 @@ const guides = [
   {
     id: '13',
     title: 'Usage Tips & Best Practices',
+    description: 'Get the most from your eSIM',
+    color: '#16A34A',
     content: [
       {
         subtitle: 'Daily Usage',
@@ -465,17 +500,66 @@ interface GuideContent {
 interface Guide {
   id: string;
   title: string;
+  description: string;
+  color: string;
   content: GuideContent[];
 }
 
 const GuidesScreen = () => {
-  const [selectedGuide, setSelectedGuide] = useState(null);
+  const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(height)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const searchFocusAnim = useRef(new Animated.Value(0)).current;
 
-  const getIconName = (id) => {
-    const icons = {
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  useEffect(() => {
+    if (modalVisible) {
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 65,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 65,
+          friction: 10,
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: height,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.9,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
+    }
+  }, [modalVisible]);
+
+  const getIconName = (id: string) => {
+    const icons: { [key: string]: keyof typeof Ionicons.glyphMap } = {
       '1': 'phone-portrait-outline',
-      '2': 'infinite-outline',
+      '2': 'cube-outline',
       '3': 'build-outline',
       '4': 'hardware-chip-outline',
       '5': 'airplane-outline',
@@ -483,7 +567,7 @@ const GuidesScreen = () => {
       '7': 'shield-checkmark-outline',
       '8': 'flash-outline',
       '9': 'lock-closed-outline',
-      '10': 'cube-outline',
+      '10': 'pricetags-outline',
       '11': 'help-circle-outline',
       '12': 'globe-outline',
       '13': 'bulb-outline'
@@ -491,82 +575,193 @@ const GuidesScreen = () => {
     return icons[id] || 'document-text-outline';
   };
 
-  const renderGuideItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.guideItem}
-      onPress={() => {
-        setSelectedGuide(item);
-        setModalVisible(true);
-      }}
-    >
-      <View style={styles.guideItemContent}>
-        <Ionicons name={getIconName(item.id)} size={24} color="#888" style={styles.icon} />
-        <Text style={styles.guideTitle}>{item.title}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#888" />
-    </TouchableOpacity>
+  const filteredGuides = guides.filter(guide => 
+    guide.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    guide.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-   return (
+  const renderGuideItem = ({ item, index }: { item: Guide; index: number }) => {
+    return (
+      <TouchableOpacity 
+        style={styles.guideItem}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setSelectedGuide(item);
+          setModalVisible(true);
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.guideGradient}>
+          <View style={styles.iconContainer}>
+            <Ionicons name={getIconName(item.id)} size={26} color={item.color} />
+          </View>
+          <View style={styles.guideContent}>
+            <Text style={styles.guideTitle}>{item.title}</Text>
+            <Text style={styles.guideDescription}>{item.description}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const handleSearchFocus = () => {
+    Animated.timing(searchFocusAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleSearchBlur = () => {
+    Animated.timing(searchFocusAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <StatusBar barStyle="dark-content" />
+      <LinearGradient
+        colors={[colors.background.primary, colors.background.secondary]}
+        style={styles.backgroundGradient}
+      />
+      
+      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
         <Text style={styles.title}>eSIM Guide</Text>
         <Text style={styles.subtitle}>Everything you need to know</Text>
-      </View>
+        
+        <Animated.View 
+          style={[
+            styles.searchContainer,
+            {
+              borderColor: searchFocusAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['#E5E7EB', '#4F46E5'],
+              }),
+            }
+          ]}
+        >
+          <Ionicons name="search" size={20} color={colors.text.secondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search guides..."
+            placeholderTextColor={colors.text.secondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={handleSearchFocus}
+            onBlur={handleSearchBlur}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              style={styles.clearButton}
+            >
+              <Ionicons name="close-circle" size={20} color={colors.text.secondary} />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+      </Animated.View>
 
       <FlatList
-        data={guides}
+        data={filteredGuides}
         renderItem={renderGuideItem}
         keyExtractor={item => item.id}
-        contentContainerStyle={[
-          styles.listContainer,
-          { paddingBottom: 74 }
-        ]}
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="search-outline" size={48} color={colors.text.secondary} />
+            <Text style={styles.emptyText}>No guides found</Text>
+            <Text style={styles.emptySubtext}>Try a different search term</Text>
+          </View>
+        }
       />
 
       <Modal
-        animationType="slide"
+        animationType="none"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setModalVisible(false);
+        }}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackground}
+            activeOpacity={1}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setModalVisible(false);
+            }}
+          />
+          
+          <Animated.View 
+            style={[
+              styles.modalContainer,
+              {
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: scaleAnim }
+                ]
+              }
+            ]}
+          >
+            <View style={styles.modalHandle} />
+            
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedGuide?.title}
-              </Text>
+              <View style={[styles.modalIconContainer, { borderColor: selectedGuide?.color, borderWidth: 1 }]}>
+                <Ionicons 
+                  name={getIconName(selectedGuide?.id || '')} 
+                  size={28} 
+                  color={selectedGuide?.color} 
+                />
+              </View>
+              <View style={styles.modalTitleContainer}>
+                <Text style={styles.modalTitle}>{selectedGuide?.title}</Text>
+                <Text style={styles.modalSubtitle}>{selectedGuide?.description}</Text>
+              </View>
               <TouchableOpacity 
-                onPress={() => setModalVisible(false)}
-                style={[styles.closeButton, { backgroundColor: colors.background.headerIcon }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setModalVisible(false);
+                }}
+                style={styles.closeButton}
               >
-                <Ionicons name="close" size={24} color={colors.icon.header} />
+                <Ionicons name="close" size={24} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
 
             <ScrollView 
-              style={styles.modalScrollView}
+              style={styles.modalContent}
               showsVerticalScrollIndicator={false}
+              bounces={true}
             >
               {selectedGuide?.content.map((section, index) => (
                 <View key={index} style={styles.section}>
-                  <Text style={styles.sectionTitle}>
-                    {section.subtitle}
-                  </Text>
+                  <View style={styles.sectionHeader}>
+                    <View style={[styles.sectionNumber, { backgroundColor: selectedGuide?.color + '20' }]}>
+                      <Text style={[styles.sectionNumberText, { color: selectedGuide?.color }]}>
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <Text style={styles.sectionTitle}>{section.subtitle}</Text>
+                  </View>
+                  
                   {section.steps.map((step, stepIndex) => (
                     <View key={stepIndex} style={styles.stepContainer}>
-                      <Text style={styles.bullet}>•</Text>
-                      <Text style={styles.stepText}>
-                        {step}
-                      </Text>
+                      <View style={[styles.stepDot, { backgroundColor: selectedGuide?.color + '40' }]} />
+                      <Text style={styles.stepText}>{step}</Text>
                     </View>
                   ))}
                 </View>
               ))}
-              <View style={{ height: 20 }} />
+              <View style={{ height: 40 }} />
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -576,117 +771,231 @@ const GuidesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-    backgroundColor: colors.background.primary,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: colors.text.primary,
-    marginBottom: 5,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   subtitle: {
     fontSize: 16,
     color: colors.text.secondary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginBottom: 20,
+    fontFamily: 'Quicksand-Medium',
   },
-  listContainer: {
-    padding: 15,
-  },
-  guideItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-  },
-  guideItemContent: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+  },
+  searchInput: {
     flex: 1,
-  },
-  icon: {
-    marginRight: 10,
-    color: colors.text.secondary,
-  },
-  guideTitle: {
+    marginLeft: 12,
     fontSize: 16,
     color: colors.text.primary,
+    fontFamily: 'Quicksand-Regular',
+  },
+  clearButton: {
+    padding: 4,
+  },
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+  },
+  guideItem: {
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  guideGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  guideContent: {
     flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  guideTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: 4,
+    fontFamily: 'Quicksand-SemiBold',
+  },
+  guideDescription: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontFamily: 'Quicksand-Regular',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginTop: 16,
+    fontFamily: 'Quicksand-SemiBold',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    marginTop: 8,
+    fontFamily: 'Quicksand-Regular',
+  },
+  modalOverlay: {
+    flex: 1,
+  },
+  modalBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: height * 0.9,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  modalContent: {
-    backgroundColor: colors.background.primary,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '80%',
+  modalHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: colors.border.light,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
   },
+  modalIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  modalTitleContainer: {
+    flex: 1,
+  },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text.primary,
-    flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginBottom: 2,
+    fontFamily: 'Quicksand-Bold',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontFamily: 'Quicksand-Regular',
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border.header,
+    borderColor: '#E5E7EB',
   },
-  modalScrollView: {
-    padding: 20,
+  modalContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 32,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  sectionNumberText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: colors.text.primary,
-    marginBottom: 10,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    flex: 1,
+    fontFamily: 'Quicksand-SemiBold',
   },
   stepContainer: {
     flexDirection: 'row',
-    marginBottom: 8,
-    paddingLeft: 10,
+    marginBottom: 12,
+    paddingLeft: 40,
   },
-  bullet: {
-    color: colors.text.secondary,
-    marginRight: 10,
-    fontSize: 16,
+  stepDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 8,
+    marginRight: 12,
   },
   stepText: {
+    fontSize: 15,
     color: colors.text.primary,
-    fontSize: 16,
+    lineHeight: 22,
     flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontFamily: 'Quicksand-Regular',
   },
 });
 

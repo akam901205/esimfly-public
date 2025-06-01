@@ -28,11 +28,9 @@ import {
 } from '../utils/PackageFilters';
 import { newApi } from '../api/api';
 
-const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
-
 const ICON_COLORS = {
-  network: '#007AFF',
-  speed: '#2563eb',
+  network: '#1F2937',
+  speed: '#FF6B00',
 };
 
 const RegionalPackagesScreen = () => {
@@ -258,35 +256,102 @@ const RegionalPackagesScreen = () => {
 
       let allPackages = response.data?.data?.packages || [];
       
+      // Debug: Log first package to see coverage structure
+      if (allPackages.length > 0) {
+        console.log('[DEBUG] Sample package coverage data:', {
+          name: allPackages[0].name,
+          coverage: allPackages[0].coverage?.slice(0, 3),
+          coverages: allPackages[0].coverages?.slice(0, 3),
+          coverageLength: allPackages[0].coverage?.length || allPackages[0].coverages?.length || 0
+        });
+      }
+      
       // Map packages to match expected format
-      allPackages = allPackages.map(pkg => ({
-        id: pkg.id,
-        name: pkg.name,
-        price: pkg.price,
-        data: pkg.isUnlimited ? 'Unlimited' : pkg.data,
-        duration: pkg.duration,
-        provider: pkg.provider,
-        unlimited: pkg.isUnlimited,
-        isUnlimited: pkg.isUnlimited,
-        voiceMinutes: pkg.voiceMinutes,
-        smsCount: pkg.smsCount,
-        flagUrl: pkg.flagUrl,
-        packageCode: pkg.slug,
-        speed: pkg.speed || '4G',
-        networks: pkg.networks || [],
-        coverage: pkg.coverage || [],
-        coverages: pkg.coverages || [],
-        locationNetworkList: [],
-        region: pkg.region || region
-      }));
-
-      // Filter by package type
-      const filteredPackages = allPackages.filter(pkg => {
-        if (packageType === 'unlimited') {
-          return pkg.unlimited || pkg.isUnlimited;
-        } else if (packageType === 'regular') {
-          return !pkg.unlimited && !pkg.isUnlimited;
+      allPackages = allPackages.map(pkg => {
+        // Fix esimgo data format issues (0.98 -> 1, 1.95 -> 2, etc.)
+        let correctedData = pkg.data;
+        if (!pkg.isUnlimited && pkg.data) {
+          const dataValue = parseFloat(pkg.data);
+          // Common esimgo data mappings
+          if (dataValue >= 0.95 && dataValue <= 1.05) correctedData = 1;
+          else if (dataValue >= 1.9 && dataValue <= 2.1) correctedData = 2;
+          else if (dataValue >= 2.9 && dataValue <= 3.1) correctedData = 3;
+          else if (dataValue >= 4.8 && dataValue <= 5.2) correctedData = 5;
+          else if (dataValue >= 9.7 && dataValue <= 10.3) correctedData = 10;
+          else if (dataValue >= 19.4 && dataValue <= 20.6) correctedData = 20;
+          else if (dataValue >= 48.5 && dataValue <= 50.5) correctedData = 50;
+          else if (dataValue >= 97 && dataValue <= 100) correctedData = 100;
+          else {
+            // For other values, round to nearest integer if close
+            const rounded = Math.round(dataValue);
+            if (Math.abs(dataValue - rounded) < 0.1) {
+              correctedData = rounded;
+            } else {
+              correctedData = dataValue;
+            }
+          }
         }
+        
+        return {
+          id: pkg.id,
+          name: pkg.name,
+          price: pkg.price,
+          data: pkg.isUnlimited ? 'Unlimited' : correctedData,
+          duration: pkg.duration,
+          provider: pkg.provider,
+          unlimited: pkg.isUnlimited,
+          isUnlimited: pkg.isUnlimited,
+          voiceMinutes: pkg.voiceMinutes,
+          smsCount: pkg.smsCount,
+          flagUrl: pkg.flagUrl,
+          packageCode: pkg.slug,
+          speed: pkg.speed || '4G',
+          networks: pkg.networks || [],
+          coverage: pkg.coverage || [],
+          coverages: pkg.coverages || [],
+          locationNetworkList: [],
+          region: pkg.region || region
+        };
+      });
+
+      // Define country names to exclude from regional packages
+      const EXCLUDED_COUNTRIES = {
+        'africa': ['South Africa', 'Central African Republic'],
+        'asia': ['Japan', 'South Korea', 'China', 'India', 'Singapore', 'Malaysia', 'Thailand', 'Indonesia', 'Philippines', 'Vietnam'],
+        'europe': ['United Kingdom', 'France', 'Germany', 'Italy', 'Spain', 'Netherlands', 'Belgium', 'Switzerland', 'Austria', 'Poland'],
+        'latin america': ['Brazil', 'Mexico', 'Argentina', 'Chile', 'Colombia', 'Peru'],
+        'middle east': ['Saudi Arabia', 'United Arab Emirates', 'Qatar', 'Kuwait', 'Bahrain', 'Oman']
+      };
+
+      // Filter by package type and exclude country-specific packages
+      const filteredPackages = allPackages.filter(pkg => {
+        // First check package type filter
+        if (packageType === 'unlimited') {
+          if (!pkg.unlimited && !pkg.isUnlimited) return false;
+        } else if (packageType === 'regular') {
+          if (pkg.unlimited || pkg.isUnlimited) return false;
+        }
+
+        // Then check if it's a country-specific package that should be excluded
+        const packageNameLower = pkg.name.toLowerCase();
+        const regionLower = region.toLowerCase();
+        
+        // Get the list of countries to exclude for this region
+        const countriesToExclude = EXCLUDED_COUNTRIES[regionLower] || [];
+        
+        // Check if the package name starts with any excluded country
+        for (const country of countriesToExclude) {
+          const countryLower = country.toLowerCase();
+          // Check if package name starts with country name followed by space, dash, or colon
+          if (packageNameLower.startsWith(countryLower + ' ') ||
+              packageNameLower.startsWith(countryLower + '-') ||
+              packageNameLower.startsWith(countryLower + ':') ||
+              packageNameLower === countryLower) {
+            console.log(`[DEBUG] Excluding country-specific package: ${pkg.name}`);
+            return false;
+          }
+        }
+        
         return true;
       });
 
@@ -300,9 +365,75 @@ const RegionalPackagesScreen = () => {
         provider: pkg.provider || 'unknown'
       })).filter(pkg => pkg !== null);
 
-      // Group similar packages
-      const groupedPackages = groupSimilarPackages(normalizedPackages, region);
-      setPackages(groupedPackages);
+      // Group packages by data amount and sort by price
+      const groupedByData = {};
+      
+      normalizedPackages.forEach(pkg => {
+        // Format data to remove decimals for whole numbers (1.0 -> 1)
+        const formattedData = pkg.unlimited ? 'Unlimited' : 
+          (Number.isInteger(pkg.data) || pkg.data % 1 === 0) ? 
+          Math.floor(pkg.data) : pkg.data;
+        
+        // For unlimited packages, group by duration as well to show different day options
+        const dataKey = pkg.unlimited ? `Unlimited-${pkg.duration}days` : `${formattedData}GB`;
+        
+        if (!groupedByData[dataKey]) {
+          groupedByData[dataKey] = [];
+        }
+        
+        groupedByData[dataKey].push(pkg);
+      });
+      
+      // Process each group: only keep the cheapest package
+      const processedPackages = [];
+      
+      Object.keys(groupedByData).forEach(dataKey => {
+        const packagesForData = groupedByData[dataKey];
+        
+        // Filter out packages under 1 GB first
+        const validPackages = packagesForData.filter(pkg => {
+          if (pkg.data < 1 && !pkg.unlimited) {
+            console.log(`[DEBUG] Hiding package under 1GB: ${pkg.name} (${pkg.data}GB)`);
+            return false;
+          }
+          return true;
+        });
+        
+        if (validPackages.length === 0) return; // Skip if no valid packages
+        
+        // Sort by price (cheapest first)
+        validPackages.sort((a, b) => a.price - b.price);
+        
+        // Only keep the cheapest package
+        const cheapestPackage = validPackages[0];
+        console.log(`[DEBUG] Keeping cheapest ${dataKey} package: ${cheapestPackage.name} ($${cheapestPackage.price})`);
+        
+        // Log what we're hiding
+        if (validPackages.length > 1) {
+          validPackages.slice(1).forEach(pkg => {
+            console.log(`[DEBUG] Hiding more expensive ${dataKey} package: ${pkg.name} ($${pkg.price})`);
+          });
+        }
+        
+        processedPackages.push(cheapestPackage);
+      });
+      
+      // Sort final list by data amount (ascending) then by price
+      processedPackages.sort((a, b) => {
+        // Unlimited packages go to the end
+        if (a.unlimited && !b.unlimited) return 1;
+        if (!a.unlimited && b.unlimited) return -1;
+        
+        // Sort by data amount
+        if (a.data !== b.data) {
+          return a.data - b.data;
+        }
+        
+        // Then by price
+        return a.price - b.price;
+      });
+      
+      setPackages(processedPackages);
 
     } catch (err) {
       console.error('[DEBUG] Error fetching packages:', err);
@@ -326,7 +457,7 @@ const RegionalPackagesScreen = () => {
         <Ionicons 
           name="arrow-back" 
           size={24} 
-          color={colors.icon.header} 
+          color="#374151" 
         />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>{region} Plans</Text>
@@ -334,7 +465,7 @@ const RegionalPackagesScreen = () => {
         <Ionicons 
           name="globe-outline" 
           size={24} 
-          color={colors.icon.header} 
+          color="#374151" 
         />
       </View>
     </View>
@@ -348,7 +479,7 @@ const renderPackageItem = ({ item, index }) => {
     
     const displayData = item.data === 'Unlimited' || item.unlimited 
       ? 'Unlimited' 
-      : `${adjustDataDisplay(item.data)} GB`;
+      : `${Number.isInteger(item.data) || item.data % 1 === 0 ? Math.floor(item.data) : item.data} GB`;
 
     const navigateToDetails = () => {
       navigation.navigate('RegionalPackageDetails', {
@@ -405,7 +536,12 @@ const renderPackageItem = ({ item, index }) => {
                 onPress={navigateToDetails}
                 style={styles.buyButton}
               >
-                <Text style={styles.buyButtonText}>BUY NOW</Text>
+                <View style={styles.buyButtonContent}>
+                  <View style={styles.buyButtonIconContainer}>
+                    <Ionicons name="cart-outline" size={16} color="#FF6B00" />
+                  </View>
+                  <Text style={styles.buyButtonText}>BUY NOW</Text>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -429,9 +565,9 @@ const renderPackageItem = ({ item, index }) => {
                         </Text>
                       </View>
                       <View style={styles.altCoverageBadge}>
-                        <Ionicons name="globe-outline" size={12} color={colors.text.secondary} />
-                        <Text style={styles.altCoverageText}>
-                          {processProviderNetworks(pkg).countryCount}
+                        <Ionicons name="globe-outline" size={12} color="#1F2937" />
+                        <Text style={[styles.altCoverageText, { color: '#1F2937' }]}>
+                          {processProviderNetworks(pkg).countryCount} Countries
                         </Text>
                       </View>
                     </View>
@@ -464,7 +600,11 @@ const renderPackageItem = ({ item, index }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
+        <LinearGradient
+          colors={['#F8F9FA', '#F3F4F6']}
+          style={styles.backgroundGradient}
+        />
+        <ActivityIndicator size="large" color="#FF6B00" />
       </SafeAreaView>
     );
   }
@@ -479,6 +619,10 @@ const renderPackageItem = ({ item, index }) => {
 
  return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#F8F9FA', '#F3F4F6']}
+        style={styles.backgroundGradient}
+      />
       {renderHeader()}
       <FlatList
         data={packages}
@@ -488,7 +632,7 @@ const renderPackageItem = ({ item, index }) => {
         ListEmptyComponent={() => (
           <View style={styles.emptyStateContainer}>
             {loading ? (
-              <ActivityIndicator size="large" color="#2196f3" />
+              <ActivityIndicator size="large" color="#FF6B00" />
             ) : (
               <Text style={styles.noPackagesText}>
                 No packages available for this selection.
@@ -514,42 +658,59 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.background.primary,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    borderBottomColor: '#E5E7EB',
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border.header,
+    borderColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontFamily: 'Quicksand-Bold',
+    flex: 1,
+    textAlign: 'center',
   },
   listContainer: {
     padding: 16,
     paddingBottom: Platform.OS === 'ios' ? 80 : 60,
   },
   packageItem: {
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
-    padding: 16,
-    backgroundColor: colors.background.secondary,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border.light,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   packageHeader: {
     flexDirection: 'row',
@@ -570,13 +731,16 @@ const styles = StyleSheet.create({
   speedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FF6B0010',
     borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   speedText: {
     marginLeft: 4,
     fontSize: 12,
+    color: '#FF6B00',
+    fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   packageDetails: {
@@ -586,43 +750,45 @@ const styles = StyleSheet.create({
   },
   dataAmount: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    fontWeight: '700',
+    color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   validityPeriod: {
     fontSize: 14,
-    color: colors.text.secondary,
+    color: '#6B7280',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginTop: 4,
+    fontWeight: '500',
   },
   networkButton: {
     marginTop: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: colors.stone[100],
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.stone[200],
+    borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
     ...Platform.select({
       ios: {
-        shadowColor: colors.stone[900],
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
-        shadowRadius: 3,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 1,
+        elevation: 3,
       },
     }),
   },
   networkButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.stone[600],
+    color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginLeft: 4,
   },
@@ -636,36 +802,52 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   priceText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FF6B00',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginBottom: 8,
   },
   buyButton: {
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderRadius: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#2196f3',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 100,
+    minWidth: 90,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     ...Platform.select({
       ios: {
-        shadowColor: '#15803d',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
       },
       android: {
         elevation: 3,
       },
     }),
   },
+  buyButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  buyButtonIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: '#FF6B0010',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   buyButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.stone[50],
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -675,13 +857,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   alternativeItem: {
-    borderRadius: 8,
-    backgroundColor: colors.background.secondary,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border.light,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   alternativeContent: {
-    padding: 12,
+    padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -692,21 +883,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   altProviderBadge: {
-    backgroundColor: colors.background.tertiary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   altProviderText: {
-    color: colors.text.primary,
+    color: '#6B7280',
     fontSize: 12,
+    fontWeight: '500',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   altCoverageBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.background.tertiary,
+    backgroundColor: '#FF6B0010',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -720,15 +914,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   altPriceText: {
-    color: colors.text.primary,
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#1F2937',
+    fontSize: 18,
+    fontWeight: '700',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  compareContainer: {
+    marginTop: 4,
   },
   compareText: {
     fontSize: 12,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   emptyStateContainer: {
     flex: 1,

@@ -8,37 +8,43 @@ import {
   ScrollView,
   Platform,
   Dimensions,
-	   TextInput,
-	ActivityIndicator,
-Alert,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import NetworkModalGlobal from '../components/NetworkModalGlobal';
 import { colors } from '../theme/colors';
 import esimApi from '../api/esimApi';
+import { newApi } from '../api/api';
 import { getNetworks, formatLocationNetworkList } from '../utils/PackageFilters';
 import { countries } from '../utils/countryData';
+import { BlurView } from 'expo-blur';
 
-const { width } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GlobalPackageDetailsScreen = () => {
   const [networkModalVisible, setNetworkModalVisible] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [verifiedPromoCode, setVerifiedPromoCode] = useState('');
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  const [discountedPrice, setDiscountedPrice] = useState(null);
+  const [originalPrice, setOriginalPrice] = useState(null);
+  const [isPromoInputFocused, setIsPromoInputFocused] = useState(false);
+  
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params;
   const packageData = params.package;
   const globalPackageName = params.globalPackageName;
-	const [promoCode, setPromoCode] = useState('');
-const [verifiedPromoCode, setVerifiedPromoCode] = useState('');
-const [isRedeeming, setIsRedeeming] = useState(false);
-const [discountedPrice, setDiscountedPrice] = useState(null);
-const [originalPrice, setOriginalPrice] = useState(null);
-	
-	useEffect(() => {
-  setOriginalPrice(packageData.price);
-}, [packageData.price]);
+  
+  useEffect(() => {
+    setOriginalPrice(packageData.price);
+  }, [packageData.price]);
 
 
   const getCountryCount = () => {
@@ -82,50 +88,77 @@ const [originalPrice, setOriginalPrice] = useState(null);
     }
   };
 
- const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity 
-        onPress={() => navigation.goBack()} 
-        style={styles.headerIcon}
-      >
-        <Ionicons 
-          name="arrow-back" 
-          size={24} 
-          color={colors.icon.header} 
-        />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>Global Package</Text>
-      <View style={styles.headerIcon}>
-        <Ionicons 
-          name="cash-outline" 
-          size={24} 
-          color={colors.icon.header} 
-        />
+  const renderHeader = () => (
+    <>
+      {/* Fixed header background with blur effect */}
+      <View style={styles.headerBackground}>
+        <BlurView intensity={80} tint="light" style={styles.headerBlur} />
       </View>
-    </View>
+      
+      {/* Header content */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.headerButtonGradient}
+          >
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </LinearGradient>
+        </TouchableOpacity>
+        
+        <Text style={styles.headerTitle}>
+          {packageData.name || 'Global Package'}
+        </Text>
+        
+        <TouchableOpacity onPress={() => {}} style={styles.headerButton}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.headerButtonGradient}
+          >
+            <Ionicons name="share-outline" size={24} color="#1F2937" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 
-   const TopGlobal = () => {
+  const TopGlobal = () => {
     const countryCount = getCountryCount();
 
     return (
       <View style={styles.topFlagContainer}>
-        <LinearGradient
-          colors={[colors.background.secondary, colors.background.tertiary]}
-          style={styles.flagGradient}
-        >
-          <View style={styles.flagWrapper}>
-            <Ionicons 
-              name="globe-outline" 
-              size={40} 
-              color="#007AFF" // Updated to bright blue
-            />
+        <View style={styles.flagWrapper}>
+          <View style={styles.flagOuter}>
+            <LinearGradient
+              colors={['#FFFFFF', '#F9FAFB']}
+              style={styles.flagInnerWrapper}
+            >
+              <View style={styles.globeIconContainer}>
+                {/* Orbit rings */}
+                <View style={[styles.orbitRing, styles.orbitRing1]} />
+                <View style={[styles.orbitRing, styles.orbitRing2]} />
+                
+                {/* Center globe */}
+                <LinearGradient
+                  colors={['#FF6B00', '#FF8533']}
+                  style={styles.globeCenter}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Ionicons name="globe-outline" size={44} color="#FFFFFF" />
+                </LinearGradient>
+                
+                {/* Connection dots */}
+                <View style={[styles.connectionDot, styles.dotTop]} />
+                <View style={[styles.connectionDot, styles.dotRight]} />
+                <View style={[styles.connectionDot, styles.dotBottom]} />
+                <View style={[styles.connectionDot, styles.dotLeft]} />
+              </View>
+            </LinearGradient>
           </View>
-        </LinearGradient>
-        <Text style={[styles.topRegionName, { color: colors.slate[600] }]}>Global</Text>
-        <Text style={styles.coverageText}>
-          Coverage in {countryCount} countries
-        </Text>
+        </View>
+        <Text style={styles.topCountryName}>Worldwide eSIM</Text>
+        <Text style={styles.packageName}>{countryCount} Countries • Instant Activation</Text>
       </View>
     );
   };
@@ -135,236 +168,428 @@ const [originalPrice, setOriginalPrice] = useState(null);
     if (!packageData.voice_minutes && !packageData.sms_count) return null;
 
     return (
-      <View style={styles.voiceSmsSection}>
-        {packageData.voice_minutes !== undefined && (
-          <View style={styles.voiceSmsItem}>
-            <View style={styles.voiceSmsIconContainer}>
-              <Ionicons 
-                name="call-outline" 
-                size={24} 
-                color={colors.icon.active} 
-              />
-            </View>
-            <View>
-              <Text style={styles.voiceSmsLabel}>Voice</Text>
-              <Text style={styles.voiceSmsValue}>{packageData.voice_minutes} Minutes</Text>
-            </View>
+      <View style={styles.voiceSmsContainer}>
+        <LinearGradient
+          colors={['#EFF6FF', '#E0E7FF']}
+          style={styles.voiceSmsCard}
+        >
+          <View style={styles.voiceSmsHeader}>
+            <MaterialCommunityIcons name="plus-network" size={24} color="#4F46E5" />
+            <Text style={styles.voiceSmsTitle}>Additional Features</Text>
           </View>
-        )}
-        
-        {packageData.sms_count !== undefined && (
-          <View style={styles.voiceSmsItem}>
-            <View style={styles.voiceSmsIconContainer}>
-              <Ionicons 
-                name="chatbubble-outline" 
-                size={24} 
-                color={colors.icon.active} 
-              />
-            </View>
-            <View>
-              <Text style={styles.voiceSmsLabel}>SMS</Text>
-              <Text style={styles.voiceSmsValue}>{packageData.sms_count} Messages</Text>
-            </View>
+          
+          <View style={styles.voiceSmsItems}>
+            {packageData.voice_minutes !== undefined && (
+              <View style={styles.voiceSmsItem}>
+                <View style={[styles.voiceSmsIconContainer, { backgroundColor: '#10B98115' }]}>
+                  <Ionicons name="call" size={20} color="#10B981" />
+                </View>
+                <View style={styles.voiceSmsContent}>
+                  <Text style={styles.voiceSmsLabel}>Voice Calls</Text>
+                  <Text style={styles.voiceSmsValue}>{packageData.voice_minutes} Minutes</Text>
+                </View>
+              </View>
+            )}
+            
+            {packageData.sms_count !== undefined && (
+              <View style={styles.voiceSmsItem}>
+                <View style={[styles.voiceSmsIconContainer, { backgroundColor: '#F5910B15' }]}>
+                  <Ionicons name="chatbubble" size={20} color="#F59E0B" />
+                </View>
+                <View style={styles.voiceSmsContent}>
+                  <Text style={styles.voiceSmsLabel}>SMS Messages</Text>
+                  <Text style={styles.voiceSmsValue}>{packageData.sms_count} Messages</Text>
+                </View>
+              </View>
+            )}
           </View>
-        )}
+        </LinearGradient>
       </View>
     );
   };
 
-  const DataPriceSection = () => (
-  <View style={styles.dataPrice}>
-    <View style={styles.dataSection}>
-      <Text style={styles.sectionLabel}>Data</Text>
-      <Text style={styles.dataAmount}>
-        {packageData.data === 'Unlimited' || packageData.unlimited ? 'Unlimited' : `${packageData.data}GB`}
-      </Text>
-    </View>
-    <View style={styles.priceSection}>
-      <Text style={styles.sectionLabel}>Price</Text>
-      {discountedPrice !== null ? (
-        <>
-          <Text style={styles.priceAmount}>
-            ${discountedPrice.toFixed(2)}
-          </Text>
-          <Text style={styles.originalPrice}>
-            ${originalPrice.toFixed(2)}
-          </Text>
-        </>
-      ) : (
-        <Text style={styles.priceAmount}>
-          ${originalPrice?.toFixed(2)}
-        </Text>
-      )}
-    </View>
-  </View>
-);
+  const DataPriceSection = () => {
+    return (
+      <View style={styles.dataPriceContainer}>
+        <LinearGradient
+          colors={['#FFFFFF', '#FAFAFA']}
+          style={styles.cardGradient}
+        >
+          <View style={styles.dataPrice}>
+            <View style={styles.dataSection}>
+              <View style={styles.iconContainer}>
+                <LinearGradient
+                  colors={['#4F46E5', '#6366F1']}
+                  style={styles.iconGradient}
+                >
+                  <MaterialCommunityIcons name="database" size={24} color="#FFFFFF" />
+                </LinearGradient>
+              </View>
+              <Text style={styles.sectionLabel}>Data</Text>
+              <Text style={styles.dataAmount}>
+                {packageData.data === 'Unlimited' ? (
+                  <>
+                    <MaterialIcons name="all-inclusive" size={32} color="#4F46E5" />
+                    {'\n'}Unlimited
+                  </>
+                ) : (
+                  `${packageData.data}GB`
+                )}
+              </Text>
+            </View>
+            
+            <View style={styles.divider} />
+            
+            <View style={styles.priceSection}>
+              <View style={styles.iconContainer}>
+                <LinearGradient
+                  colors={['#FF6B00', '#FF8533']}
+                  style={styles.iconGradient}
+                >
+                  <MaterialIcons name="attach-money" size={24} color="#FFFFFF" />
+                </LinearGradient>
+              </View>
+              <Text style={styles.sectionLabel}>Price</Text>
+              {discountedPrice !== null ? (
+                <View style={styles.priceContainer}>
+                  <Text style={styles.priceAmount}>
+                    ${discountedPrice.toFixed(2)}
+                  </Text>
+                  <Text style={styles.originalPrice}>
+                    ${originalPrice.toFixed(2)}
+                  </Text>
+                  <View style={styles.discountBadge}>
+                    <Text style={styles.discountText}>
+                      -{((originalPrice - discountedPrice) / originalPrice * 100).toFixed(0)}%
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.priceAmount}>
+                  ${originalPrice?.toFixed(2)}
+                </Text>
+              )}
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  };
 
   const ValiditySection = () => (
-  <View style={styles.validitySection}>
-    <View style={styles.validityInner}>
-      <View style={styles.validityIconContainer}>
-        <Ionicons 
-          name="time-outline" 
-          size={24} 
-          color={colors.stone[600]} 
-        />
-      </View>
-      <Text style={styles.validityDuration}>
-        Valid for {packageData.duration.toString().replace(' days', '')} days
-      </Text>
+    <View style={styles.validitySection}>
+      <LinearGradient
+        colors={['#FFF7ED', '#FFEDD5']}
+        style={styles.validityCard}
+      >
+        <View style={styles.validityIconContainer}>
+          <LinearGradient
+            colors={['#FF6B00', '#FF8533']}
+            style={styles.iconGradient}
+          >
+            <Ionicons name="time-outline" size={28} color="#FFFFFF" />
+          </LinearGradient>
+        </View>
+        <View style={styles.validityContent}>
+          <Text style={styles.validityLabel}>Validity Period</Text>
+          <Text style={styles.validityDuration}>
+            {packageData.duration.toString().replace(' days', '')} Days
+          </Text>
+          <Text style={styles.validityNote}>Activates on first use</Text>
+        </View>
+      </LinearGradient>
     </View>
-  </View>
-);
+  );
 
 
   const PromoCodeSection = () => {
-  const [localPromoCode, setLocalPromoCode] = useState('');
-  const [localIsRedeeming, setLocalIsRedeeming] = useState(false);
+    const [localPromoCode, setLocalPromoCode] = useState('');
+    const [localIsRedeeming, setLocalIsRedeeming] = useState(false);
 
-  const localHandleRedemption = async () => {
-    // Validate promo code format
-    if (!localPromoCode.trim()) {
-      Alert.alert('Error', 'Please enter a promo code');
-      return;
-    }
+    const handleInputFocus = () => {
+      setIsPromoInputFocused(true);
+    };
 
-    if (localPromoCode.length < 6) {
-      Alert.alert('Error', 'Promo code must be 6 characters');
-      return;
-    }
+    const handleInputBlur = () => {
+      setIsPromoInputFocused(false);
+    };
 
-    setLocalIsRedeeming(true);
-    try {
-      const response = await esimApi.verifyGiftCardForDiscount(localPromoCode.toUpperCase());
-      console.log('Gift card verification response:', response);
-      
-      if (response.success && response.data?.amount) {
-        const discountAmount = Math.min(response.data.amount, originalPrice);
-        const newPrice = originalPrice - discountAmount;
+    const localHandleRedemption = async () => {
+      if (!localPromoCode.trim()) {
+        return;
+      }
+
+      if (localPromoCode.length < 6) {
+        Alert.alert('Error', 'Promo code must be 6 characters');
+        return;
+      }
+
+      setLocalIsRedeeming(true);
+      try {
+        const response = await newApi.post('/user/gift-card/check', {
+          card_number: localPromoCode.toUpperCase()
+        });
         
-        setDiscountedPrice(newPrice);
-        setVerifiedPromoCode(localPromoCode.toUpperCase());
-        
-        Alert.alert(
-          'Success',
-          `Promo code applied! Discount: $${discountAmount.toFixed(2)}`
-        );
-      } else {
+        if (response.data.success && response.data.data?.remaining_balance > 0) {
+          const discountAmount = Math.min(response.data.data.remaining_balance, originalPrice);
+          const newPrice = originalPrice - discountAmount;
+          
+          setDiscountedPrice(newPrice);
+          setVerifiedPromoCode(localPromoCode.toUpperCase());
+          setPromoCode(localPromoCode.toUpperCase());
+          
+          Alert.alert(
+            'Success! 🎉',
+            `Gift card applied!\nDiscount: $${discountAmount.toFixed(2)}`
+          );
+        } else {
+          setVerifiedPromoCode('');
+          setDiscountedPrice(null);
+          Alert.alert(
+            'Invalid Code',
+            response.data.message || 'Invalid or empty gift card'
+          );
+        }
+      } catch (error) {
+        console.error('Gift card check error:', error);
         setVerifiedPromoCode('');
         setDiscountedPrice(null);
         Alert.alert(
           'Error',
-          response.message || 'Invalid promo code'
+          'An error occurred while checking the gift card'
         );
+      } finally {
+        setLocalIsRedeeming(false);
       }
-    } catch (error) {
-      console.error('Redemption error:', error);
-      setVerifiedPromoCode('');
-      setDiscountedPrice(null);
-      Alert.alert(
-        'Error',
-        'An error occurred while processing your request'
+    };
+
+    return (
+      <View style={styles.promoSection}>
+        <LinearGradient
+          colors={['#FFFFFF', '#FAFAFA']}
+          style={styles.promoCard}
+        >
+          <View style={styles.promoHeader}>
+            <MaterialCommunityIcons name="ticket-percent" size={24} color="#FF6B00" />
+            <Text style={styles.sectionTitle}>Have a promo code?</Text>
+          </View>
+          
+          <View style={styles.promoInputContainer}>
+            <TextInput
+              style={styles.promoInput}
+              placeholder="Enter 6-digit code"
+              placeholderTextColor="#9CA3AF"
+              value={localPromoCode}
+              onChangeText={(text) => {
+                const cleanText = text.replace(/[^A-Za-z0-9]/g, '');
+                setLocalPromoCode(cleanText.slice(0, 6));
+              }}
+              autoCapitalize="characters"
+              maxLength={6}
+              selectionColor="#FF6B00"
+            />
+            {localPromoCode.length > 0 && (
+              <Text style={styles.charCounter}>
+                {localPromoCode.length}/6
+              </Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.redeemButton,
+              (!localPromoCode.trim() || localPromoCode.length < 6) && styles.redeemButtonDisabled
+            ]}
+            onPress={localHandleRedemption}
+            disabled={!localPromoCode.trim() || localPromoCode.length < 6 || localIsRedeeming}
+          >
+            <LinearGradient
+              colors={
+                (!localPromoCode.trim() || localPromoCode.length < 6)
+                  ? ['#E5E7EB', '#D1D5DB']
+                  : ['#FF6B00', '#FF8533']
+              }
+              style={styles.redeemButtonGradient}
+            >
+              {localIsRedeeming ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <MaterialIcons name="redeem" size={20} color="#FFFFFF" />
+                  <Text style={styles.redeemText}>Apply Code</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {verifiedPromoCode && (
+            <View style={styles.successBadge}>
+              <MaterialIcons name="check-circle" size={20} color="#10B981" />
+              <Text style={styles.successText}>Code Applied!</Text>
+            </View>
+          )}
+        </LinearGradient>
+      </View>
+    );
+  };
+
+  const InfoSection = () => {
+    const InfoCard = ({ icon, iconColor, label, value, onPress, isButton, index }) => {
+      return (
+        <View>
+          <TouchableOpacity
+            style={[
+              styles.infoCard,
+              isButton && styles.infoCardButton
+            ]}
+            onPress={onPress}
+            disabled={!onPress}
+          >
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconContainer, { backgroundColor: `${iconColor}15` }]}>
+                {icon}
+              </View>
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoLabel}>{label}</Text>
+                {typeof value === 'string' ? (
+                  <Text style={styles.infoValue}>{value}</Text>
+                ) : (
+                  value
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
       );
-    } finally {
-      setLocalIsRedeeming(false);
-    }
+    };
+
+    return (
+      <View style={styles.infoSection}>
+        <Text style={styles.infoSectionTitle}>Package Details</Text>
+        
+        <View style={styles.infoGrid}>
+          <InfoCard
+            icon={<Ionicons name="globe" size={24} color="#4F46E5" />}
+            iconColor="#4F46E5"
+            label="Coverage"
+            value={
+              <View style={styles.networkPreview}>
+                <Text style={styles.networkCount}>
+                  {getCountryCount()} Countries
+                </Text>
+                <TouchableOpacity
+                  style={styles.viewAllButton}
+                  onPress={() => setNetworkModalVisible(true)}
+                >
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+            }
+            onPress={() => setNetworkModalVisible(true)}
+            isButton
+            index={0}
+          />
+
+          <InfoCard
+            icon={<MaterialCommunityIcons name="sim" size={24} color="#10B981" />}
+            iconColor="#10B981"
+            label="Plan Type"
+            value={packageData.voice_minutes || packageData.sms_count ? 'Data + Voice + SMS' : 'Data Only eSIM'}
+            index={1}
+          />
+
+          <InfoCard
+            icon={<MaterialIcons name="add-circle" size={24} color="#FF6B00" />}
+            iconColor="#FF6B00"
+            label="Top Up"
+            value={
+              <View style={styles.topUpContainer}>
+                <Text style={styles.topUpAvailable}>Available</Text>
+                <MaterialIcons name="check-circle" size={16} color="#10B981" />
+              </View>
+            }
+            index={2}
+          />
+
+          <InfoCard
+            icon={<Ionicons name="speedometer" size={24} color="#8B5CF6" />}
+            iconColor="#8B5CF6"
+            label="Network Speed"
+            value={packageData.speed || '5G/LTE'}
+            index={3}
+          />
+        </View>
+
+        <View style={styles.policyCard}>
+          <LinearGradient
+            colors={['#EEF2FF', '#E0E7FF']}
+            style={styles.policyGradient}
+          >
+            <View style={styles.policyHeader}>
+              <View style={[styles.infoIconContainer, { backgroundColor: '#4F46E515' }]}>
+                <Ionicons name="shield-checkmark" size={24} color="#4F46E5" />
+              </View>
+              <Text style={styles.policyTitle}>Activation Policy</Text>
+            </View>
+            <Text style={styles.policyText}>
+              The validity period starts when the eSIM connects to any supported network 
+              in the covered countries. Make sure to activate only when you're ready to use it.
+            </Text>
+            <View style={styles.policyFeatures}>
+              <View style={styles.policyFeature}>
+                <Ionicons name="checkmark-circle" size={16} color="#4F46E5" />
+                <Text style={styles.policyFeatureText}>Instant activation</Text>
+              </View>
+              <View style={styles.policyFeature}>
+                <Ionicons name="checkmark-circle" size={16} color="#4F46E5" />
+                <Text style={styles.policyFeatureText}>No expiry before use</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      </View>
+    );
+  };
+
+  const handleBuyPress = () => {
+    navigation.navigate('Checkout', {
+      package: {
+        ...packageData,
+        data: packageData.data === 'Unlimited' || packageData.unlimited ? 'Unlimited' : packageData.data,
+        duration: packageData.duration.toString().replace(' days', ''),
+        price: discountedPrice || originalPrice,
+        coverage: getCountryCount(),
+        voice_minutes: packageData.voice_minutes || undefined,
+        sms_count: packageData.sms_count || undefined
+      },
+      isGlobal: true,
+      globalPackageName: globalPackageName,
+      promoDetails: verifiedPromoCode && discountedPrice !== null ? {
+        code: verifiedPromoCode,
+        originalPrice: originalPrice,
+        discountAmount: originalPrice - discountedPrice
+      } : null
+    });
   };
 
   return (
-    <View style={styles.promoSection}>
-      <Text style={styles.sectionTitle}>Apply code</Text>
-      <View style={styles.promoContainer}>
-        <TextInput
-          style={[
-            styles.promoInput,
-            { color: colors.text.primary }
-          ]}
-          placeholder="Enter referral or promo code"
-          placeholderTextColor={colors.text.secondary}
-          value={localPromoCode}
-          onChangeText={(text) => {
-            const cleanText = text.replace(/[^A-Za-z0-9]/g, '');
-            setLocalPromoCode(cleanText.slice(0, 6));
-          }}
-          autoCapitalize="characters"
-          maxLength={6}
-          selectionColor={colors.stone[800]}
-        />
-        <TouchableOpacity 
-          style={[
-            styles.redeemButton,
-            !localPromoCode.trim() || localPromoCode.length < 6 ? styles.redeemButtonDisabled : null
-          ]}
-          onPress={localHandleRedemption}
-          disabled={!localPromoCode.trim() || localPromoCode.length < 6 || localIsRedeeming}
-        >
-          {localIsRedeeming ? (
-            <ActivityIndicator size="small" color="#FF6B6B" />
-          ) : (
-            <Text style={styles.redeemText}>Redeem</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
-
-  const InfoSection = () => (
-  <View style={styles.infoSection}>
-    <Text style={styles.sectionTitle}>MORE INFO</Text>
-    
-    <View style={styles.infoRow}>
-      <View style={styles.infoLeft}>
-        <Ionicons name="cellular-outline" size={20} color="#888" />
-        <Text style={styles.infoLabel}>Networks</Text>
-      </View>
-      <TouchableOpacity 
-        style={styles.viewAllButton}
-        onPress={() => setNetworkModalVisible(true)}
-      >
-        <Text style={styles.viewAllText}>View all</Text>
-      </TouchableOpacity>
-    </View>
-
-    <View style={styles.infoRow}>
-      <View style={styles.infoLeft}>
-        <Ionicons name="card-outline" size={20} color="#888" />
-        <Text style={styles.infoLabel}>Plan Type</Text>
-      </View>
-      <Text style={styles.infoValue}>
-        {packageData.voice_minutes || packageData.sms_count ? 
-          'Global Data + Voice + SMS' : 
-          'Global Data'}
-      </Text>
-    </View>
-
-      <View style={styles.infoRow}>
-        <View style={styles.infoLeft}>
-          <Ionicons name="reload-circle-outline" size={20} color="#888" />
-          <Text style={styles.infoLabel}>Top Up</Text>
-        </View>
-        <Text style={styles.infoValue}>Available</Text>
-      </View>
-
-      <View style={styles.policySection}>
-        <View style={styles.infoLeft}>
-          <Ionicons name="shield-checkmark-outline" size={20} color="#888" />
-          <Text style={styles.infoLabel}>Activation Policy</Text>
-        </View>
-        <Text style={styles.policyText}>
-          The validity period starts when the SIM connects to any supported networks in the covered countries.
-        </Text>
-      </View>
-    </View>
-  );
-
-  return (
     <SafeAreaView style={styles.container}>
+      {/* Background gradient */}
+      <LinearGradient
+        colors={['#F9FAFB', '#EFF6FF', '#FEF3C7']}
+        style={styles.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      
       {renderHeader()}
-      <ScrollView 
-        style={styles.scrollView} 
+      
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollViewContent}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="on-drag"
       >
         <TopGlobal />
         <DataPriceSection />
@@ -372,48 +597,42 @@ const [originalPrice, setOriginalPrice] = useState(null);
         <ValiditySection />
         <PromoCodeSection />
         <InfoSection />
+        
+        {/* Extra padding for bottom */}
+        <View style={{ height: 170 }} />
       </ScrollView>
       
-      <View style={styles.bottomContainer}>
-        <Text style={styles.disclaimer}>
-          Before completing this order, please confirm your device is eSIM compatible and network-unlocked
-          <Text style={styles.learnMore}> Learn more</Text>
-        </Text>
-        <TouchableOpacity 
-          onPress={() => {
-            navigation.navigate('Checkout', {
-              package: {
-                ...packageData,
-                data: packageData.data === 'Unlimited' || packageData.unlimited ? 'Unlimited' : packageData.data,
-                duration: packageData.duration.toString().replace(' days', ''),
-                price: discountedPrice || packageData.price,
-                coverage: getCountryCount(),
-                voice_minutes: packageData.voice_minutes || undefined,
-                sms_count: packageData.sms_count || undefined
-              },
-              isGlobal: true,
-              globalPackageName: globalPackageName,
-              promoDetails: verifiedPromoCode && discountedPrice !== null ? {
-                code: verifiedPromoCode,
-                originalPrice: originalPrice,
-                discountAmount: originalPrice - discountedPrice
-              } : null
-            });
-          }}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#2ECC71', '#27AE60']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.buyButton}
-          >
-            <Text style={styles.buyButtonText}>
-              ${(discountedPrice || packageData.price).toFixed(2)} • Buy Now
-            </Text>
-            <View style={styles.buyButtonDot} />
-          </LinearGradient>
-        </TouchableOpacity>
+      {/* Modern floating bottom container */}
+      <View style={[styles.bottomContainer, { backgroundColor: 'transparent' }]}>
+        <View style={styles.bottomGradient}>
+          
+          <TouchableOpacity onPress={handleBuyPress}>
+            <LinearGradient
+              colors={['#FF6B00', '#FF8533']}
+              style={styles.buyButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.buyButtonContent}>
+                <View style={styles.buyButtonLeft}>
+                  <View style={styles.buyButtonIconContainer}>
+                    <Ionicons name="cart" size={24} color="#FFFFFF" />
+                  </View>
+                  <View>
+                    <Text style={styles.buyButtonLabel}>Total Price</Text>
+                    <Text style={styles.buyButtonPrice}>
+                      ${(discountedPrice || originalPrice)?.toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.buyButtonRight}>
+                  <Text style={styles.buyButtonText}>Buy Now</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                </View>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <NetworkModalGlobal
@@ -430,327 +649,654 @@ const [originalPrice, setOriginalPrice] = useState(null);
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+    backgroundColor: '#FFFFFF',
   },
-  scrollViewContent: {
-    flexGrow: 1,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  
+  // Header styles
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    zIndex: 10,
+  },
+  headerBlur: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 10 : 10,
+    paddingBottom: 10,
+    zIndex: 11,
   },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
+  headerButton: {
+    width: 44,
+    height: 44,
+  },
+  headerButtonGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.header,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
   },
+  
+  // ScrollView
   scrollView: {
     flex: 1,
-    padding: 16,
   },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  
+  // Top Global Section
   topFlagContainer: {
     alignItems: 'center',
-    marginVertical: 24,
-    paddingHorizontal: 16,
-  },
-  flagGradient: {
-    padding: 3,
-    borderRadius: 42,
-    marginBottom: 16,
+    marginBottom: 30,
   },
   flagWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.background.primary,
+    width: 140,
+    height: 140,
+    marginBottom: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.light,
+  },
+  flagOuter: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    padding: 2,
   },
   flagInnerWrapper: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.background.tertiary,
+    flex: 1,
+    borderRadius: 68,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
-  topRegionName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    color: colors.slate[600], // Keeping the original slate color
+  globeIconContainer: {
+    position: 'relative',
+    width: 120,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  coverageText: {
+  orbitRing: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 100,
+  },
+  orbitRing1: {
+    width: 100,
+    height: 100,
+    borderStyle: 'dashed',
+  },
+  orbitRing2: {
+    width: 120,
+    height: 120,
+    borderColor: '#F3F4F6',
+    transform: [{ rotate: '45deg' }],
+  },
+  globeCenter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  connectionDot: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B00',
+  },
+  dotTop: {
+    top: 10,
+    left: '50%',
+    marginLeft: -4,
+  },
+  dotRight: {
+    right: 10,
+    top: '50%',
+    marginTop: -4,
+  },
+  dotBottom: {
+    bottom: 10,
+    left: '50%',
+    marginLeft: -4,
+  },
+  dotLeft: {
+    left: 10,
+    top: '50%',
+    marginTop: -4,
+  },
+  topCountryName: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    marginBottom: 4,
+  },
+  packageName: {
     fontSize: 16,
-    color: colors.text.secondary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  
+  // Data & Price Section
+  dataPriceContainer: {
+    marginBottom: 20,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  cardGradient: {
+    padding: 24,
   },
   dataPrice: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
   },
   dataSection: {
     flex: 1,
+    alignItems: 'center',
   },
   priceSection: {
     flex: 1,
-    alignItems: 'flex-end',
+    alignItems: 'center',
+  },
+  divider: {
+    width: 1,
+    height: 80,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 20,
+  },
+  iconContainer: {
+    marginBottom: 12,
+  },
+  iconGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sectionLabel: {
-    fontSize: 16,
-    color: colors.text.secondary,
+    fontSize: 14,
+    color: '#6B7280',
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    fontWeight: '500',
   },
   dataAmount: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: '800',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    textAlign: 'center',
+  },
+  priceContainer: {
+    alignItems: 'center',
   },
   priceAmount: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: '800',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
-  validitySection: {
-    marginBottom: 24,
-    paddingHorizontal: 16,
+  originalPrice: {
+    fontSize: 18,
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
+    marginTop: 4,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
-  validityInner: {
-    backgroundColor: colors.background.secondary,
+  discountBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-    alignItems: 'center',
-    paddingVertical: 20,
+    marginTop: 8,
   },
-  validityIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background.tertiary,
-    justifyContent: 'center',
+  discountText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  
+  // Voice SMS Section
+  voiceSmsContainer: {
+    marginBottom: 20,
+  },
+  voiceSmsCard: {
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  voiceSmsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  voiceSmsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 10,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  voiceSmsItems: {
+    // gap: 12, // Replace with marginBottom for better compatibility
+  },
+  voiceSmsItem: {
+    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  validityDuration: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    textAlign: 'center',
-  },
-  voiceSmsSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  voiceSmsItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   voiceSmsIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background.tertiary,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
+  voiceSmsContent: {
+    flex: 1,
+  },
   voiceSmsLabel: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    marginBottom: 4,
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    marginBottom: 2,
   },
   voiceSmsValue: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
-  promoSection: {
-    marginBottom: 24,
-    paddingHorizontal: 16,
+  
+  // Validity Section
+  validitySection: {
+    marginBottom: 20,
   },
-  promoContainer: {
+  validityCard: {
+    borderRadius: 20,
+    padding: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.light,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  promoPlaceholder: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  validityIconContainer: {
+    marginRight: 16,
   },
-  redeemButton: {
-    backgroundColor: colors.background.redeemButton,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border.redeemButton,
+  validityContent: {
+    flex: 1,
   },
-  redeemText: {
+  validityLabel: {
     fontSize: 14,
-    color: colors.text.redeemText,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    color: '#92400E',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    fontWeight: '500',
+    marginBottom: 4,
   },
-  infoSection: {
-    marginBottom: 24,
-    paddingHorizontal: 16,
+  validityDuration: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#92400E',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+    marginBottom: 2,
+  },
+  validityNote: {
+    fontSize: 12,
+    color: '#B45309',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  
+  // Promo Section
+  promoSection: {
+    marginBottom: 20,
+  },
+  promoCard: {
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  promoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 10,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  promoInputContainer: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 4,
     marginBottom: 16,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-  infoRow: {
+    borderColor: '#FF6B00',
+    borderWidth: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  promoInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    fontWeight: '600',
   },
-  infoLeft: {
+  charCounter: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  redeemButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  redeemButtonDisabled: {
+    opacity: 0.5,
+  },
+  redeemButtonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  redeemText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  successBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  successText: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  
+  // Info Section
+  infoSection: {
+    marginBottom: 20,
+  },
+  infoSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  infoGrid: {
+    marginBottom: 20,
+  },
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  infoCardPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  infoCardButton: {
+    backgroundColor: '#FAFAFA',
+  },
+  infoCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoTextContainer: {
+    flex: 1,
   },
   infoLabel: {
-    fontSize: 16,
-    color: colors.text.primary,
-    marginLeft: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    marginBottom: 2,
   },
   infoValue: {
     fontSize: 16,
-    color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    color: '#1F2937',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  networkPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  networkCount: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '600',
   },
   viewAllButton: {
-    backgroundColor: colors.background.tertiary,
+    backgroundColor: '#4F46E5',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
   viewAllText: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
-  policySection: {
-    marginTop: 16,
+  topUpContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  topUpAvailable: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10B981',
+    marginRight: 6,
+  },
+  
+  // Policy Card
+  policyCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  policyGradient: {
+    padding: 20,
+  },
+  policyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  policyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4F46E5',
+    marginLeft: 12,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
   policyText: {
     fontSize: 14,
-    color: colors.text.secondary,
-    marginTop: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    color: '#6366F1',
     lineHeight: 20,
-  },
-  bottomContainer: {
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 85 : 75,
-    backgroundColor: colors.background.secondary,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.light,
-    marginBottom: Platform.OS === 'ios' ? 20 : 0,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  disclaimer: {
-    fontSize: 12,
-    color: colors.text.secondary,
     marginBottom: 16,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
-  learnMore: {
-    color: colors.text.secondary,
+  policyFeatures: {
+    // gap: 8, // Replace with marginBottom for better compatibility
   },
-  buyButton: {
+  policyFeature: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
+  },
+  policyFeatureText: {
+    fontSize: 14,
+    color: '#4F46E5',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  
+  // Bottom Container
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  bottomGradient: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80, // Adjusted padding for tab bar
+  },
+  buyButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  buyButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+  },
+  buyButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  buyButtonIconContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
-    padding: 14,
-    borderRadius: 25,
-    marginBottom: Platform.OS === 'ios' ? 6 : 0,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  buyButtonLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  buyButtonPrice: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  buyButtonRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   buyButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.stone[50],
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  buyButtonDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.stone[50],
-    marginLeft: 8,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginRight: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
 });
 

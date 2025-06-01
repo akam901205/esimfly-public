@@ -85,6 +85,10 @@ export const useESimData = () => {
     setSelectedEsim(esim);
   }, []);
 
+  const updateVisibleEsims = useCallback((newVisibleEsims: ESim[]) => {
+    setVisibleEsims(newVisibleEsims);
+  }, []);
+
   const refreshData = useCallback(() => {
     return fetchEsimData(true);
   }, [fetchEsimData]);
@@ -98,6 +102,7 @@ export const useESimData = () => {
     fetchEsimData,
     loadMoreEsims,
     selectEsim,
+    updateVisibleEsims,
     refreshData,
     hasMoreEsims: visibleEsims.length < esimData.length
   };

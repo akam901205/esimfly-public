@@ -44,7 +44,7 @@ const DirectStep = ({ number, text, color = "#FF6B00" }) => (
 
 const Step = ({ number, text }) => (
   <View style={styles.stepContainer}>
-    <Text style={styles.stepNumber}>{number}.</Text>
+    <Text style={[styles.stepNumber, { color: '#FF6B00' }]}>{number}.</Text>
     <Text style={styles.stepText}>{text}</Text>
   </View>
 );
@@ -744,23 +744,23 @@ const handleCopy = async (text: string) => {
         <View style={styles.header}>
   <TouchableOpacity 
     onPress={() => navigation.goBack()}
-    style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+    style={styles.headerIcon}
   >
     <Ionicons 
       name="arrow-back" 
       size={24} 
-      color={colors.icon.header}
+      color="#374151"
     />
   </TouchableOpacity>
   <Text style={styles.title}>Instructions</Text>
   <TouchableOpacity 
     onPress={handleShare}
-    style={[styles.headerIcon, { backgroundColor: colors.background.headerIcon }]}
+    style={styles.headerIcon}
   >
     <Ionicons 
       name="share-outline" 
       size={24} 
-      color={colors.icon.header}
+      color="#374151"
     />
   </TouchableOpacity>
 </View>
@@ -781,7 +781,6 @@ const handleCopy = async (text: string) => {
               ]}>
                 {tab}
               </Text>
-              {activeTab === tab && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -815,50 +814,50 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border.header,
+    borderColor: '#E5E7EB',
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontFamily: 'Quicksand-Bold',
+    flex: 1,
+    textAlign: 'center',
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.background.secondary,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    paddingHorizontal: 20,
+    backgroundColor: colors.background.primary,
   },
   tab: {
     flex: 1,
-    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    position: 'relative',
+    justifyContent: 'center',
+    padding: 15,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.border.light,
+    gap: 8,
   },
   activeTab: {
-    borderBottomColor: colors.primary.DEFAULT,
+    borderBottomColor: '#333',
   },
   tabText: {
     color: colors.text.secondary,
     fontSize: 14,
+    fontWeight: '500',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   activeTabText: {
-    color: colors.primary.DEFAULT,
+    color: colors.text.primary,
     fontWeight: '600',
   },
   activeIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 16,
-    right: 16,
-    height: 2,
-    backgroundColor: colors.primary.DEFAULT,
+    display: 'none',
   },
   tabContent: {
     flex: 1,
@@ -930,7 +929,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stepNumber: {
-    color: colors.primary.DEFAULT,
+    color: '#FF6B00',
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
@@ -943,7 +942,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepTitle: {
-    color: colors.primary.DEFAULT,
+    color: '#FF6B00',
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,

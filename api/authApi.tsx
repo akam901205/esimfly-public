@@ -1,8 +1,8 @@
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://esimfly.net/api/auth';
-const REFERRAL_API_URL = 'https://esimfly.net/api/business/referral';
+const API_URL = 'http://159.100.18.83:3000/api/auth';
+const REFERRAL_API_URL = 'http://159.100.18.83:3000/api/business/referral';
 
 interface AuthResponse {
   success: boolean;
@@ -195,9 +195,16 @@ export async function signUp(
     }
 }
 
-export async function resetPassword(email: string): Promise<AuthResponse> {
-  debugLog('Attempting password reset for email:', email);
-  const response = await makeApiRequest('forgot-password.php', 'POST', { email });
+export async function forgotPassword(email: string): Promise<AuthResponse> {
+  debugLog('Attempting forgot password for email:', email);
+  const response = await makeApiRequest('forgot-password', 'POST', { email });
+  debugLog('Forgot password response:', response);
+  return response;
+}
+
+export async function resetPassword(token: string, password: string): Promise<AuthResponse> {
+  debugLog('Attempting password reset with token');
+  const response = await makeApiRequest('reset-password', 'POST', { token, password });
   debugLog('Password reset response:', response);
   return response;
 }

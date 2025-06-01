@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const NEW_API_BASE_URL = 'https://esimfly.net/api';
+const NEW_API_BASE_URL = 'http://159.100.18.83:3000/api';
 
 const api = axios.create({
   baseURL: NEW_API_BASE_URL,
@@ -13,7 +13,6 @@ export const newApi = axios.create({
   baseURL: NEW_API_BASE_URL,
   timeout: 20000,
   headers: {
-    'Content-Type': 'application/json',
     'x-client-type': 'mobile'
   }
 });
@@ -65,6 +64,15 @@ newApi.interceptors.request.use(
     const token = await AsyncStorage.getItem('userToken');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Set Content-Type based on data type
+    if (config.data instanceof FormData) {
+      // Let axios set the Content-Type with boundary for FormData
+      // Don't set it manually
+    } else if (config.headers['Content-Type'] === undefined) {
+      // Set default Content-Type for JSON data
+      config.headers['Content-Type'] = 'application/json';
     }
     
     // Debug logging

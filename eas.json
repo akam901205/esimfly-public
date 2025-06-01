@@ -13,7 +13,7 @@
         "STRIPE_PUBLISHABLE_KEY": "pk_test_51QkpsjRsiK4Lxqyaz4hBVr6NyGJyM0Byyv4r2NDdPnhPaJbq6sRAlJZjij56Cmoaw5RRlMBHqLGePsFBFQC7UCzE003139zcQn",
         "MERCHANT_ID": "merchant.net.esimfly.user.app",
         "API_URL": "https://esimfly.net",
-        "WEBHOOK_URL": "https://esimfly.net/pages/public_app/api/payments/webhook.php"
+        "WEBHOOK_URL": "https://esimfly.net/api/stripe/webhook"
       }
     },
     "preview": {
@@ -33,7 +33,7 @@
         "NODE_ENV": "production",
         "STRIPE_MODE": "live",
         "API_URL": "https://esimfly.net",
-        "WEBHOOK_URL": "https://esimfly.net/pages/public_app/api/payments/webhook.php"
+        "WEBHOOK_URL": "https://esimfly.net/api/stripe/webhook"
       }
     }
   },

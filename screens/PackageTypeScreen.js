@@ -4,10 +4,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import LottieView from 'lottie-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
-
-const API_BASE_URL = 'https://esimfly.net/pages/esimplan';
 
 const PackageTypeScreen = () => {
   const navigation = useNavigation();
@@ -90,15 +89,15 @@ const PackageTypeScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
-            <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+            <Ionicons name="arrow-back" size={24} color="#374151" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{country}</Text>
           <View style={styles.headerIcon}>
-            <Ionicons name="location-outline" size={24} color={colors.text.primary} />
+            <Ionicons name="location-outline" size={24} color="#374151" />
           </View>
         </View>
         <View style={styles.content}>
-          <ActivityIndicator size="large" color={colors.stone[800]} />
+          <ActivityIndicator size="large" color="#FF6B00" />
         </View>
       </SafeAreaView>
     );
@@ -106,13 +105,17 @@ const PackageTypeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#F8F9FA', '#F3F4F6']}
+        style={styles.backgroundGradient}
+      />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{country}</Text>
         <View style={styles.headerIcon}>
-          <Ionicons name="location-outline" size={24} color={colors.text.primary} />
+          <Ionicons name="location-outline" size={24} color="#374151" />
         </View>
       </View>
 
@@ -123,20 +126,42 @@ const PackageTypeScreen = () => {
           loop
           style={styles.lottieAnimation}
         />
+        
         <TouchableOpacity
-		  style={styles.button}
-		  onPress={() => navigateToPackages('regular')}
-		>
-		  <Text style={styles.buttonText}>Regular Data</Text>
-		</TouchableOpacity>
-		{hasUnlimited && (
-		  <TouchableOpacity
-			style={[styles.button, styles.unlimitedButton, { marginTop: 16 }]}
-			onPress={() => navigateToPackages('unlimited')}
-		  >
-			<Text style={styles.buttonText}>Unlimited Data</Text>
-		  </TouchableOpacity>
-		)}
+          style={styles.buttonCard}
+          onPress={() => navigateToPackages('regular')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.buttonContent}>
+            <View style={styles.buttonIconContainer}>
+              <Ionicons name="cellular" size={24} color="#FF6B00" />
+            </View>
+            <View style={styles.buttonTextContainer}>
+              <Text style={styles.buttonTitle}>Regular Data</Text>
+              <Text style={styles.buttonSubtitle}>Choose from available packages</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
+        
+        {hasUnlimited && (
+          <TouchableOpacity
+            style={[styles.buttonCard, { marginTop: 16 }]}
+            onPress={() => navigateToPackages('unlimited')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.buttonContent}>
+              <View style={styles.buttonIconContainer}>
+                <Ionicons name="infinite" size={24} color="#FF6B00" />
+              </View>
+              <View style={styles.buttonTextContainer}>
+                <Text style={styles.buttonTitle}>Unlimited Data</Text>
+                <Text style={styles.buttonSubtitle}>No limits, maximum freedom</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -147,29 +172,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
   },
   headerIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
-	borderColor: colors.border.header,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     color: colors.text.primary,
-    fontFamily: 'Quicksand',
+    fontFamily: 'Quicksand-Bold',
+    flex: 1,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
@@ -180,33 +214,52 @@ const styles = StyleSheet.create({
   lottieAnimation: {
     width: 200,
     height: 200,
-    marginBottom: 20,
+    marginBottom: 40,
   },
- button: {
-  backgroundColor: colors.slate[600],
-  paddingVertical: 15,
-  paddingHorizontal: 30,
-  borderRadius: 25,
-  width: '80%',
-  alignItems: 'center',
-  shadowColor: colors.stone[900],
-  shadowOffset: {
-    width: 0,
-    height: 2,
+  buttonCard: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-  elevation: 5,
-},
-unlimitedButton: {
-  backgroundColor: colors.slate[700],
-},
-buttonText: {
-  color: colors.stone[50],
-  fontSize: 18,
-  fontWeight: 'bold',
-  fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-},
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    gap: 16,
+  },
+  buttonIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FF6B0010',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonTextContainer: {
+    flex: 1,
+  },
+  buttonTitle: {
+    color: '#1F2937',
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  buttonSubtitle: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
 });
 
 export default PackageTypeScreen;

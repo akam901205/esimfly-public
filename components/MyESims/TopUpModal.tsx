@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
@@ -136,51 +137,67 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
     if (!selectedPlan) return null;
 
     return (
-      <View style={[styles.sliderContainer, { backgroundColor: themeColors.surface }]}>
+      <View style={styles.sliderContainer}>
         <View style={styles.sliderHeader}>
-          <Text style={[styles.sliderTitle, { color: themeColors.text }]}>
-            Selected Plan Details
+          <View style={styles.sliderIconContainer}>
+            <Ionicons name="checkmark-circle" size={24} color="#FF6B00" />
+          </View>
+          <Text style={styles.sliderTitle}>
+            Selected Plan
           </Text>
-          <TouchableOpacity onPress={() => setSelectedPlan(null)}>
-            <Ionicons name="close-circle" size={24} color={themeColors.textSecondary} />
+          <TouchableOpacity 
+            onPress={() => setSelectedPlan(null)}
+            style={styles.sliderCloseButton}
+          >
+            <Ionicons name="close" size={20} color="#6B7280" />
           </TouchableOpacity>
         </View>
         <View style={styles.selectedPlanInfo}>
-          <Text style={[styles.selectedPlanName, { color: themeColors.text }]}>
+          <Text style={styles.selectedPlanName}>
             {selectedPlan.name}
           </Text>
-          <View style={styles.planDetailsRow}>
-            <View style={styles.planDetailItem}>
-              <Text style={[styles.planDetailLabel, { color: themeColors.textSecondary }]}>
+          <View style={styles.planDetailsGrid}>
+            <View style={styles.planDetailCard}>
+              <View style={styles.planDetailIcon}>
+                <Ionicons name="cube-outline" size={16} color="#6B7280" />
+              </View>
+              <Text style={styles.planDetailLabel}>
                 Data
               </Text>
-              <Text style={[styles.planDetailValue, { color: themeColors.text }]}>
+              <Text style={styles.planDetailValue}>
                 {selectedPlan.is_unlimited ? 'Unlimited' : 
                   selectedPlan.data_formatted || `${selectedPlan.data} GB`}
               </Text>
             </View>
-            <View style={styles.planDetailItem}>
-              <Text style={[styles.planDetailLabel, { color: themeColors.textSecondary }]}>
+            <View style={styles.planDetailCard}>
+              <View style={styles.planDetailIcon}>
+                <Ionicons name="time-outline" size={16} color="#6B7280" />
+              </View>
+              <Text style={styles.planDetailLabel}>
                 Duration
               </Text>
-              <Text style={[styles.planDetailValue, { color: themeColors.text }]}>
+              <Text style={styles.planDetailValue}>
                 {selectedPlan.duration_formatted || `${selectedPlan.duration} Days`}
               </Text>
             </View>
-            <View style={styles.planDetailItem}>
-              <Text style={[styles.planDetailLabel, { color: themeColors.textSecondary }]}>
+            <View style={styles.planDetailCard}>
+              <View style={styles.planDetailIcon}>
+                <Ionicons name="pricetag-outline" size={16} color="#6B7280" />
+              </View>
+              <Text style={styles.planDetailLabel}>
                 Price
               </Text>
-              <Text style={[styles.planDetailValue, { color: themeColors.primary }]}>
+              <Text style={[styles.planDetailValue, { color: '#FF6B00' }]}>
                 ${typeof selectedPlan.price === 'number' ? selectedPlan.price.toFixed(2) : parseFloat(selectedPlan.price).toFixed(2)}
               </Text>
             </View>
           </View>
           
           <TouchableOpacity 
-            style={[styles.topUpButton, { backgroundColor: themeColors.primary }]}
+            style={styles.topUpButton}
             onPress={() => onTopUpSelect(selectedPlan)}
           >
+            <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={styles.topUpButtonText}>
               Proceed with Top-Up
             </Text>
@@ -199,8 +216,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
         style={[
           styles.planCard,
           { 
-            backgroundColor: themeColors.surface,
-            borderColor: isSelected ? themeColors.primary : themeColors.border,
+            borderColor: isSelected ? '#FF6B00' : '#E5E7EB',
             borderWidth: isSelected ? 2 : 1
           }
         ]}
@@ -208,28 +224,44 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
         activeOpacity={0.7}
       >
         <View style={styles.planCardContent}>
-          <Text style={[styles.planName, { color: themeColors.text }]}>
-            {plan.name}
-          </Text>
-          <View style={styles.planDetails}>
-            <View style={styles.planData}>
-              <Ionicons name="cellular" size={16} color={themeColors.textSecondary} />
-              <Text style={[styles.planDataText, { color: themeColors.textSecondary }]}>
-                {plan.is_unlimited ? 'Unlimited' : plan.data_formatted || `${plan.data} GB`}
-              </Text>
+          <View style={styles.planHeader}>
+            <View style={styles.planIconContainer}>
+              <Ionicons name="cellular" size={24} color="#FF6B00" />
             </View>
-            <View style={styles.planData}>
-              <Ionicons name="calendar-outline" size={16} color={themeColors.textSecondary} />
-              <Text style={[styles.planDataText, { color: themeColors.textSecondary }]}>
-                {plan.duration_formatted || `${plan.duration} Days`}
+            <View style={styles.planInfo}>
+              <Text style={styles.planName}>
+                {plan.name}
               </Text>
+              <View style={styles.planMeta}>
+                <View style={styles.planMetaItem}>
+                  <Ionicons name="cube-outline" size={14} color="#6B7280" />
+                  <Text style={styles.planMetaText}>
+                    {plan.is_unlimited ? 'Unlimited' : plan.data_formatted || `${plan.data} GB`}
+                  </Text>
+                </View>
+                <View style={styles.planMetaDivider} />
+                <View style={styles.planMetaItem}>
+                  <Ionicons name="time-outline" size={14} color="#6B7280" />
+                  <Text style={styles.planMetaText}>
+                    {plan.duration_formatted || `${plan.duration} Days`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.planPriceSection}>
+              <Text style={styles.priceLabel}>Price</Text>
+              <View style={styles.priceContainer}>
+                <Text style={styles.currencySymbol}>$</Text>
+                <Text style={styles.planPrice}>
+                  {typeof plan.price === 'number' ? plan.price.toFixed(2) : parseFloat(plan.price).toFixed(2)}
+                </Text>
+              </View>
             </View>
           </View>
-          <Text style={[styles.planPrice, { color: themeColors.primary }]}>
-            ${typeof plan.price === 'number' ? plan.price.toFixed(2) : parseFloat(plan.price).toFixed(2)}
-          </Text>
           {isSelected && (
-            <View style={[styles.selectedIndicator, { backgroundColor: themeColors.primary }]} />
+            <View style={styles.selectedCheckmark}>
+              <Ionicons name="checkmark-circle" size={20} color="#FF6B00" />
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -251,38 +283,47 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
             <Text style={[styles.modalTitle, { color: themeColors.text }]}>
               Top-Up Plans
             </Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={themeColors.text} />
+            <TouchableOpacity 
+              onPress={onClose}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={24} color="#374151" />
             </TouchableOpacity>
           </View>
           
           {modalState.esim && (
-            <View style={[styles.esimInfoCard, { backgroundColor: themeColors.surface }]}>
-              <Text style={[styles.esimInfoTitle, { color: themeColors.text }]}>
+            <View style={styles.esimInfoCard}>
+              <Text style={styles.esimInfoTitle}>
                 {modalState.esim.plan_name}
               </Text>
               <View style={styles.esimInfoRow}>
                 <View style={styles.esimInfoItem}>
-                  <Text style={[styles.esimInfoLabel, { color: themeColors.textSecondary }]}>
+                  <Text style={styles.esimInfoLabel}>
                     Status
                   </Text>
-                  <View style={styles.statusContainer}>
+                  <View style={[
+                    styles.statusBadge,
+                    { backgroundColor: modalState.esim.status === 'active' ? '#FF6B0010' : '#F3F4F6' }
+                  ]}>
                     <View 
                       style={[
                         styles.statusDot, 
-                        { backgroundColor: getStatusColor(modalState.esim.status) }
+                        { backgroundColor: modalState.esim.status === 'active' ? '#FF6B00' : getStatusColor(modalState.esim.status) }
                       ]} 
                     />
-                    <Text style={[styles.statusText, { color: themeColors.text }]}>
+                    <Text style={[
+                      styles.statusText,
+                      { color: modalState.esim.status === 'active' ? '#FF6B00' : getStatusColor(modalState.esim.status) }
+                    ]}>
                       {modalState.esim.status}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.esimInfoItem}>
-                  <Text style={[styles.esimInfoLabel, { color: themeColors.textSecondary }]}>
+                  <Text style={styles.esimInfoLabel}>
                     Data Left
                   </Text>
-                  <Text style={[styles.esimInfoValue, { color: themeColors.text }]}>
+                  <Text style={styles.esimInfoValue}>
                     {modalState.esim.data_left_formatted}
                   </Text>
                 </View>
@@ -292,26 +333,27 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
 
           <ScrollView 
             style={styles.plansContainer}
+            contentContainerStyle={styles.plansContentContainer}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor={themeColors.primary}
+                tintColor="#FF6B00"
               />
             }
           >
             {loadingPlans ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={themeColors.primary} />
-                <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>
+                <ActivityIndicator size="large" color="#FF6B00" />
+                <Text style={[styles.loadingText, { color: '#6B7280' }]}>
                   Loading available plans...
                 </Text>
               </View>
             ) : topUpPlans.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Ionicons name="alert-circle-outline" size={48} color={themeColors.textSecondary} />
-                <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
+                <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
+                <Text style={[styles.emptyText, { color: '#6B7280' }]}>
                   No top-up plans available for this eSIM
                 </Text>
               </View>
@@ -331,39 +373,66 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
 };
 
 const styles = StyleSheet.create({
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
     height: '80%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F9FA',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: '#E5E7EB',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   esimInfoCard: {
-    margin: 20,
-    padding: 15,
-    borderRadius: 12,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   esimInfoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 10,
+    marginBottom: 12,
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   esimInfoRow: {
     flexDirection: 'row',
@@ -375,14 +444,23 @@ const styles = StyleSheet.create({
   esimInfoLabel: {
     fontSize: 12,
     marginBottom: 4,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   esimInfoValue: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  statusContainer: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+    alignSelf: 'flex-start',
   },
   statusDot: {
     width: 8,
@@ -391,53 +469,109 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
   plansContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
+  },
+  plansContentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   planCard: {
     marginBottom: 12,
-    borderRadius: 12,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  planCardContent: {
     padding: 16,
     position: 'relative',
   },
-  planCardContent: {
-    position: 'relative',
-  },
-  planName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  planDetails: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  planData: {
+  planHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 20,
   },
-  planDataText: {
-    marginLeft: 4,
-    fontSize: 13,
+  planIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FF6B0010',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  planInfo: {
+    flex: 1,
+  },
+  planName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  planMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  planMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  planMetaDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 8,
+  },
+  planMetaText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  planPriceSection: {
+    alignItems: 'flex-end',
+  },
+  priceLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  currencySymbol: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF6B00',
+    marginTop: 2,
+    marginRight: 1,
   },
   planPrice: {
     fontSize: 18,
     fontWeight: '700',
+    color: '#FF6B00',
   },
-  selectedIndicator: {
+  selectedCheckmark: {
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -461,54 +595,99 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 15,
   },
   sliderHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  sliderIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FF6B0010',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   sliderTitle: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 17,
     fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  sliderCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   selectedPlanInfo: {
-    marginTop: 10,
+    marginTop: 0,
   },
   selectedPlanName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 15,
+    marginBottom: 16,
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  planDetailsRow: {
+  planDetailsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
+    gap: 12,
   },
-  planDetailItem: {
+  planDetailCard: {
     flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
     alignItems: 'center',
+  },
+  planDetailIcon: {
+    marginBottom: 8,
   },
   planDetailLabel: {
-    fontSize: 12,
+    fontSize: 11,
     marginBottom: 4,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   planDetailValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   topUpButton: {
-    borderRadius: 12,
+    borderRadius: 24,
     padding: 16,
     alignItems: 'center',
+    backgroundColor: '#FF6B00',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   topUpButtonText: {
     color: '#FFFFFF',
