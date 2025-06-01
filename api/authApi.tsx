@@ -1,8 +1,8 @@
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://159.100.18.83:3000/api/auth';
-const REFERRAL_API_URL = 'http://159.100.18.83:3000/api/business/referral';
+const API_URL = 'https://esimfly.net/api/auth';
+const REFERRAL_API_URL = 'https://esimfly.net/api/business/referral';
 
 interface AuthResponse {
   success: boolean;

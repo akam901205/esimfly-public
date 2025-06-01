@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const NEW_API_BASE_URL = 'http://159.100.18.83:3000/api';
+const NEW_API_BASE_URL = 'https://esimfly.net/api';
 
 const api = axios.create({
   baseURL: NEW_API_BASE_URL,

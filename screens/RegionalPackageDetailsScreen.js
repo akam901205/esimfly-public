@@ -24,6 +24,7 @@ import { colors } from '../theme/colors';
 import esimApi from '../api/esimApi';
 import { newApi } from '../api/api';
 import { BlurView } from 'expo-blur';
+import { normalizeCountryName } from '../utils/countryNormalizationUtils';
 
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -42,6 +43,8 @@ const RegionalPackageDetailsScreen = () => {
   const params = route.params;
   const packageData = params.package;
   const region = params.region;
+  
+  console.log('[DEBUG] RegionalPackageDetailsScreen - packageData:', JSON.stringify(packageData, null, 2));
 
   useEffect(() => {
     setOriginalPrice(packageData.price);
@@ -226,7 +229,15 @@ const RegionalPackageDetailsScreen = () => {
   const formatLocationNetworkList = (packageData) => {
     if (!packageData) return [];
     
-    console.log('[DEBUG] formatLocationNetworkList:', packageData);
+    console.log('[DEBUG] formatLocationNetworkList:', {
+      provider: packageData.provider,
+      coverages: packageData.coverages?.length || 0,
+      coverage: packageData.coverage?.length || 0,
+      coverage_countries: packageData.coverage_countries?.length || 0,
+      networks: packageData.networks?.length || 0,
+      sample_coverage: packageData.coverages?.[0],
+      sample_network: packageData.networks?.[0]
+    });
     
     // For the new API format, we'll create a location network list with countries
     const locationNetworks = [];
@@ -265,18 +276,18 @@ const RegionalPackageDetailsScreen = () => {
     // First, get the list of countries
     let countryList = [];
     
-    if (packageData.coverage && Array.isArray(packageData.coverage)) {
-      countryList = packageData.coverage;
-    } else if (packageData.coverages && Array.isArray(packageData.coverages)) {
+    // Check for coverages first (has network info per country)
+    if (packageData.coverages && Array.isArray(packageData.coverages)) {
       // For coverages, each item represents a country with its networks
       packageData.coverages.forEach(coverage => {
-        const countryName = coverage.name || 'Unknown';
-        const countryCode = getCountryCode(countryName);
+        // For Airalo, coverage.name might be a country code, so normalize it
+        const rawName = coverage.name || 'Unknown';
+        const countryName = normalizeCountryName(rawName);
+        const countryCode = coverage.code || rawName;
         
-        // Don't show the actual operator count if it's too high (like 90)
-        // Instead show a reasonable default
+        // Use actual networks from API data
         const operatorList = coverage.networks && coverage.networks.length > 0 
-          ? coverage.networks.slice(0, 5).map(network => ({
+          ? coverage.networks.map(network => ({
               operatorName: network.name || 'Network',
               networkType: network.type || '4G'
             }))
@@ -291,101 +302,26 @@ const RegionalPackageDetailsScreen = () => {
       
       // Return early if we have coverages with network info
       return locationNetworks;
+    } else if (packageData.coverage && Array.isArray(packageData.coverage)) {
+      countryList = packageData.coverage;
     } else if (packageData.coverage_countries && Array.isArray(packageData.coverage_countries)) {
       countryList = packageData.coverage_countries;
     }
     
-    // If we have a country list with networks, distribute them
-    if (countryList.length > 0 && packageData.networks && Array.isArray(packageData.networks) && packageData.networks.length > 0) {
-      // Create a map of common operators by country
-      const operatorsByCountry = {
-        'Norway': ['Telenor', 'Telia', 'Ice'],
-        'Germany': ['Vodafone', 'O2', 'T-Mobile'],
-        'Belgium': ['Base', 'Orange', 'Proximus'],
-        'Finland': ['Elisa', 'Telia', 'DNA'],
-        'Portugal': ['NOS', 'Vodafone', 'MEO'],
-        'Bulgaria': ['A1', 'Telenor', 'Vivacom'],
-        'Denmark': ['3', 'Telia', 'TDC'],
-        'Lithuania': ['Tele2', 'BITĖ', 'Telia'],
-        'Luxembourg': ['POST', 'Tango', 'Orange'],
-        'Latvia': ['Tele2', 'LMT', 'Bite'],
-        'Croatia': ['A1', 'Telemach', 'T-Mobile'],
-        'Ukraine': ['lifecell', 'Kyivstar', 'Vodafone'],
-        'France': ['Orange', 'SFR', 'Bouygues', 'Free Mobile'],
-        'Hungary': ['Telenor', 'Vodafone', 'T-Mobile'],
-        'Sweden': ['3', 'Tele2', 'Telia'],
-        'Slovenia': ['Mobitel', 'A1', 'Telemach'],
-        'Slovakia': ['Orange', 'O2', 'T-Mobile'],
-        'United Kingdom': ['3', 'Vodafone', 'O2', 'EE'],
-        'Ireland': ['3', 'Eir', 'Vodafone'],
-        'Estonia': ['Tele2', 'Elisa', 'Telia'],
-        'Switzerland': ['Sunrise', 'Salt', 'Swisscom'],
-        'Malta': ['GO', 'Vodafone', 'Melita'],
-        'Iceland': ['Nova', 'Síminn', 'Vodafone'],
-        'Italy': ['Iliad', 'Vodafone', 'Wind', 'TIM'],
-        'Greece': ['Vodafone', 'Wind', 'Cosmote'],
-        'Spain': ['Vodafone', 'Orange', 'Movistar', 'Yoigo'],
-        'Austria': ['3', 'A1', 'T-Mobile'],
-        'Cyprus': ['PrimeTel', 'Epic', 'Cyta'],
-        'Czech Republic': ['Vodafone', 'O2', 'T-Mobile'],
-        'Poland': ['Orange', 'Play', 'Plus', 'T-Mobile'],
-        'Romania': ['Vodafone', 'Orange', 'Digi.Mobil'],
-        'Liechtenstein': ['FL1', '7acht', 'Salt'],
-        'Netherlands': ['Vodafone', 'KPN', 'T-Mobile'],
-        'Turkey': ['Avea', 'Turkcell', 'Vodafone']
-      };
-      
-      // Extract all network names from the package
-      const availableNetworks = packageData.networks.map(n => 
-        typeof n === 'string' ? n : (n.name || 'Network')
-      );
-      
-      // Create entries for each country
+    // If we have a country list without specific network info per country
+    if (countryList.length > 0) {
+      // For all providers, if we don't have country-specific network mapping,
+      // show countries without networks (not all networks for all countries)
       countryList.forEach(country => {
-        const countryName = country.name || country;
-        const countryCode = country.code || getCountryCode(countryName);
-        
-        // Get operators for this country
-        const countryOperators = operatorsByCountry[countryName] || [];
-        
-        // Find matching operators from available networks
-        const matchingOperators = countryOperators
-          .filter(op => availableNetworks.some(net => 
-            net.toLowerCase().includes(op.toLowerCase()) || 
-            op.toLowerCase().includes(net.toLowerCase())
-          ))
-          .slice(0, 3); // Limit to 3 operators per country
-        
-        // Create operator list
-        const operatorList = matchingOperators.length > 0
-          ? matchingOperators.map(op => ({
-              operatorName: op,
-              networkType: packageData.speed || '4G/5G'
-            }))
-          : [{
-              operatorName: `${Math.min(3, Math.floor(availableNetworks.length / countryList.length))} major operators`,
-              networkType: packageData.speed || '4G/5G'
-            }];
+        // Handle both string and object formats
+        const rawName = typeof country === 'string' ? country : (country.name || country);
+        const countryName = normalizeCountryName(rawName);
+        const countryCode = typeof country === 'object' ? (country.code || '') : '';
         
         locationNetworks.push({
           locationName: countryName,
           countryCode: countryCode,
-          operatorList: operatorList
-        });
-      });
-    } else if (countryList.length > 0) {
-      // If we have a country list but no network details
-      countryList.forEach(country => {
-        const countryName = country.name || country;
-        const countryCode = country.code || getCountryCode(countryName);
-        
-        locationNetworks.push({
-          locationName: countryName,
-          countryCode: countryCode,
-          operatorList: [{ 
-            operatorName: 'Multiple networks available', 
-            networkType: packageData.speed || '4G' 
-          }]
+          operatorList: [] // Empty operator list when we don't have country-specific data
         });
       });
     } else if (packageData.networks && Array.isArray(packageData.networks)) {
@@ -461,7 +397,7 @@ const RegionalPackageDetailsScreen = () => {
       countryCount = packageData.coverages.length;
       countryList = packageData.coverages.map(c => ({ 
         name: c.name, 
-        code: c.name.toLowerCase() 
+        code: c.code || c.name.toLowerCase() 
       }));
     } else if (packageData.coverage_countries && Array.isArray(packageData.coverage_countries)) {
       countryCount = packageData.coverage_countries.length;

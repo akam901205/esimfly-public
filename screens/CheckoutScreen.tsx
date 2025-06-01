@@ -10,10 +10,13 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStripe } from '@stripe/stripe-react-native';
 import { AuthContext } from '../api/AuthContext';
@@ -169,7 +172,20 @@ const CheckoutScreenV2 = () => {
             testEnv: false,
             currencyCode: 'USD',
           },
-          style: 'automatic',
+          appearance: {
+            colors: {
+              primary: '#FF6B00',
+              background: '#ffffff',
+              componentBackground: '#ffffff',
+              componentBorder: '#e0e6eb',
+              componentDivider: '#e0e6eb',
+              primaryText: '#30313d',
+              secondaryText: '#30313d',
+              componentText: '#30313d',
+              placeholderText: '#73757b',
+              icon: '#000000', // Black icons for edit/close buttons
+            },
+          },
           returnURL: 'esimfly://payment-complete',
           // Enable save card for future use
           allowsDelayedPaymentMethods: true,
@@ -377,146 +393,364 @@ const CheckoutScreenV2 = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Background gradient */}
+      <LinearGradient
+        colors={['#F9FAFB', '#EFF6FF', '#FEF3C7']}
+        style={styles.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      
+      {/* Header */}
+      <View style={styles.headerBackground}>
+        {Platform.OS === 'ios' && (
+          <BlurView intensity={80} tint="light" style={styles.headerBlur} />
+        )}
+      </View>
+      
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
-          style={styles.headerIcon}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.icon.header} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.headerButtonGradient}
+          >
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </LinearGradient>
         </TouchableOpacity>
+        
         <Text style={styles.headerTitle}>Checkout</Text>
-        <View style={styles.headerIcon} />
+        
+        <View style={styles.headerButton} />
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
-        contentContainerStyle={styles.scrollContentContainer}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
       >
-        {/* Order Summary */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
-          <View style={styles.summaryCard}>
-            <View style={styles.packageInfo}>
-              <View style={styles.flagContainer}>
-                <LocationIcon />
-              </View>
-              <View style={styles.packageDetails}>
-                <Text style={styles.locationName}>
-                  {isGlobalPackage ? 'Global' : 
-                   isRegionalPackage ? route.params.region : 
-                   route.params.country}
-                </Text>
-                <Text style={styles.packageSpecs}>
-                  {packageData.data === 'Unlimited' || packageData.unlimited ? 
-                    'Unlimited' : packageData.data_formatted || `${packageData.data}GB`} • {formatDuration(packageData.duration)}
-                  {packageData.voice_minutes ? ` • ${packageData.voice_minutes} Minutes` : ''}
-                  {packageData.sms_count ? ` • ${packageData.sms_count} SMS` : ''}
-                </Text>
-                {(isGlobalPackage || isRegionalPackage) && (
-                  <Text style={styles.coverageText}>
-                    Coverage in {getCoverageCount()} countries
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Order Summary */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <MaterialIcons name="shopping-cart" size={24} color="#FF6B00" />
+              <Text style={styles.sectionTitle}>Order Summary</Text>
+            </View>
+            
+            <LinearGradient
+              colors={['#FFFFFF', '#FAFAFA']}
+              style={styles.summaryCard}
+            >
+              <View style={styles.packageHeader}>
+                <View style={styles.flagWrapper}>
+                  <LinearGradient
+                    colors={['#FF6B00', '#FF8533']}
+                    style={styles.flagGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <View style={styles.flagInner}>
+                      <LocationIcon />
+                    </View>
+                  </LinearGradient>
+                </View>
+                
+                <View style={styles.packageDetails}>
+                  <Text style={styles.locationName}>
+                    {isGlobalPackage ? 'Worldwide eSIM' : 
+                     isRegionalPackage ? `${route.params.region} Package` : 
+                     route.params.country}
                   </Text>
+                  <View style={styles.packageSpecsContainer}>
+                    <View style={styles.specBadge}>
+                      <MaterialCommunityIcons name="database" size={14} color="#4F46E5" />
+                      <Text style={styles.specText}>
+                        {packageData.data === 'Unlimited' || packageData.unlimited ? 
+                          'Unlimited' : packageData.data_formatted || `${packageData.data}GB`}
+                      </Text>
+                    </View>
+                    <View style={styles.specBadge}>
+                      <Ionicons name="time-outline" size={14} color="#10B981" />
+                      <Text style={styles.specText}>{formatDuration(packageData.duration)}</Text>
+                    </View>
+                    {packageData.voice_minutes && (
+                      <View style={styles.specBadge}>
+                        <Ionicons name="call-outline" size={14} color="#F59E0B" />
+                        <Text style={styles.specText}>{packageData.voice_minutes}min</Text>
+                      </View>
+                    )}
+                  </View>
+                  {(isGlobalPackage || isRegionalPackage) && (
+                    <View style={styles.coverageContainer}>
+                      <Ionicons name="globe-outline" size={14} color="#6B7280" />
+                      <Text style={styles.coverageText}>
+                        {getCoverageCount()} countries coverage
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              
+              <View style={styles.priceContainer}>
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Subtotal</Text>
+                  <Text style={styles.priceValue}>${packageData.price.toFixed(2)}</Text>
+                </View>
+                {verifiedPromoDetails && (
+                  <View style={styles.priceRow}>
+                    <Text style={styles.discountLabel}>Discount</Text>
+                    <Text style={styles.discountValue}>-${verifiedPromoDetails.discountAmount.toFixed(2)}</Text>
+                  </View>
+                )}
+                <View style={styles.totalDivider} />
+                <View style={styles.priceRow}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalValue}>
+                    ${(verifiedPromoDetails ? 
+                      packageData.price - verifiedPromoDetails.discountAmount : 
+                      packageData.price).toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* Payment Method */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <MaterialIcons name="payment" size={24} color="#FF6B00" />
+              <Text style={styles.sectionTitle}>Payment Method</Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={[
+                styles.paymentMethodCard,
+                paymentMethod === 'balance' && styles.selectedPaymentMethod
+              ]}
+              onPress={() => setPaymentMethod('balance')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.paymentMethodContent}>
+                <View style={[
+                  styles.paymentIconContainer,
+                  paymentMethod === 'balance' && styles.selectedPaymentIcon
+                ]}>
+                  <Ionicons 
+                    name="wallet" 
+                    size={24} 
+                    color={paymentMethod === 'balance' ? '#FF6B00' : '#6B7280'} 
+                  />
+                </View>
+                <View style={styles.paymentMethodInfo}>
+                  <Text style={[
+                    styles.paymentMethodTitle,
+                    paymentMethod === 'balance' && styles.selectedPaymentTitle
+                  ]}>Wallet Balance</Text>
+                  <Text style={styles.paymentMethodSubtitle}>
+                    Available: {getFormattedBalance()}
+                  </Text>
+                  {balance && packageData.price > balance.balance && (
+                    <Text style={styles.insufficientBalance}>
+                      Insufficient balance
+                    </Text>
+                  )}
+                </View>
+                <View style={[
+                  styles.radioButton,
+                  paymentMethod === 'balance' && styles.radioButtonActive
+                ]}>
+                  {paymentMethod === 'balance' && (
+                    <View style={styles.radioInner} />
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[
+                styles.paymentMethodCard,
+                paymentMethod === 'card' && styles.selectedPaymentMethod
+              ]}
+              onPress={() => setPaymentMethod('card')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.paymentMethodContent}>
+                <View style={[
+                  styles.paymentIconContainer,
+                  paymentMethod === 'card' && styles.selectedPaymentIcon
+                ]}>
+                  <Ionicons 
+                    name="card" 
+                    size={24} 
+                    color={paymentMethod === 'card' ? '#FF6B00' : '#6B7280'} 
+                  />
+                </View>
+                <View style={styles.paymentMethodInfo}>
+                  <Text style={[
+                    styles.paymentMethodTitle,
+                    paymentMethod === 'card' && styles.selectedPaymentTitle
+                  ]}>Credit/Debit Card</Text>
+                  <Text style={styles.paymentMethodSubtitle}>
+                    Secure payment with Stripe
+                  </Text>
+                  <View style={styles.cardLogos}>
+                    <View style={[styles.cardLogoBadge, { backgroundColor: '#000000' }]}>
+                      <Ionicons name="logo-apple" size={16} color="#FFFFFF" />
+                    </View>
+                    <View style={[styles.cardLogoBadge, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB' }]}>
+                      <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <Path 
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" 
+                          fill="#4285F4"
+                        />
+                        <Path 
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" 
+                          fill="#34A853"
+                        />
+                        <Path 
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" 
+                          fill="#FBBC05"
+                        />
+                        <Path 
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" 
+                          fill="#EA4335"
+                        />
+                      </Svg>
+                    </View>
+                    <View style={[styles.cardLogoBadge, { backgroundColor: '#1A1F71', paddingHorizontal: 6 }]}>
+                      <Text style={[styles.cardLogoBadgeText, { color: '#FFFFFF', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }]}>VISA</Text>
+                    </View>
+                    <View style={[styles.cardLogoBadge, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 6 }]}>
+                      <Svg width="24" height="16" viewBox="0 0 32 20" fill="none">
+                        <Circle cx="12" cy="10" r="7" fill="#EA001B" />
+                        <Circle cx="20" cy="10" r="7" fill="#FFA200" fillOpacity="0.8" />
+                      </Svg>
+                    </View>
+                  </View>
+                </View>
+                <View style={[
+                  styles.radioButton,
+                  paymentMethod === 'card' && styles.radioButtonActive
+                ]}>
+                  {paymentMethod === 'card' && (
+                    <View style={styles.radioInner} />
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Terms Agreement */}
+          <View style={styles.termsSection}>
+            <TouchableOpacity 
+              style={styles.termsContainer}
+              onPress={() => setIsAgreed(!isAgreed)}
+              activeOpacity={0.7}
+            >
+              <View style={[
+                styles.checkbox,
+                isAgreed && styles.checkboxActive
+              ]}>
+                {isAgreed && (
+                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                 )}
               </View>
-            </View>
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceLabel}>Total</Text>
-              <Text style={styles.priceValue}>
-                ${packageData.price.toFixed(2)}
+              <Text style={styles.termsText}>
+                I agree to the{' '}
+                <Text 
+                  style={styles.termsLink}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    navigation.navigate('Terms');
+                  }}
+                >
+                  Terms & Conditions
+                </Text>
+                {' '}and{' '}
+                <Text 
+                  style={styles.termsLink}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    navigation.navigate('Privacy');
+                  }}
+                >
+                  Privacy Policy
+                </Text>
               </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Security Features */}
+          <View style={styles.securitySection}>
+            <View style={styles.securityFeature}>
+              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+              <Text style={styles.securityText}>Secure Payment</Text>
+            </View>
+            <View style={styles.securityFeature}>
+              <Ionicons name="lock-closed" size={20} color="#10B981" />
+              <Text style={styles.securityText}>SSL Encrypted</Text>
+            </View>
+            <View style={styles.securityFeature}>
+              <MaterialIcons name="verified" size={20} color="#10B981" />
+              <Text style={styles.securityText}>PCI Compliant</Text>
             </View>
           </View>
-        </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-        {/* Payment Method */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          
-          <TouchableOpacity 
-            style={[
-              styles.paymentMethodCard,
-              paymentMethod === 'balance' && styles.selectedPaymentMethod
-            ]}
-            onPress={() => setPaymentMethod('balance')}
-          >
-            <Ionicons name="wallet-outline" size={24} color={colors.text.primary} />
-            <View style={styles.paymentMethodInfo}>
-              <Text style={styles.paymentMethodTitle}>Balance</Text>
-              <Text style={styles.paymentMethodSubtitle}>{getFormattedBalance()}</Text>
-            </View>
-            <View style={styles.radioButton}>
-              {paymentMethod === 'balance' && <View style={styles.radioInner} />}
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[
-              styles.paymentMethodCard,
-              paymentMethod === 'card' && styles.selectedPaymentMethod
-            ]}
-            onPress={() => setPaymentMethod('card')}
-          >
-            <Ionicons name="card-outline" size={24} color={colors.text.primary} />
-            <View style={styles.paymentMethodInfo}>
-              <Text style={styles.paymentMethodTitle}>Credit/Debit Card</Text>
-              <Text style={styles.paymentMethodSubtitle}>Secure payment via Stripe</Text>
-            </View>
-            <View style={styles.radioButton}>
-              {paymentMethod === 'card' && <View style={styles.radioInner} />}
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Terms Agreement */}
-        <TouchableOpacity 
-          style={styles.termsContainer}
-          onPress={() => setIsAgreed(!isAgreed)}
-        >
-          <View style={styles.checkbox}>
-            {isAgreed && <Ionicons name="checkmark" size={16} color="#FF6B6B" />}
-          </View>
-          <Text style={styles.termsText}>
-            I agree to the{' '}
-            <Text 
-              style={styles.termsLink}
-              onPress={() => navigation.navigate('Terms')}
-            >
-              Terms & Conditions
-            </Text>
-          </Text>
-        </TouchableOpacity>
-
-        {/* Pay Button */}
+      {/* Floating Pay Button */}
+      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity 
           onPress={handlePurchase}
-          disabled={!isAgreed || isLoading}
-          style={styles.payButtonContainer}
+          disabled={!isAgreed || isLoading || (paymentMethod === 'balance' && balance && packageData.price > balance.balance)}
+          activeOpacity={0.8}
         >
           <LinearGradient
-            colors={isAgreed ? ['#2ECC71', '#27AE60'] : ['#333', '#222']}
+            colors={isAgreed && !(paymentMethod === 'balance' && balance && packageData.price > balance.balance) 
+              ? ['#FF6B00', '#FF8533'] 
+              : ['#E5E7EB', '#D1D5DB']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.payButton}
           >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.payButtonText}>
-                Pay ${packageData.price.toFixed(2)}
-              </Text>
-            )}
+            <View style={styles.payButtonContent}>
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <View style={styles.payButtonLeft}>
+                    <View style={styles.payButtonIconContainer}>
+                      <MaterialIcons name="payment" size={24} color="#FFFFFF" />
+                    </View>
+                    <View>
+                      <Text style={styles.payButtonLabel}>Total Amount</Text>
+                      <Text style={styles.payButtonPrice}>
+                        ${(verifiedPromoDetails ? 
+                          packageData.price - verifiedPromoDetails.discountAmount : 
+                          packageData.price).toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.payButtonRight}>
+                    <Text style={styles.payButtonText}>
+                      {isTopup ? 'Top Up Now' : 'Complete Purchase'}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                  </View>
+                </>
+              )}
+            </View>
           </LinearGradient>
         </TouchableOpacity>
-
-        {/* Security Note */}
-        <View style={styles.securityNote}>
-          <Ionicons name="shield-checkmark-outline" size={16} color="#6B7280" />
-          <Text style={styles.securityNoteText}>
-            Your payment information is secure and encrypted
-          </Text>
-        </View>
-      </ScrollView>
+        
+        <Text style={styles.bottomSecurityNote}>
+          <Ionicons name="lock-closed" size={12} color="#6B7280" />
+          {' '}Your payment is protected by bank-level security
+        </Text>
+      </View>
     </SafeAreaView>
   );
 };
@@ -524,193 +758,460 @@ const CheckoutScreenV2 = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+    backgroundColor: '#FFFFFF',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  
+  // Header styles
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    zIndex: 10,
+  },
+  headerBlur: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 7 : 7,
+    paddingBottom: 5,
+    zIndex: 11,
   },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
+  headerButton: {
+    width: 44,
+    height: 44,
+  },
+  headerButtonGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  
+  // Content
+  keyboardAvoidingView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
   },
   scrollContentContainer: {
-    paddingBottom: 40,
+    paddingTop: 30,
+    paddingBottom: 230,
   },
+  
+  // Section styles
   section: {
-    padding: 16,
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    marginBottom: 16,
-  },
-  summaryCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  packageInfo: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-  flagContainer: {
-    width: 48,
-    height: 48,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 10,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  
+  // Summary Card
+  summaryCard: {
     borderRadius: 24,
-    backgroundColor: colors.background.tertiary,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  packageHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  flagWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    marginRight: 16,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  flagGradient: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    padding: 2,
+  },
+  flagInner: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 34,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   packageDetails: {
     flex: 1,
   },
   locationName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
-  packageSpecs: {
-    fontSize: 14,
-    color: colors.text.secondary,
+  packageSpecsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 8,
   },
-  coverageText: {
+  specBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 6,
+  },
+  specText: {
     fontSize: 12,
-    color: colors.text.tertiary,
+    color: '#4B5563',
+    marginLeft: 4,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  coverageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 4,
   },
+  coverageText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginLeft: 4,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  
+  // Price container
   priceContainer: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border.light,
-    paddingTop: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 16,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   priceLabel: {
     fontSize: 14,
-    color: colors.text.secondary,
-    marginBottom: 4,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   priceValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text.primary,
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
+  discountLabel: {
+    fontSize: 14,
+    color: '#059669',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  discountValue: {
+    fontSize: 16,
+    color: '#059669',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  totalDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 8,
+  },
+  totalLabel: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  totalValue: {
+    fontSize: 24,
+    color: '#FF6B00',
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  
+  // Payment Method
   paymentMethodCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
     borderWidth: 2,
-    borderColor: colors.border.light,
+    borderColor: '#F3F4F6',
   },
   selectedPaymentMethod: {
-    borderColor: colors.primary.DEFAULT,
-    backgroundColor: colors.primary.light,
+    borderColor: '#FF6B00',
+    backgroundColor: '#FFF7ED',
+  },
+  paymentMethodContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  paymentIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  selectedPaymentIcon: {
+    backgroundColor: '#FFEDD5',
   },
   paymentMethodInfo: {
     flex: 1,
-    marginLeft: 12,
   },
   paymentMethodTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text.primary,
+    color: '#1F2937',
+    marginBottom: 2,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  selectedPaymentTitle: {
+    color: '#FF6B00',
   },
   paymentMethodSubtitle: {
     fontSize: 14,
-    color: colors.text.secondary,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  insufficientBalance: {
+    fontSize: 12,
+    color: '#EF4444',
     marginTop: 2,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  cardLogos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  cardLogoBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    minWidth: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  cardLogoBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.stone[600],
+    borderColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  radioButtonActive: {
+    borderColor: '#FF6B00',
+  },
   radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.stone[600],
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FF6B00',
+  },
+  
+  // Terms section
+  termsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   termsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    marginBottom: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.stone[600],
-    marginRight: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    marginRight: 12,
+    marginTop: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: '#FF6B00',
+    borderColor: '#FF6B00',
   },
   termsText: {
+    flex: 1,
     fontSize: 14,
-    color: colors.text.secondary,
+    color: '#4B5563',
+    lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   termsLink: {
-    color: colors.stone[600],
+    color: '#FF6B00',
+    fontWeight: '600',
     textDecorationLine: 'underline',
   },
-  payButtonContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
+  
+  // Security section
+  securitySection: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  payButton: {
+  securityFeature: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 25,
+    marginHorizontal: 10,
   },
-  payButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  securityNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  securityNoteText: {
+  securityText: {
     fontSize: 12,
     color: '#6B7280',
-    marginLeft: 8,
+    marginLeft: 4,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  
+  // Bottom container
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 52,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  payButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  payButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+  },
+  payButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  payButtonIconContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  payButtonLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  payButtonPrice: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  payButtonRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  payButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginRight: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  bottomSecurityNote: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
 });
 

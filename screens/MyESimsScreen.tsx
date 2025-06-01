@@ -705,7 +705,11 @@ const MyESimsScreen = () => {
         </View>
 
         {/* Top-up button section */}
-        {selectedEsim && selectedEsim.status.toLowerCase() === 'active' && (
+        {selectedEsim && (
+          selectedEsim.status.toLowerCase() === 'active' || 
+          selectedEsim.status.toLowerCase() === 'in_use' || 
+          selectedEsim.status.toLowerCase() === 'depleted'
+        ) && (
           <TouchableOpacity 
             style={styles.topUpButton}
             onPress={() => handleTopUp(selectedEsim)}

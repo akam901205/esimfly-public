@@ -14,55 +14,49 @@ import {
   ActivityIndicator,
   Animated,
   InteractionManager,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { regions } from '../utils/regions';
 import esimApi from '../api/esimApi';
-import { fetchLatestEsim, EsimData, fetchBalance } from '../api/esimApi';
+import { fetchBalance } from '../api/esimApi';
 import { AuthContext } from '../api/AuthContext';
 import { globalPackages } from '../utils/global';
 import { countries, flagImages } from '../utils/countryData';
 import debounce from 'lodash/debounce';
 import { EventEmitter } from '../utils/EventEmitter';
 import { getPopularDestinations } from '../utils/popularDestinations';
-import SearchBar from '../components/SearchBar'; // New import
 import { colors } from '../theme/colors';
-import PopularDestinations from '../components/PopularDestinations';
-import { CountryListItem, RegionGlobalListItem, TabNavigation } from '../components/CountriesTab';
-import Header from '../components/Header';
 
-
+const { width: screenWidth } = Dimensions.get('window');
 const ITEMS_PER_PAGE = 20;
 const destinations = getPopularDestinations();
 
-// Create animated FlatList component
+// Create animated components
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
-
-
-const formatCountryCount = (count) => {
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}k`;
-  }
-  return count.toString();
-};
-
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 // Memoized FlagIcon Component
-const FlagIcon = React.memo(({ countryCode, size = 30 }) => {
+const FlagIcon = React.memo(({ countryCode, size = 40 }) => {
   if (!countryCode) {
     return (
-      <View style={{
-        width: size,
-        height: size,
-        backgroundColor: '#ccc',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: size / 2
-      }}>
-        <Text style={{ fontSize: size / 3, color: '#fff' }}>?</Text>
-      </View>
+      <LinearGradient
+        colors={['#E5E7EB', '#D1D5DB']}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Ionicons name="globe-outline" size={size * 0.5} color="#6B7280" />
+      </LinearGradient>
     );
   }
 
@@ -82,139 +76,143 @@ const FlagIcon = React.memo(({ countryCode, size = 30 }) => {
   }
 
   return (
-    <View style={{
-      width: size,
-      height: size,
-      backgroundColor: '#ccc',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: size / 2
-    }}>
-      <Text style={{ fontSize: size / 3, color: '#fff' }}>
+    <LinearGradient
+      colors={['#E5E7EB', '#D1D5DB']}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ fontSize: size / 3, color: '#6B7280', fontWeight: '600' }}>
         {countryCode.substring(0, 2).toUpperCase()}
       </Text>
-    </View>
+    </LinearGradient>
   );
 });
 
-// Memoized EsimContainer Component
-const EsimContainer = React.memo(() => {
-  const [esimData, setEsimData] = useState<LatestEsimData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { userToken } = useContext(AuthContext);
 
-  const loadLatestEsim = async () => {
-    if (!userToken) {
-      setLoading(false);
-      return;
-    }
+// Popular Destinations Component
+const PopularDestinations = memo(({ onItemPress }) => {
+  const scrollX = useRef(new Animated.Value(0)).current;
 
-    try {
-      const result = await fetchLatestEsim();
-      if (result.success && result.data) {
-        setEsimData(result.data);
-      }
-    } catch (error) {
-      console.error('Error loading latest eSIM:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const renderDestination = ({ item, index }) => {
+    const inputRange = [
+      (index - 1) * 140,
+      index * 140,
+      (index + 1) * 140,
+    ];
 
-  useEffect(() => {
-    loadLatestEsim();
-    
-    // Subscribe to new eSIM updates
-    const unsubscribeEsim = EventEmitter.subscribe('ESIM_ADDED', () => {
-      loadLatestEsim();
+    const scale = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.9, 1, 0.9],
+      extrapolate: 'clamp',
     });
 
-    // Auto-refresh as fallback
-    const refreshInterval = setInterval(loadLatestEsim, 60000);
-    
-    return () => {
-      unsubscribeEsim();
-      clearInterval(refreshInterval);
-    };
-  }, [userToken]);
-
-  if (loading) {
     return (
-      <View style={styles.esimWrapper}>
-        <LinearGradient
-          colors={['#FF6B6B', '#FF8E8E', '#FFA5A5']}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
-          style={styles.esimGlow}
-        />
-        <View style={styles.activeEsim}>
-          <ActivityIndicator color="#FF6B6B" size="large" />
-        </View>
-      </View>
+      <TouchableOpacity
+        onPress={() => onItemPress(item)}
+        activeOpacity={0.8}
+      >
+        <Animated.View style={[
+          styles.destinationCard,
+          { transform: [{ scale }] }
+        ]}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F9FAFB']}
+            style={styles.destinationGradient}
+          >
+            <View style={styles.destinationFlag}>
+              <FlagIcon countryCode={item.flagCode} size={50} />
+            </View>
+            <Text style={styles.destinationName}>{item.name}</Text>
+            <View style={styles.destinationBadge}>
+              <MaterialIcons name="trending-up" size={12} color="#FF6B00" />
+              <Text style={styles.destinationBadgeText}>Popular</Text>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      </TouchableOpacity>
     );
-  }
-
-  if (!esimData) {
-    return (
-      <View style={styles.esimWrapper}>
-        <LinearGradient
-          colors={['#FF6B6B', '#FF8E8E', '#FFA5A5']}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
-          style={styles.esimGlow}
-        />
-        <View style={styles.activeEsim}>
-          <View style={styles.esimContent}>
-            <Text style={styles.activeEsimTitle}>No Active eSIM</Text>
-            <Text style={styles.activeEsimSubtitle}>
-              Purchase an eSIM to get started
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  }
+  };
 
   return (
-    <View style={styles.esimWrapper}>
-      <LinearGradient
-        colors={['#FF6B6B', '#FF8E8E', '#FFA5A5']}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={styles.esimGlow}
-      />
-      <View style={styles.activeEsim}>
-        <View style={styles.esimContent}>
-          <View style={styles.esimHeader}>
-            <View style={styles.esimIconContainer}>
-              <Ionicons name="hardware-chip-outline" size={24} color="#FF6B6B" />
-            </View>
-            <Text style={styles.activeEsimTitle}>{esimData.country}</Text>
-          </View>
-          <View style={styles.esimDetailsContainer}>
-            <Text style={styles.activeEsimSubtitle}>
-              {esimData.status} - {esimData.time_left}
-            </Text>
-            <View style={styles.dataUsageContainer}>
-              <View style={styles.dataUsageBar}>
-                <View 
-                  style={[
-                    styles.dataUsageFill, 
-                    { width: `${esimData.data_left_percentage}%` }
-                  ]} 
-                />
-              </View>
-              <Text style={styles.dataUsageText}>
-                {esimData.data_left_formatted} Remaining
-              </Text>
-            </View>
-          </View>
-        </View>
+    <View style={styles.popularSection}>
+      <View style={styles.sectionHeader}>
+        <MaterialIcons name="local-fire-department" size={24} color="#FF6B00" />
+        <Text style={styles.sectionTitle}>Trending Destinations</Text>
       </View>
+      <Animated.FlatList
+        data={destinations}
+        renderItem={renderDestination}
+        keyExtractor={(item) => item.id}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.destinationsList}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+        snapToInterval={140}
+        decelerationRate="fast"
+      />
     </View>
   );
 });
 
+// Tab Component
+const TabButton = memo(({ title, isActive, onPress, icon }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    onPress();
+  };
+
+  return (
+    <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <LinearGradient
+          colors={isActive ? ['#FF6B00', '#FF8533'] : ['#FFFFFF', '#F9FAFB']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.tabButton,
+            isActive && styles.tabButtonActive,
+          ]}
+        >
+          <MaterialCommunityIcons 
+            name={icon} 
+            size={18} 
+            color={isActive ? '#FFFFFF' : '#6B7280'} 
+          />
+          <Text style={[
+            styles.tabText,
+            isActive && styles.tabTextActive,
+          ]}>
+            {title}
+          </Text>
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+});
+
+// Main Component
 const ShopScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Countries');
@@ -222,68 +220,74 @@ const ShopScreen = () => {
   const [page, setPage] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [balance, setBalance] = useState(null);
   const navigation = useNavigation();
-  const { userEmail } = useContext(AuthContext);
-  const flatListRef = useRef(null);
+  const { userEmail, userToken } = useContext(AuthContext);
+  const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  const handleScroll = useRef(
-    Animated.event(
-      [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-      { useNativeDriver: true }
-    )
-  ).current;
+  const searchInputRef = useRef(null);
 
   const username = useMemo(() => {
     if (userEmail) {
       const atIndex = userEmail.indexOf('@');
       return atIndex !== -1 ? userEmail.substring(0, atIndex) : userEmail;
     }
-    return 'stranger';
+    return 'Guest';
   }, [userEmail]);
 
-  const keyExtractor = useCallback((item, index) => {
-    if (!item?.id) return `empty-${index}`;
-    return `${activeTab.toLowerCase()}-${item.id}-${index}`;
-  }, [activeTab]);
+  // Load balance
+  useEffect(() => {
+    const loadBalance = async () => {
+      if (userToken) {
+        try {
+          const result = await fetchBalance();
+          if (result.success && result.data) {
+            setBalance(result.data);
+          }
+        } catch (error) {
+          console.error('Error loading balance:', error);
+        }
+      }
+    };
 
-  const MemoizedCountryItem = memo(CountryListItem, (prev, next) => {
-    return prev.item.id === next.item.id;
-  });
+    loadBalance();
 
-  const MemoizedRegionItem = memo(RegionGlobalListItem, (prev, next) => {
-    return prev.item.name === next.item.name;
-  });
+    const unsubscribeBalance = EventEmitter.subscribe('BALANCE_UPDATED', (data) => {
+      setBalance(data);
+    });
+
+    return () => {
+      unsubscribeBalance();
+    };
+  }, [userToken]);
 
   const handleSearch = useCallback(
     debounce((query) => {
       const searchQuery = query.toLowerCase();
       let filtered;
       
-      if (activeTab === 'Regional') {
+      if (activeTab === 'Countries') {
+        filtered = countries.filter(item =>
+          item.name.toLowerCase().includes(searchQuery)
+        );
+      } else if (activeTab === 'Regional') {
         filtered = regions.filter(item =>
           item.name.toLowerCase().includes(searchQuery)
         );
-        setFilteredData(filtered);
-        setHasMore(false);
-      } else if (activeTab === 'Global') {
+      } else {
         filtered = globalPackages.filter(item =>
           item.name.toLowerCase().includes(searchQuery)
         );
-        setFilteredData(filtered);
-        setHasMore(false);
       }
+      
+      setFilteredData(filtered);
+      setHasMore(false);
     }, 300),
     [activeTab]
   );
 
   const handleItemPress = useCallback((item) => {
     if (item.flagCode) {
-      setActiveTab('Countries');
-      const initialItems = countries.slice(0, ITEMS_PER_PAGE);
-      setFilteredData(initialItems);
-      setHasMore(countries.length > ITEMS_PER_PAGE);
-      setPage(0);
       navigation.navigate('PackageType', { country: item.name });
       return;
     }
@@ -297,80 +301,140 @@ const ShopScreen = () => {
         globalPackageName: item.name 
       });
     }
-  }, [navigation, activeTab, setActiveTab]);
+  }, [navigation, activeTab]);
 
-  const renderItem = useCallback(({ item }) => {
-    if (!item?.id) return null;
-    
-    if (activeTab === 'Countries') {
-      return (
-        <MemoizedCountryItem 
-          item={item}
-          onPress={handleItemPress}
-        />
-      );
-    }
+  const renderItem = useCallback(({ item, index }) => {
+    const inputRange = [
+      -1,
+      0,
+      index * 80,
+      (index + 2) * 80,
+    ];
+
+    const scale = scrollY.interpolate({
+      inputRange,
+      outputRange: [1, 1, 1, 0.95],
+      extrapolate: 'clamp',
+    });
+
     return (
-      <MemoizedRegionItem 
-        item={item}
-        onPress={handleItemPress}
-      />
+      <Animated.View style={{ 
+        transform: [{ scale }],
+      }}>
+        <TouchableOpacity
+          onPress={() => handleItemPress(item)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.itemCard}>
+            <View style={styles.itemContent}>
+              {activeTab === 'Countries' ? (
+                <View style={styles.flagContainer}>
+                  <FlagIcon countryCode={item.id} size={44} />
+                </View>
+              ) : activeTab === 'Regional' ? (
+                <View style={styles.iconContainer}>
+                  {item.image ? (
+                    <item.image width={44} height={44} />
+                  ) : (
+                    <LinearGradient
+                      colors={['#FF6B00', '#FF8533']}
+                      style={styles.iconGradient}
+                    >
+                      <MaterialCommunityIcons 
+                        name="earth" 
+                        size={24} 
+                        color="#FFFFFF" 
+                      />
+                    </LinearGradient>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.iconContainer}>
+                  <LinearGradient
+                    colors={['#FF6B00', '#FF8533']}
+                    style={styles.iconGradient}
+                  >
+                    <Ionicons 
+                      name="globe" 
+                      size={24} 
+                      color="#FFFFFF" 
+                    />
+                  </LinearGradient>
+                </View>
+              )}
+              
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemName}>{item.name}</Text>
+                {activeTab === 'Regional' && item.countries && (
+                  <Text style={styles.itemSubtext}>
+                    {item.countries.length} countries
+                  </Text>
+                )}
+                {activeTab === 'Global' && (
+                  <Text style={styles.itemSubtext}>
+                    Worldwide coverage
+                  </Text>
+                )}
+              </View>
+              
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color="#9CA3AF" 
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
     );
-  }, [activeTab, handleItemPress]);
+  }, [activeTab, handleItemPress, scrollY]);
 
   const ListHeaderComponent = useCallback(() => (
-    <>
-      <View style={styles.popularDestinationsContainer}>
-        <PopularDestinations onItemPress={handleItemPress} />
+    <View style={styles.listHeader}>
+      <PopularDestinations onItemPress={handleItemPress} />
+      
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContent}
+        >
+          <TabButton
+            title="Countries"
+            icon="earth"
+            isActive={activeTab === 'Countries'}
+            onPress={() => setActiveTab('Countries')}
+          />
+          <TabButton
+            title="Regional"
+            icon="map-marker-radius"
+            isActive={activeTab === 'Regional'}
+            onPress={() => setActiveTab('Regional')}
+          />
+          <TabButton
+            title="Global"
+            icon="globe-model"
+            isActive={activeTab === 'Global'}
+            onPress={() => setActiveTab('Global')}
+          />
+        </ScrollView>
       </View>
-      <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-    </>
-  ), [activeTab, setActiveTab, handleItemPress]);
+    </View>
+  ), [activeTab, handleItemPress]);
 
   const ListFooterComponent = useCallback(() => {
-    if (!hasMore) return null;
+    if (!hasMore || activeTab !== 'Countries') return null;
     return (
       <View style={styles.loadingFooter}>
-        <ActivityIndicator color="#FF6B6B" size="small" />
-        <Text style={styles.loadingText}>Loading more countries...</Text>
+        <ActivityIndicator color="#FF6B00" size="small" />
+        <Text style={styles.loadingText}>Loading more...</Text>
       </View>
     );
-  }, [hasMore]);
+  }, [hasMore, activeTab]);
 
- const onMomentumScrollEnd = useCallback(() => {
-    InteractionManager.runAfterInteractions(() => {
-      if (isLoadingMore) setIsLoadingMore(false);
-    });
-  }, [isLoadingMore]);
-
-  // Optimize list configuration
-  const flatListConfig = useMemo(() => ({
-    removeClippedSubviews: Platform.OS === 'android', // Enable only on Android
-    maxToRenderPerBatch: 5, // Reduced from 10
-    updateCellsBatchingPeriod: 100, // Increased from 50
-    initialNumToRender: 10, // Reduced from 15
-    windowSize: 3, // Reduced from 5
-    maintainVisibleContentPosition: {
-      minIndexForVisible: 0,
-      autoscrollToTopThreshold: 10,
-    },
-    getItemLayout: (data, index) => ({
-      length: 76,
-      offset: 76 * index,
-      index,
-    }),
-    onEndReachedThreshold: 0.7, // Increased from 0.5
-    scrollEventThrottle: Platform.OS === 'ios' ? 16 : 32,
-    viewabilityConfig: {
-      viewAreaCoveragePercentThreshold: 50,
-      waitForInteraction: true,
-    },
-    extraData: activeTab,
-  }), [activeTab]);
-
-  // Optimize data loading
   const loadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore || activeTab !== 'Countries') return;
+    if (isLoadingMore || !hasMore || activeTab !== 'Countries' || searchQuery) return;
 
     setIsLoadingMore(true);
     
@@ -378,11 +442,7 @@ const ShopScreen = () => {
       const nextPage = page + 1;
       const startIndex = nextPage * ITEMS_PER_PAGE;
       const endIndex = startIndex + ITEMS_PER_PAGE;
-
-      const existingIds = new Set(filteredData.map(item => item.id));
-      const newItems = countries
-        .slice(startIndex, endIndex)
-        .filter(item => !existingIds.has(item.id));
+      const newItems = countries.slice(startIndex, endIndex);
 
       if (newItems.length > 0) {
         setFilteredData(prev => [...prev, ...newItems]);
@@ -393,359 +453,490 @@ const ShopScreen = () => {
       }
       setIsLoadingMore(false);
     });
-  }, [page, isLoadingMore, hasMore, activeTab, filteredData]);
+  }, [page, isLoadingMore, hasMore, activeTab, searchQuery]);
 
- useFocusEffect(
+  useFocusEffect(
     useCallback(() => {
-      let isMounted = true;
-
-      const initializeData = async () => {
-        if (activeTab === 'Countries') {
-          const initialItems = countries
-            .slice(0, ITEMS_PER_PAGE)
-            .filter((item, index, self) => 
-              index === self.findIndex(t => t.id === item.id)
-            );
-
-          if (isMounted) {
-            await InteractionManager.runAfterInteractions(() => {
-              setFilteredData(initialItems);
-              setHasMore(countries.length > ITEMS_PER_PAGE);
-              setPage(0);
-              setSearchQuery('');
-            });
-          }
-        } else {
-          if (isMounted) {
-            await InteractionManager.runAfterInteractions(() => {
-              setFilteredData(activeTab === 'Regional' ? regions : globalPackages);
-              setHasMore(false);
-            });
-          }
-        }
-      };
-
-      initializeData();
-
-      return () => {
-        isMounted = false;
-      };
+      if (activeTab === 'Countries') {
+        const initialItems = countries.slice(0, ITEMS_PER_PAGE);
+        setFilteredData(initialItems);
+        setHasMore(countries.length > ITEMS_PER_PAGE);
+        setPage(0);
+      } else {
+        setFilteredData(activeTab === 'Regional' ? regions : globalPackages);
+        setHasMore(false);
+      }
+      setSearchQuery('');
     }, [activeTab])
   );
 
-return (
+  // Header animation
+  const headerTranslate = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, -50],
+    extrapolate: 'clamp',
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  // Sticky header animation
+  const stickyHeaderOpacity = scrollY.interpolate({
+    inputRange: [50, 100],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const stickyHeaderTranslate = scrollY.interpolate({
+    inputRange: [50, 100],
+    outputRange: [-20, 0],
+    extrapolate: 'clamp',
+  });
+
+  return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <Header username={username} />
-      <SearchBar 
-        searchQuery={searchQuery} 
-        setSearchQuery={setSearchQuery} 
-        handleSearch={handleSearch}
-        activeTab={activeTab}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      {/* Background gradient */}
+      <LinearGradient
+        colors={['#FFFFFF', '#FFF7ED', '#FEF3C7']}
+        style={styles.backgroundGradient}
       />
+      
+      {/* Header */}
+      <Animated.View style={[
+        styles.header,
+        {
+          transform: [{ translateY: headerTranslate }],
+          opacity: headerOpacity,
+        }
+      ]}>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.greeting}>Welcome back,</Text>
+            <Text style={styles.username}>{username}</Text>
+          </View>
+          
+          {balance && (
+            <TouchableOpacity 
+              style={styles.balanceCard}
+              onPress={() => navigation.navigate('Deposit')}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={['#FF6B00', '#FF8533']}
+                style={styles.balanceGradient}
+              >
+                <MaterialIcons name="account-balance-wallet" size={20} color="#FFFFFF" />
+                <Text style={styles.balanceAmount}>
+                  ${balance.balance?.toFixed(2) || '0.00'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+        </View>
+      </Animated.View>
+      
+      {/* Sticky Header - Shows when scrolling */}
+      <Animated.View style={[
+        styles.stickyHeader,
+        {
+          opacity: stickyHeaderOpacity,
+          transform: [{ translateY: stickyHeaderTranslate }],
+        }
+      ]}>
+        <LinearGradient
+          colors={['#FF6B00', '#FF8533']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.stickyHeaderGradient}
+        >
+          <View style={styles.stickyHeaderContent}>
+            <View style={styles.stickyHeaderLeft}>
+              <Text style={styles.stickyHeaderTitle}>
+                {activeTab === 'Countries' ? '🌍 Find your perfect destination' : 
+                 activeTab === 'Regional' ? '🗺️ Travel across multiple countries' : 
+                 '🌐 Stay connected worldwide'}
+              </Text>
+              <Text style={styles.stickyHeaderSubtitle}>
+                {activeTab === 'Countries' ? `Choose from ${countries.length} countries` : 
+                 activeTab === 'Regional' ? `${regions.length} regional packages to explore` : 
+                 `${globalPackages.length} global plans for travelers`}
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+      
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        {Platform.OS === 'ios' && (
+          <BlurView intensity={80} tint="light" style={styles.searchBlur} />
+        )}
+        <View style={styles.searchContent}>
+          <Ionicons name="search" size={20} color="#6B7280" />
+          <TextInput
+            ref={searchInputRef}
+            style={styles.searchInput}
+            placeholder={`Search ${activeTab.toLowerCase()}...`}
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              handleSearch(text);
+            }}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                searchInputRef.current?.clear();
+                Keyboard.dismiss();
+              }}
+              style={styles.clearButton}
+            >
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+      
+      {/* Main List */}
       <AnimatedFlatList
-        ref={flatListRef}
-        {...flatListConfig}
-        style={styles.flatList}
-        contentContainerStyle={[
-          styles.flatListContent,
-          // Add bottom padding to prevent content from being hidden behind the tab bar
-          { paddingBottom: Platform.OS === 'ios' ? 110 : 90 }
-        ]}
-        ListHeaderComponent={ListHeaderComponent}
         data={filteredData}
         renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        onEndReached={loadMore}
+        keyExtractor={(item) => `${activeTab}-${item.id || item.name}`}
+        ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={ListFooterComponent}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        onMomentumScrollEnd={onMomentumScrollEnd}
-        decelerationRate={Platform.OS === 'ios' ? 'normal' : 0.985}
-        {...Platform.select({
-          android: {
-            overScrollMode: 'never',
-          },
-          ios: {
-            directionalLockEnabled: true,
-          },
-        })}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + 100 }
+        ]}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+        removeClippedSubviews={Platform.OS === 'android'}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        initialNumToRender={10}
       />
     </SafeAreaView>
   );
 };
 
-		  		  
 const styles = StyleSheet.create({
-  // Main Container Styles
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+    backgroundColor: '#FFFFFF',
   },
-  listContainer: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
-  list: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexGrow: 1,
+  
+  // Header
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 20,
+    zIndex: 10,
   },
-  headerContainer: {
-    paddingTop: 16,
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-
-  // Balance Container Styles
-  balanceContainer: {
+  greeting: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  username: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  balanceCard: {
+    borderRadius: 16,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  balanceGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.stone[100],
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minWidth: 90,
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.stone[300],
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    gap: 8,
   },
-  balanceText: {
-    color: colors.stone[800],
-    fontSize: 16,
-    fontFamily: 'Quicksand',
+  balanceAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  
+  // Sticky Header
+  stickyHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    paddingTop: Platform.OS === 'ios' ? 45 : 5,
+  },
+  stickyHeaderGradient: {
+    marginHorizontal: 20,
+    marginVertical: 5,
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  stickyHeaderContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  stickyHeaderLeft: {
+    flex: 1,
+  },
+  stickyHeaderTitle: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
-
-  // Search Styles
+  stickyHeaderSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 1,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  
+  // Search
   searchContainer: {
-    zIndex: 1000,
-    marginVertical: 12,
-    marginHorizontal: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  searchGradient: {
-    borderRadius: 12,
-    padding: 2,
+  searchBlur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
-  searchInputContainer: {
+  searchContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.stone[100],
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 56,
-    borderWidth: 1,
-    borderColor: colors.stone[300],
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Platform.OS === 'ios' ? 'transparent' : 'rgba(255, 255, 255, 0.9)',
   },
   searchInput: {
     flex: 1,
-    color: colors.stone[800],
+    marginLeft: 12,
     fontSize: 16,
-    fontFamily: 'Quicksand',
-    marginLeft: 8,
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   clearButton: {
-    padding: 8,
+    padding: 4,
   },
-
-  // Item Styles
-  itemTouchable: {
+  
+  // Popular Destinations
+  popularSection: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  destinationsList: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  destinationCard: {
+    width: 120,
+    marginRight: 12,
+  },
+  destinationGradient: {
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  destinationFlag: {
+    marginBottom: 8,
+  },
+  destinationName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  destinationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  destinationBadgeText: {
+    fontSize: 10,
+    color: '#FF6B00',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  
+  // Tabs
+  tabsContainer: {
+    marginBottom: 20,
+  },
+  tabsContent: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tabButtonActive: {
+    borderColor: 'transparent',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
+  },
+  
+  // List Items
+  listContent: {
+    paddingBottom: 100,
+  },
+  listHeader: {
+    paddingBottom: 20,
+  },
+  itemCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  itemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.background.primary,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.light,
   },
-  itemShadow: {
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  flagWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
+  flagContainer: {
     marginRight: 16,
   },
-  flagImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 20,
+  iconContainer: {
+    marginRight: 16,
   },
-  imageNoShadow: {
-    shadowColor: 'transparent',
-    elevation: 0,
-  },
-  iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background.secondary,
+  iconGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+  },
+  itemInfo: {
+    flex: 1,
   },
   itemName: {
-    flex: 1,
     fontSize: 16,
-    color: colors.text.primary,
-    fontFamily: 'Quicksand',
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
-
-  // Loading Footer Styles
+  itemSubtext: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  
+  // Loading Footer
   loadingFooter: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 20,
+    gap: 8,
   },
   loadingText: {
-    marginLeft: 8,
-    color: colors.text.secondary,
     fontSize: 14,
-    fontFamily: 'Quicksand',
-  },
-
-  // Popular Destinations Styles
-  popularDestinationsContainer: {
-    paddingVertical: 16,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.stone[800],
-    marginLeft: 16,
-    marginTop: 24,
-    marginBottom: 12,
-    fontFamily: 'Quicksand',
-  },
-
-  // Suggestions Styles
-  suggestionsContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: colors.stone[100],
-    borderRadius: 12,
-    marginTop: 8,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: colors.stone[300],
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.stone[300],
-  },
-  suggestionItemSelected: {
-    backgroundColor: colors.stone[200],
-  },
-  suggestionItemLast: {
-    borderBottomWidth: 0,
-  },
-  suggestionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  suggestionFlag: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.stone[100],
-    borderWidth: 1,
-    borderColor: colors.stone[300],
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  suggestionTextContainer: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  suggestionText: {
-    color: colors.stone[800],
-    fontSize: 16,
-    fontFamily: 'Quicksand',
-    fontWeight: '600',
-  },
-  suggestionSubtext: {
-    color: colors.stone[600],
-    fontSize: 12,
-    fontFamily: 'Quicksand',
-    marginTop: 2,
-  },
-
-  // Empty State Styles
-  emptyListText: {
-    color: colors.stone[600],
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 20,
-    fontFamily: 'Quicksand',
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
 });
 

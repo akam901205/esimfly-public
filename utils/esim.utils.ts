@@ -100,6 +100,12 @@ export const checkTopUpAvailability = (
         message: 'Your eSIM is expiring soon. Top up now to extend it.'
       };
       
+    case 'DEPLETED':
+      return {
+        canTopUp: true,
+        message: 'Your data has been fully used. Top up to add more data.'
+      };
+      
     case 'NEW':
     case 'NOT_ACTIVE':
     case 'ONBOARD':

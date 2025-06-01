@@ -278,8 +278,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   modalContent: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
     height: '100%',
     paddingTop: 8,
     shadowColor: '#000',

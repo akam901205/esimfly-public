@@ -26,6 +26,7 @@ import {
   getNetworks,
   adjustDataDisplay
 } from '../utils/PackageFilters';
+import { normalizeCountryName } from '../utils/countryNormalizationUtils';
 import { newApi } from '../api/api';
 
 const ICON_COLORS = {
@@ -44,176 +45,61 @@ const RegionalPackagesScreen = () => {
   const navigation = useNavigation();
   const { region, packageType } = route.params;
 
-  // Local formatLocationNetworkList function (aligned with RegionalPackageDetailsScreen)
+  // Local formatLocationNetworkList function - use only API data
   const formatLocationNetworkList = (packageData) => {
     const locationNetworks = [];
     
-    // Helper function to get country code
-    const getCountryCode = (countryName) => {
-      if (!countryName) return '';
-      
-      // Special mappings for country names to codes
-      const countryMappings = {
-        'united states': 'us',
-        'united kingdom': 'gb',
-        'united arab emirates': 'ae',
-        'south korea': 'kr',
-        'south africa': 'za',
-        'new zealand': 'nz',
-        'puerto rico': 'pr',
-        'hong kong': 'hk',
-        'czech republic': 'cz',
-        'dominican republic': 'do',
-        'costa rica': 'cr',
-        'el salvador': 'sv',
-        'saint lucia': 'lc',
-        'trinidad and tobago': 'tt',
-        'antigua and barbuda': 'ag',
-        'saint kitts and nevis': 'kn',
-        'saint vincent and the grenadines': 'vc',
-        'democratic republic of the congo': 'cd',
-        'central african republic': 'cf'
-      };
-      
-      const normalized = countryName.toLowerCase();
-      return countryMappings[normalized] || countryName.substring(0, 2).toLowerCase();
-    };
-    
-    // First, get the list of countries
-    let countryList = [];
-    
-    if (packageData.coverage && Array.isArray(packageData.coverage)) {
-      countryList = packageData.coverage;
-    } else if (packageData.coverages && Array.isArray(packageData.coverages)) {
-      // For coverages, each item represents a country with its networks
+    // If we have coverages array from API with network info per country
+    if (packageData.coverages && Array.isArray(packageData.coverages)) {
       packageData.coverages.forEach(coverage => {
-        const countryName = coverage.name || 'Unknown';
-        const countryCode = getCountryCode(countryName);
+        // For Airalo, coverage.name might be a country code, so normalize it
+        const rawName = coverage.name || 'Unknown';
+        const countryName = normalizeCountryName(rawName);
+        const countryCode = coverage.code || rawName;
         
-        // Don't show the actual operator count if it's too high (like 90)
-        // Instead show a reasonable default
+        // Use actual networks from API if available
         const operatorList = coverage.networks && coverage.networks.length > 0 
-          ? coverage.networks.slice(0, 5).map(network => ({
+          ? coverage.networks.map(network => ({
               operatorName: network.name || 'Network',
-              networkType: network.type || '4G'
+              networkType: network.type || packageData.speed || '4G'
             }))
-          : [{ operatorName: 'Multiple networks available', networkType: packageData.speed || '4G' }];
+          : [];
+        
+        if (operatorList.length > 0) {
+          locationNetworks.push({
+            locationName: countryName,
+            countryCode: countryCode,
+            operatorList: operatorList
+          });
+        }
+      });
+    } 
+    // If we have coverage array (list of countries) from API
+    else if (packageData.coverage && Array.isArray(packageData.coverage)) {
+      packageData.coverage.forEach(country => {
+        // Handle both string and object formats
+        const rawName = typeof country === 'string' ? country : (country.name || country);
+        const countryName = normalizeCountryName(rawName);
+        const countryCode = typeof country === 'object' ? (country.code || '') : '';
         
         locationNetworks.push({
           locationName: countryName,
           countryCode: countryCode,
-          operatorList: operatorList
+          operatorList: [] // No specific operator data from API
         });
       });
-      
-      // Return early if we have coverages with network info
-      return locationNetworks;
-    } else if (packageData.coverage_countries && Array.isArray(packageData.coverage_countries)) {
-      countryList = packageData.coverage_countries;
     }
-    
-    // If we have a country list with networks, distribute them
-    if (countryList.length > 0 && packageData.networks && Array.isArray(packageData.networks) && packageData.networks.length > 0) {
-      // Create a map of common operators by country
-      const operatorsByCountry = {
-        'Norway': ['Telenor', 'Telia', 'Ice'],
-        'Germany': ['Vodafone', 'O2', 'T-Mobile'],
-        'Belgium': ['Base', 'Orange', 'Proximus'],
-        'Finland': ['Elisa', 'Telia', 'DNA'],
-        'Portugal': ['NOS', 'Vodafone', 'MEO'],
-        'Bulgaria': ['A1', 'Telenor', 'Vivacom'],
-        'Denmark': ['3', 'Telia', 'TDC'],
-        'Lithuania': ['Tele2', 'BITĖ', 'Telia'],
-        'Luxembourg': ['POST', 'Tango', 'Orange'],
-        'Latvia': ['Tele2', 'LMT', 'Bite'],
-        'Croatia': ['A1', 'Telemach', 'T-Mobile'],
-        'Ukraine': ['lifecell', 'Kyivstar', 'Vodafone'],
-        'France': ['Orange', 'SFR', 'Bouygues', 'Free Mobile'],
-        'Hungary': ['Telenor', 'Vodafone', 'T-Mobile'],
-        'Sweden': ['3', 'Tele2', 'Telia'],
-        'Slovenia': ['Mobitel', 'A1', 'Telemach'],
-        'Slovakia': ['Orange', 'O2', 'T-Mobile'],
-        'United Kingdom': ['3', 'Vodafone', 'O2', 'EE'],
-        'Ireland': ['3', 'Eir', 'Vodafone'],
-        'Estonia': ['Tele2', 'Elisa', 'Telia'],
-        'Switzerland': ['Sunrise', 'Salt', 'Swisscom'],
-        'Malta': ['GO', 'Vodafone', 'Melita'],
-        'Iceland': ['Nova', 'Síminn', 'Vodafone'],
-        'Italy': ['Iliad', 'Vodafone', 'Wind', 'TIM'],
-        'Greece': ['Vodafone', 'Wind', 'Cosmote'],
-        'Spain': ['Vodafone', 'Orange', 'Movistar', 'Yoigo'],
-        'Austria': ['3', 'A1', 'T-Mobile'],
-        'Cyprus': ['PrimeTel', 'Epic', 'Cyta'],
-        'Czech Republic': ['Vodafone', 'O2', 'T-Mobile'],
-        'Poland': ['Orange', 'Play', 'Plus', 'T-Mobile'],
-        'Romania': ['Vodafone', 'Orange', 'Digi.Mobil'],
-        'Liechtenstein': ['FL1', '7acht', 'Salt'],
-        'Netherlands': ['Vodafone', 'KPN', 'T-Mobile'],
-        'Turkey': ['Avea', 'Turkcell', 'Vodafone']
-      };
-      
-      // Extract all network names from the package
-      const availableNetworks = packageData.networks.map(n => 
-        typeof n === 'string' ? n : (n.name || 'Network')
-      );
-      
-      // Create entries for each country
-      countryList.forEach(country => {
-        const countryName = country.name || country;
-        const countryCode = country.code || getCountryCode(countryName);
-        
-        // Get operators for this country
-        const countryOperators = operatorsByCountry[countryName] || [];
-        
-        // Find matching operators from available networks
-        const matchingOperators = countryOperators
-          .filter(op => availableNetworks.some(net => 
-            net.toLowerCase().includes(op.toLowerCase()) || 
-            op.toLowerCase().includes(net.toLowerCase())
-          ))
-          .slice(0, 3); // Limit to 3 operators per country
-        
-        // Create operator list
-        const operatorList = matchingOperators.length > 0
-          ? matchingOperators.map(op => ({
-              operatorName: op,
-              networkType: packageData.speed || '4G/5G'
-            }))
-          : [{
-              operatorName: `${Math.min(3, Math.floor(availableNetworks.length / countryList.length))} major operators`,
-              networkType: packageData.speed || '4G/5G'
-            }];
-        
-        locationNetworks.push({
-          locationName: countryName,
-          countryCode: countryCode,
-          operatorList: operatorList
-        });
-      });
-    } else if (countryList.length > 0) {
-      // If we have a country list but no network details
-      countryList.forEach(country => {
-        const countryName = country.name || country;
-        const countryCode = country.code || getCountryCode(countryName);
-        
-        locationNetworks.push({
-          locationName: countryName,
-          countryCode: countryCode,
-          operatorList: [{ 
-            operatorName: 'Multiple networks available', 
-            networkType: packageData.speed || '4G' 
-          }]
-        });
-      });
-    } else if (packageData.networks && Array.isArray(packageData.networks)) {
-      // Fallback: If no country info, show region with networks
+    // If we have networks array without country mapping
+    else if (packageData.networks && Array.isArray(packageData.networks)) {
       const uniqueNetworks = [];
       packageData.networks.forEach(network => {
         const networkName = typeof network === 'string' ? network : (network.name || 'Network');
+        const networkType = typeof network === 'object' ? (network.type || packageData.speed || '4G') : (packageData.speed || '4G');
+        
         if (!uniqueNetworks.find(n => n.operatorName === networkName)) {
           uniqueNetworks.push({
             operatorName: networkName,
-            networkType: network.type || packageData.speed || '4G'
+            networkType: networkType
           });
         }
       });
@@ -222,7 +108,7 @@ const RegionalPackagesScreen = () => {
         locationNetworks.push({
           locationName: packageData.region || 'Regional Coverage',
           countryCode: '',
-          operatorList: uniqueNetworks.slice(0, 5) // Limit to first 5 operators
+          operatorList: uniqueNetworks
         });
       }
     }
@@ -309,6 +195,7 @@ const RegionalPackagesScreen = () => {
           networks: pkg.networks || [],
           coverage: pkg.coverage || [],
           coverages: pkg.coverages || [],
+          coverage_countries: pkg.coverage_countries || [],
           locationNetworkList: [],
           region: pkg.region || region
         };

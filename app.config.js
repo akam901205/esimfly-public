@@ -189,7 +189,7 @@ export default {
         projectId: 'a60875e0-8d9c-43f8-8f0f-ac4605f91fb1'
       },
       stripe: {
-        publishableKey: "pk_test_51QkpsjRsiK4Lxqyaz4hBVr6NyGJyM0Byyv4r2NDdPnhPaJbq6sRAlJZjij56Cmoaw5RRlMBHqLGePsFBFQC7UCzE003139zcQn",
+        publishableKey: "pk_live_51Qbg8uHbrtyQ1AACqgu82JueHGZak2BUQHFIfWb9TIliG4gP8npvVPm73L6gIyEVxYruu9LBhxk5vL7dC9e3ptOr00smrvDnD7",
         merchantId: "merchant.net.esimfly.user.app",
         useTestApi: true,
         googlePay: {

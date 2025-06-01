@@ -258,8 +258,46 @@ const filterOptimalPackages = (packages) => {
       
       // Map the packages to match the expected format
       allPackages = allPackages.map(plan => {
-        // Map new API fields to expected format
-        const dataValue = plan.isUnlimited ? Infinity : (plan.data || 0);
+        // Fix esimgo data format issues (0.98 -> 1, 1.95 -> 2, etc.)
+        let correctedData = plan.data;
+        if (!plan.isUnlimited && plan.data) {
+          const dataValue = parseFloat(plan.data);
+          // Debug log for esimgo packages
+          if (plan.provider === 'esimgo' || plan.id?.startsWith('esim_')) {
+            console.log('[DEBUG] ESIMgo data correction:', {
+              provider: plan.provider,
+              originalData: plan.data,
+              parsedValue: dataValue,
+              name: plan.name
+            });
+          }
+          
+          // Common esimgo data mappings
+          if (dataValue >= 0.95 && dataValue <= 1.05) correctedData = 1;
+          else if (dataValue >= 1.9 && dataValue <= 2.1) correctedData = 2;
+          else if (dataValue >= 2.9 && dataValue <= 3.1) correctedData = 3;
+          else if (dataValue >= 4.8 && dataValue <= 5.2) correctedData = 5;
+          else if (dataValue >= 9.7 && dataValue <= 10.3) correctedData = 10;
+          else if (dataValue >= 19.4 && dataValue <= 20.6) correctedData = 20;
+          else if (dataValue >= 48.5 && dataValue <= 50.5) correctedData = 50;
+          else if (dataValue >= 97 && dataValue <= 100) correctedData = 100;
+          else {
+            // For other values, round to nearest integer if close
+            const rounded = Math.round(dataValue);
+            if (Math.abs(dataValue - rounded) < 0.1) {
+              correctedData = rounded;
+            } else {
+              correctedData = dataValue;
+            }
+          }
+          
+          // Log the correction if it happened
+          if (correctedData !== dataValue && (plan.provider === 'esimgo' || plan.id?.startsWith('esim_'))) {
+            console.log('[DEBUG] ESIMgo data corrected:', dataValue, '->', correctedData);
+          }
+        }
+        
+        const dataValue = plan.isUnlimited ? Infinity : correctedData;
         const duration = plan.duration || 0;
         const price = plan.price || 0;
 
@@ -446,7 +484,11 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
     const numericData = parseFloat(data);
     if (isNaN(numericData)) return data;
     if (numericData >= 1) {
-      return numericData === 49 ? '50 GB' : `${numericData} GB`;
+      // Format whole numbers without decimals (1.0 -> 1)
+      const displayValue = Number.isInteger(numericData) || numericData % 1 === 0 
+        ? Math.floor(numericData) 
+        : numericData;
+      return displayValue === 49 ? '50 GB' : `${displayValue} GB`;
     }
     return `${numericData * 1000} MB`;
   };
@@ -512,7 +554,9 @@ const renderPackageItem = ({ item, index }) => {
         <View style={styles.packageDetails}>
           <View>
             <Text style={styles.dataAmount}>
-              {formatDataAmount(item.data)}
+              {item.data === 'Unlimited' || item.unlimited 
+                ? 'Unlimited' 
+                : formatDataAmount(item.data)}
             </Text>
             <Text style={styles.validityPeriod}>
               VALID FOR {item.duration} DAYS
