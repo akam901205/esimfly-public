@@ -46,9 +46,9 @@ export default {
           'stripe',
           'stripecheckout',
           'merchant.net.esimfly.user.app',
-          'esimfly',
-	      "ITSAppUsesNonExemptEncryption": false
+          'esimfly'
         ],
+        ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'Allow eSimFly to access your camera to scan QR codes.',
         NSNotificationUsageDescription: "We'll send you updates about your eSIM status, account activities, and important alerts.",
         UIBackgroundModes: [
@@ -110,10 +110,6 @@ export default {
       favicon: './assets/favicon.png'
     },
     plugins: [
-      'expo-router',
-      'expo-camera',
-      'expo-localization',
-      'expo-tracking-transparency',
       [
         'expo-build-properties',
         {
@@ -129,6 +125,9 @@ export default {
           },
         },
       ],
+      'expo-router',
+      'expo-camera',
+      'expo-localization',
       [
         '@react-native-firebase/app',
         {
@@ -166,13 +165,7 @@ export default {
         {
           enableGooglePay: true,
           enableApplePay: true,
-          merchantIdentifier: 'merchant.net.esimfly.user.app',
-          newArchEnabled: true,
-          returnUrlScheme: 'esimfly',
-          urlScheme: 'esimfly',
-          standardMode: false,
-          setSystemLocaleReporting: true,
-          distributionMode: 'development'
+          merchantIdentifier: 'merchant.net.esimfly.user.app'
         }
       ],
       [

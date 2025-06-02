@@ -298,8 +298,10 @@ function MainNavigator() {
 
   useEffect(() => {
     // Set status bar and navigation bar properties
-    StatusBar.setBarStyle('light-content');
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'ios') {
+      StatusBar.setBarStyle('dark-content');
+    } else {
+      StatusBar.setBarStyle('light-content');
       StatusBar.setBackgroundColor('#1E1E1E');
       configureNavigationBar();
     }
@@ -429,8 +431,10 @@ function AppNavigator() {
 
   useEffect(() => {
     // Set status bar and navigation bar properties
-    StatusBar.setBarStyle('light-content');
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'ios') {
+      StatusBar.setBarStyle('dark-content');
+    } else {
+      StatusBar.setBarStyle('light-content');
       StatusBar.setBackgroundColor('#1E1E1E');
       configureNavigationBar();
     }
@@ -444,7 +448,10 @@ function AppNavigator() {
     <SafeAreaProvider>
       <AuthContext.Provider value={auth}>
         <NavigationContainer>
-          <StatusBar barStyle="light-content" backgroundColor="#1E1E1E" />
+          <StatusBar 
+            barStyle={Platform.OS === 'ios' ? 'dark-content' : 'light-content'} 
+            backgroundColor={Platform.OS === 'ios' ? 'transparent' : '#1E1E1E'} 
+          />
           <RootStack.Navigator 
             screenOptions={{ 
               headerShown: false,
