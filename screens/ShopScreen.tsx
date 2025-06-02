@@ -197,7 +197,7 @@ const TabButton = memo(({ title, isActive, onPress, icon }) => {
         >
           <MaterialCommunityIcons 
             name={icon} 
-            size={18} 
+            size={Platform.OS === 'ios' ? 17 : 18} 
             color={isActive ? '#FFFFFF' : '#6B7280'} 
           />
           <Text style={[
@@ -457,6 +457,23 @@ const ShopScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      // Refresh balance when screen gains focus
+      const loadBalance = async () => {
+        if (userToken) {
+          try {
+            const result = await fetchBalance();
+            if (result.success && result.data) {
+              setBalance(result.data);
+            }
+          } catch (error) {
+            console.error('Error loading balance:', error);
+          }
+        }
+      };
+      
+      loadBalance();
+      
+      // Handle tab data
       if (activeTab === 'Countries') {
         const initialItems = countries.slice(0, ITEMS_PER_PAGE);
         setFilteredData(initialItems);
@@ -467,7 +484,7 @@ const ShopScreen = () => {
         setHasMore(false);
       }
       setSearchQuery('');
-    }, [activeTab])
+    }, [activeTab, userToken])
   );
 
   // Header animation
@@ -521,21 +538,17 @@ const ShopScreen = () => {
           </View>
           
           {balance && (
-            <TouchableOpacity 
-              style={styles.balanceCard}
-              onPress={() => navigation.navigate('Deposit')}
-              activeOpacity={0.7}
-            >
+            <View style={styles.balanceCard}>
               <LinearGradient
                 colors={['#FF6B00', '#FF8533']}
                 style={styles.balanceGradient}
               >
-                <MaterialIcons name="account-balance-wallet" size={20} color="#FFFFFF" />
+                <MaterialIcons name="account-balance-wallet" size={16} color="#FFFFFF" />
                 <Text style={styles.balanceAmount}>
                   ${balance.balance?.toFixed(2) || '0.00'}
                 </Text>
               </LinearGradient>
-            </TouchableOpacity>
+            </View>
           )}
         </View>
       </Animated.View>
@@ -686,7 +699,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   balanceAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
@@ -846,10 +859,10 @@ const styles = StyleSheet.create({
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: Platform.OS === 'ios' ? 15 : 16,
+    paddingVertical: Platform.OS === 'ios' ? 9 : 9,
     borderRadius: 14,
-    gap: 6,
+    gap: Platform.OS === 'ios' ? 6 : 6,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -862,7 +875,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   tabText: {
-    fontSize: 13,
+    fontSize: Platform.OS === 'ios' ? 12.5 : 14,
     fontWeight: '600',
     color: '#6B7280',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',

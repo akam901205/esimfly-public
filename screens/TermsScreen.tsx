@@ -32,7 +32,7 @@ const TermsScreen = () => {
             <Ionicons 
               name="arrow-back" 
               size={24} 
-              color={colors.icon.header}
+              color="#333"
             />
           </TouchableOpacity>
           <Text style={styles.title}>Terms of Service</Text>
@@ -170,11 +170,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.background.headerIcon,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border.header,
+    borderColor: '#E5E7EB',
   },
   placeholder: {
     width: 40, // Same width as backButton for symmetry

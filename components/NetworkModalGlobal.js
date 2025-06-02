@@ -18,8 +18,6 @@ import { getNetworks, formatLocationNetworkList } from '../utils/PackageFilters'
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
 const ITEMS_PER_PAGE = 15;
 
 const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }) => {
@@ -27,27 +25,59 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [displayedItems, setDisplayedItems] = useState(ITEMS_PER_PAGE);
   
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  // Get dimensions inside component to ensure they're available
+  const [dimensions, setDimensions] = useState(() => {
+    const { width, height } = Dimensions.get('window');
+    return { width: width || 375, height: height || 812 };
+  });
+  
+  // Get styles with current dimensions
+  const styles = getStyles(dimensions);
+  
+  useEffect(() => {
+    const updateDimensions = ({ window }) => {
+      setDimensions({ width: window.width || 375, height: window.height || 812 });
+    };
+    
+    const subscription = Dimensions.addEventListener('change', updateDimensions);
+    return () => subscription?.remove();
+  }, []);
+  
+  const slideAnim = useRef(new Animated.Value(dimensions.height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
   useEffect(() => {
     if (visible) {
-      slideAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      // Reset values before animating
+      slideAnim.setValue(dimensions.height);
+      fadeAnim.setValue(0);
+      
+      // Use requestAnimationFrame for better cross-platform compatibility
+      requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            tension: 65,
+            friction: 11,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
     } else {
       Animated.parallel([
         Animated.timing(slideAnim, {
-          toValue: screenHeight,
-          duration: 300,
+          toValue: dimensions.height,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 300,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start();
@@ -205,7 +235,7 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
   const handleClose = () => {
     Animated.parallel([
       Animated.timing(slideAnim, {
-        toValue: screenHeight,
+        toValue: dimensions.height,
         duration: 300,
         useNativeDriver: true,
       }),
@@ -326,8 +356,10 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
     <Modal
       visible={visible}
       transparent={true}
-      animationType="none"
+      animationType="fade"
       onRequestClose={handleClose}
+      presentationStyle="overFullScreen"
+      statusBarTranslucent={true}
     >
       <Animated.View 
         style={[
@@ -353,10 +385,7 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
             }
           ]}
         >
-          <LinearGradient
-            colors={['#FFFFFF', '#FAFAFA']}
-            style={styles.modalContent}
-          >
+          <View style={styles.modalContent}>
             {/* Drag Indicator */}
             <View style={styles.dragIndicator} />
             
@@ -458,14 +487,14 @@ const NetworkModalGlobal = ({ visible, onClose, packageData, globalPackageName }
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </LinearGradient>
+          </View>
         </Animated.View>
       </Animated.View>
     </Modal>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (dimensions) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -479,19 +508,17 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   modalContainer: {
-    width: '100%',
+    backgroundColor: '#FFFFFF',
+    height: Platform.OS === 'ios' ? dimensions.height * 0.92 : dimensions.height * 0.95,
+    maxHeight: Platform.OS === 'ios' ? dimensions.height * 0.92 : dimensions.height * 0.95,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: Platform.OS === 'android' ? 'visible' : 'hidden',
   },
   modalContent: {
-    height: '100%',
+    flex: 1,
+    backgroundColor: '#FFFFFF',
     paddingTop: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 20,
   },
   dragIndicator: {
     width: 48,

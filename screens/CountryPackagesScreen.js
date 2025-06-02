@@ -587,7 +587,7 @@ const renderPackageItem = ({ item, index }) => {
             >
               <View style={styles.buyButtonContent}>
                 <View style={styles.buyButtonIconContainer}>
-                  <Ionicons name="cart-outline" size={18} color="#FF6B00" />
+                  <Ionicons name="cart-outline" size={16} color="#FF6B00" />
                 </View>
                 <Text style={styles.buyButtonText}>BUY NOW</Text>
               </View>
@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: 'transparent',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     borderBottomColor: '#E5E7EB',
   },
   headerIcon: {
@@ -758,13 +758,13 @@ priceContainer: {
     marginBottom: 8,
   },
 buyButton: {
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 100,
+    minWidth: 90,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     ...Platform.select({
@@ -783,18 +783,18 @@ buyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
   buyButtonIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     backgroundColor: '#FF6B0010',
     justifyContent: 'center',
     alignItems: 'center',
   },
   buyButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',

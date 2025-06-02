@@ -1,5 +1,6 @@
 import auth from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { appleAuth } from '@invertase/react-native-apple-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
 
@@ -176,58 +177,117 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
   try {
     debugLog('Starting Apple sign-in process');
     
-    // Get provider
-    const provider = new auth.AppleAuthProvider();
-    debugLog('Apple provider created');
-
-    // Sign in with Firebase using Apple provider
-    const userCredential = await auth().signInWithProvider(provider);
-    debugLog('User credential obtained');
+    // Enhanced debugging
+    debugLog('Platform:', Platform.OS, Platform.Version);
+    debugLog('Is Apple Auth Supported:', appleAuth.isSupported);
     
-    const firebaseToken = await userCredential.user.getIdToken();
-    debugLog('Firebase token obtained');
+    // Check if Apple auth is available
+    if (!appleAuth.isSupported) {
+      throw new Error('Apple Sign-In is not supported on this device');
+    }
+    
+    // Additional check
+    try {
+      const credentialState = await appleAuth.getCredentialStateForUser('unknown');
+      debugLog('Credential state check passed');
+    } catch (e) {
+      debugLog('Credential state check error (expected):', e);
+    }
 
-    // Send to backend for verification
-    const response = await fetch(`${API_URL}/apple-callback`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'x-client-type': 'mobile'
-      },
-      body: JSON.stringify({ 
-        id_token: firebaseToken,
-        user_data: {
-          email: userCredential.user.email,
-          name: userCredential.user.displayName
-        }
-      })
+    // Perform Apple sign-in request
+    const appleAuthRequestResponse = await appleAuth.performRequest({
+      requestedOperation: appleAuth.Operation.LOGIN,
+      requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
     });
 
-    const data = await response.json();
-    debugLog('Server response:', data);
+    debugLog('Apple auth response received');
 
-    if (data.success) {
-      await AsyncStorage.setItem('userToken', data.token);
-      if (data.expires_at) {
-        await AsyncStorage.setItem('tokenExpires', data.expires_at);
+    // Ensure we have the required data
+    if (!appleAuthRequestResponse.identityToken) {
+      throw new Error('Apple Sign-In failed - no identity token returned');
+    }
+
+    // Get the credential state for the user
+    const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
+    
+    if (credentialState === appleAuth.State.AUTHORIZED) {
+      debugLog('User is authorized');
+      
+      // Create a Firebase credential with the token
+      const { identityToken, nonce } = appleAuthRequestResponse;
+      const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce);
+      
+      // Sign in with Firebase
+      const userCredential = await auth().signInWithCredential(appleCredential);
+      debugLog('Firebase sign-in successful');
+      
+      const firebaseToken = await userCredential.user.getIdToken();
+      debugLog('Firebase token obtained');
+
+      // Send to backend for verification
+      const response = await fetch(`${API_URL}/apple-callback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-client-type': 'mobile'
+        },
+        body: JSON.stringify({ 
+          id_token: firebaseToken,
+          apple_token: identityToken,
+          user_data: {
+            email: appleAuthRequestResponse.email || userCredential.user.email,
+            name: appleAuthRequestResponse.fullName ? 
+              `${appleAuthRequestResponse.fullName.givenName || ''} ${appleAuthRequestResponse.fullName.familyName || ''}`.trim() : 
+              userCredential.user.displayName,
+            user: appleAuthRequestResponse.user
+          }
+        })
+      });
+
+      const data = await handleApiResponse(response);
+      debugLog('Server response:', data);
+
+      if (data.success) {
+        const token = data.token || firebaseToken;
+        
+        // Store all auth data
+        await Promise.all([
+          AsyncStorage.setItem('userToken', token),
+          data.expires_at ? AsyncStorage.setItem('tokenExpires', data.expires_at) : null,
+          data.user ? AsyncStorage.setItem('userData', JSON.stringify(data.user)) : null
+        ].filter(Boolean));
+
+        return {
+          success: true,
+          token,
+          message: data.message,
+          user: data.user,
+          expires_at: data.expires_at
+        };
+      } else {
+        throw new Error(data.error || 'Failed to authenticate with server');
       }
-      if (data.user) {
-        await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-      }
-      return {
-        success: true,
-        token: data.token,
-        message: data.message,
-        user: data.user,
-        expires_at: data.expires_at
-      };
     } else {
-      throw new Error(data.error || 'Failed to authenticate with server');
+      throw new Error('Apple Sign-In was not authorized');
     }
   } catch (error) {
     debugLog('Apple sign-in error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An error occurred during Apple sign-in';
+    
+    let errorMessage = 'An error occurred during Apple sign-in';
+    
+    if (error.code === appleAuth.Error.CANCELED) {
+      errorMessage = 'Sign-in was cancelled';
+    } else if (error.code === appleAuth.Error.FAILED) {
+      errorMessage = 'Apple Sign-In failed';
+    } else if (error.code === appleAuth.Error.INVALID_RESPONSE) {
+      errorMessage = 'Invalid response from Apple';
+    } else if (error.code === appleAuth.Error.NOT_SUPPORTED) {
+      errorMessage = 'Apple Sign-In is not supported on this device';
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
     Alert.alert('Login Error', errorMessage);
     return {
       success: false,

@@ -282,7 +282,7 @@ function ShopNavigator() {
       <ShopStack.Screen name="GlobalPackages" component={GlobalPackagesScreen} />
       <ShopStack.Screen name="GlobalPackageDetails" component={GlobalPackageDetailsScreen} />
       <ShopStack.Screen name="PackageDetails" component={PackageDetailsScreen} />
-      <ShopStack.Screen name="Checkout" component={CheckoutScreen} options={{ presentation: 'modal' }} />
+      <ShopStack.Screen name="Checkout" component={CheckoutScreen} />
       <ShopStack.Screen name="Terms" component={TermsScreen} options={{ presentation: 'modal' }} />
       <ShopStack.Screen name="Instructions" component={InstructionsScreen} options={{ presentation: 'modal' }} />
       <ShopStack.Screen name="OrderProcessing" component={OrderProcessingScreen} options={{ presentation: 'modal' }} />

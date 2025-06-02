@@ -294,13 +294,6 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
                 color="#10b981"
               />
               <MenuItem
-                icon="card-outline"
-                title="Payment Methods"
-                subtitle="Manage your payment options"
-                onPress={() => navigation.navigate('PaymentMethods')}
-                color="#f59e0b"
-              />
-              <MenuItem
                 icon="gift-outline"
                 title="Redeem Gift Card"
                 subtitle="Add balance using gift card code"

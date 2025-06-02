@@ -16,19 +16,19 @@ export const popularDestinations = [
     isPopular: true
   },
   {
-    id: 'us',
-    name: 'United States',
-    code: 'US',
-    region: 'North America',
-    flagCode: 'us',
-    isPopular: true
-  },
-  {
     id: 'no',
     name: 'Norway',
     code: 'NO',
     region: 'Europe',
     flagCode: 'no',
+    isPopular: true
+  },
+  {
+    id: 'rs',
+    name: 'Serbia',
+    code: 'RS',
+    region: 'Europe',
+    flagCode: 'rs',
     isPopular: true
   },
   {
@@ -40,11 +40,11 @@ export const popularDestinations = [
     isPopular: true
   },
   {
-    id: 'sa',
-    name: 'Saudi Arabia',
-    code: 'SA',
-    region: 'Middle East',
-    flagCode: 'sa',
+    id: 'th',
+    name: 'Thailand',
+    code: 'TH',
+    region: 'Southeast Asia',
+    flagCode: 'th',
     isPopular: true
   },
   {

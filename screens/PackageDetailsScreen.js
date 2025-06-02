@@ -235,7 +235,7 @@ const PackageDetailsScreen = () => {
   }, [packageData.id]);
 
   const renderHeader = () => (
-    <>
+    <View style={styles.headerContainer}>
       {/* Fixed header background with blur effect */}
       <View style={styles.headerBackground}>
         <BlurView intensity={80} tint="light" style={styles.headerBlur} />
@@ -253,7 +253,7 @@ const PackageDetailsScreen = () => {
         </TouchableOpacity>
         
         <Text style={styles.headerTitle}>
-          {packageData.name || 'Package Details'}
+          {country || 'Package Details'}
         </Text>
         
         <TouchableOpacity onPress={() => {}} style={styles.headerButton}>
@@ -265,7 +265,7 @@ const PackageDetailsScreen = () => {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </>
+    </View>
   );
 
   const TopFlag = () => {
@@ -308,14 +308,11 @@ const PackageDetailsScreen = () => {
               </View>
               <Text style={styles.sectionLabel}>Data</Text>
               <Text style={styles.dataAmount}>
-                {packageData.data === 'Unlimited' ? (
-                  <>
-                    <MaterialIcons name="all-inclusive" size={32} color="#4F46E5" />
-                    {'\n'}Unlimited
-                  </>
-                ) : (
-                  `${packageData.data}GB`
-                )}
+                {packageData.data === 'Unlimited' || 
+                 packageData.data === 'infinity' || 
+                 packageData.data === '∞' || 
+                 packageData.data === 'Infinity' ||
+                 packageData.isUnlimited ? 'Unlimited' : `${packageData.data}GB`}
               </Text>
             </View>
             
@@ -742,26 +739,33 @@ const styles = StyleSheet.create({
   },
   
   // Header styles
+  headerContainer: {
+    position: 'relative',
+    height: Platform.OS === 'ios' ? 60 : 60,
+    zIndex: 10,
+  },
   headerBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 70,
+    bottom: 0,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    zIndex: 10,
   },
   headerBlur: {
     flex: 1,
   },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 10 : 10,
     paddingBottom: 10,
-    zIndex: 11,
   },
   headerButton: {
     width: 44,
@@ -891,17 +895,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   dataAmount: {
-    fontSize: 32,
+    fontSize: 23,
     fontWeight: '800',
     color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
     textAlign: 'center',
+    marginTop: Platform.OS === 'ios' ? 3 : 9,
   },
   priceContainer: {
     alignItems: 'center',
   },
   priceAmount: {
-    fontSize: 32,
+    fontSize: Platform.OS === 'ios' ? 26 : 32,
     fontWeight: '800',
     color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
@@ -1211,7 +1216,7 @@ const styles = StyleSheet.create({
   bottomGradient: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: Platform.OS === 'ios' ? 100 : 80, // Adjusted padding for tab bar
+    paddingBottom: Platform.OS === 'ios' ? 115 : 80, // Adjusted padding for tab bar
   },
   buyButton: {
     borderRadius: 20,

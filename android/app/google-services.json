@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "1033438752251",
+    "project_id": "esimfly-public",
+    "storage_bucket": "esimfly-public.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033438752251:android:26b80c83fd5bf473d42f5e",
+        "android_client_info": {
+          "package_name": "net.esimfly.user.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1033438752251-6703lb1i1q9ugs8g1jru3guf8q2s3knr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "net.esimfly.user.app",
+            "certificate_hash": "97c27b89b3aee4ec38ce4b22143147b0cdfd2610"
+          }
+        },
+        {
+          "client_id": "1033438752251-c1dmqrv7m6af5od868t99pdgsh7qf87s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "net.esimfly.user.app",
+            "certificate_hash": "687108f861a02b3b76c4089d302459844f444d09"
+          }
+        },
+        {
+          "client_id": "1033438752251-fqjcq85gla40nd9k2tvj61stiuvaem2o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0LjpBFaDVVo31gbKCuZ6Ys78sl0CfyyM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1033438752251-fqjcq85gla40nd9k2tvj61stiuvaem2o.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1033438752251-rdl49po6ughkl452ijk0lav7k7cb07vt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "net.esimfly.user.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

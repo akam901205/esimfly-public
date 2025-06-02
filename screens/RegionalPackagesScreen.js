@@ -397,7 +397,7 @@ const renderPackageItem = ({ item, index }) => {
             <View>
               <Text style={styles.dataAmount}>{displayData}</Text>
               <Text style={styles.validityPeriod}>
-                VALID FOR {item.duration} DAYS
+                VALID FOR {String(item.duration).replace(/\s*(days?|Days?)\s*/gi, '')} DAYS
               </Text>
               <TouchableOpacity
                 onPress={() => handleNetworkPress(item)}
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: 'transparent',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     borderBottomColor: '#E5E7EB',
   },
   headerIcon: {

@@ -40,15 +40,14 @@ export default {
           supportedNetworks: ['visa', 'mastercard', 'amex']
         }
       },
-      usesAppleSignIn: true,
-      buildNumber: '1',
       infoPlist: {
         LSApplicationQueriesSchemes: [
           'itms-apps',
           'stripe',
           'stripecheckout',
           'merchant.net.esimfly.user.app',
-          'esimfly'
+          'esimfly',
+	      "ITSAppUsesNonExemptEncryption": false
         ],
         NSCameraUsageDescription: 'Allow eSimFly to access your camera to scan QR codes.',
         NSNotificationUsageDescription: "We'll send you updates about your eSIM status, account activities, and important alerts.",
@@ -56,6 +55,10 @@ export default {
           'remote-notification',
           'fetch',
           'processing'
+        ],
+        BGTaskSchedulerPermittedIdentifiers: [
+          'net.esimfly.user.app.refresh',
+          'net.esimfly.user.app.processing'
         ]
       },
       jsEngine: 'hermes',
@@ -140,6 +143,7 @@ export default {
           iosUrlScheme: 'com.googleusercontent.apps.1011374155272-a494qa47ev6t5ngn5n8a0p08mbknp7eu',
         },
       ],
+      'expo-apple-authentication',
       [
         'expo-notifications',
         {

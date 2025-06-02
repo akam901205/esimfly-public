@@ -39,7 +39,7 @@ const CheckoutScreenV2 = () => {
   const [isAgreed, setIsAgreed] = useState(false);
   const [balance, setBalance] = useState(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState('balance');
+  const [paymentMethod, setPaymentMethod] = useState('card');
   const auth = useContext(AuthContext);
   const [verifiedPromoDetails, setVerifiedPromoDetails] = useState(route.params.promoDetails);
 
@@ -262,10 +262,11 @@ const CheckoutScreenV2 = () => {
               currency: responseData.currency || 'USD'
             });
 
-            EventEmitter.dispatch('BALANCE_UPDATED', {
-              balance: responseData.newBalance,
-              currency: responseData.currency || 'USD'
-            });
+            // Don't update other screens' balance - let them refresh on their own
+            // EventEmitter.dispatch('BALANCE_UPDATED', {
+            //   balance: responseData.newBalance,
+            //   currency: responseData.currency || 'USD'
+            // });
 
             if (!isTopup) {
               EventEmitter.dispatch('ESIM_ADDED', {
@@ -402,25 +403,29 @@ const CheckoutScreenV2 = () => {
       />
       
       {/* Header */}
-      <View style={styles.headerBackground}>
-        {Platform.OS === 'ios' && (
-          <BlurView intensity={80} tint="light" style={styles.headerBlur} />
-        )}
-      </View>
-      
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.headerButtonGradient}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </LinearGradient>
-        </TouchableOpacity>
+      <View style={styles.headerContainer}>
+        {/* Fixed header background with blur effect */}
+        <View style={styles.headerBackground}>
+          {Platform.OS === 'ios' && (
+            <BlurView intensity={80} tint="light" style={styles.headerBlur} />
+          )}
+        </View>
         
-        <Text style={styles.headerTitle}>Checkout</Text>
-        
-        <View style={styles.headerButton} />
+        {/* Header content */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+            <LinearGradient
+              colors={['#FFFFFF', '#F9FAFB']}
+              style={styles.headerButtonGradient}
+            >
+              <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            </LinearGradient>
+          </TouchableOpacity>
+          
+          <Text style={styles.headerTitle}>Checkout</Text>
+          
+          <View style={styles.headerButton} />
+        </View>
       </View>
 
       <KeyboardAvoidingView 
@@ -528,50 +533,6 @@ const CheckoutScreenV2 = () => {
             <TouchableOpacity 
               style={[
                 styles.paymentMethodCard,
-                paymentMethod === 'balance' && styles.selectedPaymentMethod
-              ]}
-              onPress={() => setPaymentMethod('balance')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.paymentMethodContent}>
-                <View style={[
-                  styles.paymentIconContainer,
-                  paymentMethod === 'balance' && styles.selectedPaymentIcon
-                ]}>
-                  <Ionicons 
-                    name="wallet" 
-                    size={24} 
-                    color={paymentMethod === 'balance' ? '#FF6B00' : '#6B7280'} 
-                  />
-                </View>
-                <View style={styles.paymentMethodInfo}>
-                  <Text style={[
-                    styles.paymentMethodTitle,
-                    paymentMethod === 'balance' && styles.selectedPaymentTitle
-                  ]}>Wallet Balance</Text>
-                  <Text style={styles.paymentMethodSubtitle}>
-                    Available: {getFormattedBalance()}
-                  </Text>
-                  {balance && packageData.price > balance.balance && (
-                    <Text style={styles.insufficientBalance}>
-                      Insufficient balance
-                    </Text>
-                  )}
-                </View>
-                <View style={[
-                  styles.radioButton,
-                  paymentMethod === 'balance' && styles.radioButtonActive
-                ]}>
-                  {paymentMethod === 'balance' && (
-                    <View style={styles.radioInner} />
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[
-                styles.paymentMethodCard,
                 paymentMethod === 'card' && styles.selectedPaymentMethod
               ]}
               onPress={() => setPaymentMethod('card')}
@@ -641,6 +602,50 @@ const CheckoutScreenV2 = () => {
                 </View>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[
+                styles.paymentMethodCard,
+                paymentMethod === 'balance' && styles.selectedPaymentMethod
+              ]}
+              onPress={() => setPaymentMethod('balance')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.paymentMethodContent}>
+                <View style={[
+                  styles.paymentIconContainer,
+                  paymentMethod === 'balance' && styles.selectedPaymentIcon
+                ]}>
+                  <Ionicons 
+                    name="wallet" 
+                    size={24} 
+                    color={paymentMethod === 'balance' ? '#FF6B00' : '#6B7280'} 
+                  />
+                </View>
+                <View style={styles.paymentMethodInfo}>
+                  <Text style={[
+                    styles.paymentMethodTitle,
+                    paymentMethod === 'balance' && styles.selectedPaymentTitle
+                  ]}>Wallet Balance</Text>
+                  <Text style={styles.paymentMethodSubtitle}>
+                    Available: {getFormattedBalance()}
+                  </Text>
+                  {balance && packageData.price > balance.balance && (
+                    <Text style={styles.insufficientBalance}>
+                      Insufficient balance
+                    </Text>
+                  )}
+                </View>
+                <View style={[
+                  styles.radioButton,
+                  paymentMethod === 'balance' && styles.radioButtonActive
+                ]}>
+                  {paymentMethod === 'balance' && (
+                    <View style={styles.radioInner} />
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Terms Agreement */}
@@ -686,15 +691,15 @@ const CheckoutScreenV2 = () => {
           {/* Security Features */}
           <View style={styles.securitySection}>
             <View style={styles.securityFeature}>
-              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+              <Ionicons name="shield-checkmark" size={Platform.OS === 'ios' ? 16 : 20} color="#10B981" />
               <Text style={styles.securityText}>Secure Payment</Text>
             </View>
             <View style={styles.securityFeature}>
-              <Ionicons name="lock-closed" size={20} color="#10B981" />
+              <Ionicons name="lock-closed" size={Platform.OS === 'ios' ? 16 : 20} color="#10B981" />
               <Text style={styles.securityText}>SSL Encrypted</Text>
             </View>
             <View style={styles.securityFeature}>
-              <MaterialIcons name="verified" size={20} color="#10B981" />
+              <MaterialIcons name="verified" size={Platform.OS === 'ios' ? 16 : 20} color="#10B981" />
               <Text style={styles.securityText}>PCI Compliant</Text>
             </View>
           </View>
@@ -769,26 +774,33 @@ const styles = StyleSheet.create({
   },
   
   // Header styles
+  headerContainer: {
+    position: 'relative',
+    height: Platform.OS === 'ios' ? 60 : 60,
+    zIndex: 10,
+  },
   headerBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 70,
+    bottom: 0,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    zIndex: 10,
   },
   headerBlur: {
     flex: 1,
   },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 7 : 7,
-    paddingBottom: 5,
-    zIndex: 11,
+    paddingTop: Platform.OS === 'ios' ? 10 : 10,
+    paddingBottom: 10,
   },
   headerButton: {
     width: 44,
@@ -1128,12 +1140,12 @@ const styles = StyleSheet.create({
   securityFeature: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 10,
+    marginHorizontal: Platform.OS === 'ios' ? 6 : 10,
   },
   securityText: {
-    fontSize: 12,
+    fontSize: Platform.OS === 'ios' ? 11 : 12,
     color: '#6B7280',
-    marginLeft: 4,
+    marginLeft: Platform.OS === 'ios' ? 3 : 4,
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   
@@ -1167,8 +1179,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
+    paddingVertical: Platform.OS === 'ios' ? 16 : 18,
+    paddingHorizontal: Platform.OS === 'ios' ? 20 : 24,
   },
   payButtonLeft: {
     flexDirection: 'row',
@@ -1184,12 +1196,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   payButtonLabel: {
-    fontSize: 12,
+    fontSize: Platform.OS === 'ios' ? 11 : 12,
     color: 'rgba(255, 255, 255, 0.8)',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   payButtonPrice: {
-    fontSize: 20,
+    fontSize: Platform.OS === 'ios' ? 18 : 20,
     fontWeight: '800',
     color: '#FFFFFF',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
@@ -1199,10 +1211,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   payButtonText: {
-    fontSize: 16,
+    fontSize: Platform.OS === 'ios' ? 13 : 15,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginRight: 8,
+    marginRight: Platform.OS === 'ios' ? 6 : 8,
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
   bottomSecurityNote: {

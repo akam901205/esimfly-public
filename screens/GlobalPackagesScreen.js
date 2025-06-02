@@ -492,17 +492,17 @@ const handleNetworkPress = () => {
         )}
         ListFooterComponent={<View style={styles.listFooter} />}
       />
-      {networkModalVisible && selectedPackage && (
-        <NetworkModalGlobal
-          visible={networkModalVisible}
-          onClose={() => {
-            setNetworkModalVisible(false);
+      <NetworkModalGlobal
+        visible={networkModalVisible}
+        onClose={() => {
+          setNetworkModalVisible(false);
+          setTimeout(() => {
             setSelectedPackage(null);
-          }}
-          packageData={selectedPackage}
-          globalPackageName={globalPackageName}
-        />
-      )}
+          }, 300);
+        }}
+        packageData={selectedPackage || {}}
+        globalPackageName={globalPackageName}
+      />
     </SafeAreaView>
   );
 };
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: 'transparent',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     borderBottomColor: '#E5E7EB',
   },
   headerIcon: {

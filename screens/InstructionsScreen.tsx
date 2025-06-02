@@ -437,20 +437,15 @@ const handleCopy = async (text: string) => {
               </Text>
             </View>
 
-           <TouchableOpacity 
-		  style={[
-			styles.copyButtonContainer,
-			!activationData.smdpAddress && styles.copyButtonDisabled
-		  ]}
-		  onPress={() => handleCopy(activationData.smdpAddress)}
-		  disabled={!activationData.smdpAddress}
-		>
-		  <Ionicons 
-			name="copy" 
-			size={24} 
-			color={activationData.smdpAddress ? "#4CAF50" : "#666666"}
-		  />
-		</TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.installButton}
+              onPress={handleInstall}
+            >
+              <View style={styles.installButtonContent}>
+                <Ionicons name="download" size={24} color="#fff" />
+                <Text style={styles.installButtonText}>Install eSIM</Text>
+              </View>
+            </TouchableOpacity>
 
             <View style={[styles.directStepsContainer, { marginTop: 32 }]}>
               <DirectStep
@@ -565,8 +560,6 @@ const handleCopy = async (text: string) => {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {isProcessing && renderStatusBanner()}
-      
       <Text style={styles.stepTitle}>Step 01</Text>
       
       <View style={styles.warningBox}>
@@ -585,19 +578,19 @@ const handleCopy = async (text: string) => {
               {activationData.smdpAddress || 'Not available'}
             </Text>
             <TouchableOpacity 
-		  style={[
-			styles.copyButtonContainer,
-			!activationData.smdpAddress && styles.copyButtonDisabled
-		  ]}
-		  onPress={() => handleCopy(activationData.smdpAddress)}
-		  disabled={!activationData.smdpAddress}
-		>
-		  <Ionicons 
-			name="copy" 
-			size={24} 
-			color={activationData.smdpAddress ? "#4CAF50" : "#666666"}
-		  />
-		</TouchableOpacity>
+              style={[
+                styles.copyButtonContainer,
+                !activationData.smdpAddress && styles.copyButtonDisabled
+              ]}
+              onPress={() => handleCopy(activationData.smdpAddress)}
+              disabled={!activationData.smdpAddress}
+            >
+              <Ionicons 
+                name="copy" 
+                size={24} 
+                color={activationData.smdpAddress ? "#f59e0b" : "#666666"}
+              />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -619,7 +612,7 @@ const handleCopy = async (text: string) => {
               <Ionicons 
                 name="copy" 
                 size={24} 
-                color={activationData.activationCode ? "#4CAF50" : "#666666"}
+                color={activationData.activationCode ? "#f59e0b" : "#666666"}
               />
             </TouchableOpacity>
           </View>
@@ -643,7 +636,7 @@ const handleCopy = async (text: string) => {
               <Ionicons 
                 name="copy" 
                 size={24} 
-                color={lpaFormat ? "#4CAF50" : "#666666"}
+                color={lpaFormat ? "#f59e0b" : "#666666"}
               />
             </TouchableOpacity>
           </View>
@@ -984,7 +977,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   installButton: {
-    backgroundColor: '#4CAF50', // Using the green color
+    backgroundColor: '#f59e0b', // Using the orange color
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
@@ -1157,6 +1150,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  manualStepsContainer: {
+    marginBottom: 32,
   },
 });
 

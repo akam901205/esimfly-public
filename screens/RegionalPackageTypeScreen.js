@@ -196,7 +196,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: 'transparent',
-    paddingTop: Platform.OS === 'ios' ? 50 : 16,
     borderBottomWidth: 0,
   },
   headerIcon: {
