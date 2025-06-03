@@ -32,6 +32,7 @@ import debounce from 'lodash/debounce';
 import { EventEmitter } from '../utils/EventEmitter';
 import { getPopularDestinations } from '../utils/popularDestinations';
 import { colors } from '../theme/colors';
+import SearchBar from '../components/SearchBar';
 
 const { width: screenWidth } = Dimensions.get('window');
 const ITEMS_PER_PAGE = 20;
@@ -225,7 +226,6 @@ const ShopScreen = () => {
   const { userEmail, userToken } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
-  const searchInputRef = useRef(null);
 
   const username = useMemo(() => {
     if (userEmail) {
@@ -263,25 +263,9 @@ const ShopScreen = () => {
 
   const handleSearch = useCallback(
     debounce((query) => {
-      const searchQuery = query.toLowerCase();
-      let filtered;
-      
-      if (activeTab === 'Countries') {
-        filtered = countries.filter(item =>
-          item.name.toLowerCase().includes(searchQuery)
-        );
-      } else if (activeTab === 'Regional') {
-        filtered = regions.filter(item =>
-          item.name.toLowerCase().includes(searchQuery)
-        );
-      } else {
-        filtered = globalPackages.filter(item =>
-          item.name.toLowerCase().includes(searchQuery)
-        );
-      }
-      
-      setFilteredData(filtered);
-      setHasMore(false);
+      // Don't filter the main list anymore
+      // The SearchBar component handles suggestions independently
+      // Just keep the search query for the SearchBar to use
     }, 300),
     [activeTab]
   );
@@ -483,7 +467,8 @@ const ShopScreen = () => {
         setFilteredData(activeTab === 'Regional' ? regions : globalPackages);
         setHasMore(false);
       }
-      setSearchQuery('');
+      // Don't clear search query when switching tabs
+      // setSearchQuery('');
     }, [activeTab, userToken])
   );
 
@@ -584,39 +569,13 @@ const ShopScreen = () => {
         </LinearGradient>
       </Animated.View>
       
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        {Platform.OS === 'ios' && (
-          <BlurView intensity={80} tint="light" style={styles.searchBlur} />
-        )}
-        <View style={styles.searchContent}>
-          <Ionicons name="search" size={20} color="#6B7280" />
-          <TextInput
-            ref={searchInputRef}
-            style={styles.searchInput}
-            placeholder={`Search ${activeTab.toLowerCase()}...`}
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={(text) => {
-              setSearchQuery(text);
-              handleSearch(text);
-            }}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                setSearchQuery('');
-                searchInputRef.current?.clear();
-                Keyboard.dismiss();
-              }}
-              style={styles.clearButton}
-            >
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      {/* Search Bar with Suggestions */}
+      <SearchBar 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        handleSearch={handleSearch}
+        activeTab={activeTab}
+      />
       
       {/* Main List */}
       <AnimatedFlatList

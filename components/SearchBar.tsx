@@ -11,11 +11,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
 import debounce from 'lodash/debounce';
 import { countries, FlagIcon } from '../utils/countryData';
 import { isCountryInRegion, regionCoverageData } from '../utils/regionCoverage';
 import { isCountryInGlobalCoverage } from '../utils/globalCoverage';
+import { regions } from '../utils/regions';
+import { globalPackages } from '../utils/global';
 import { colors } from '../theme/colors';
 
 interface SearchBarProps {
@@ -69,29 +72,79 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
     if (!text) return [];
     const searchLower = text.toLowerCase();
     const matches: Suggestion[] = [];
+    const addedRegions = new Set<string>();
+    const hasGlobalSuggestion = { added: false };
 
-    // Fuzzy match countries
+    // First, search for regional packages directly
+    regions.forEach(region => {
+      const name = region.name.toLowerCase();
+      let score = 0;
+      
+      if (name.startsWith(searchLower)) {
+        score = 110; // Higher score for direct regional matches
+      } else if (name.includes(searchLower)) {
+        score = 85;
+      }
+      
+      if (score > 0) {
+        matches.push({
+          id: `region-${region.name}`,
+          name: region.name,
+          type: 'region',
+          description: `${region.countries?.length || 'Multiple'} countries`,
+          score
+        });
+        addedRegions.add(region.name);
+      }
+    });
+
+    // Search for global packages
+    globalPackages.forEach(pkg => {
+      const name = pkg.name.toLowerCase();
+      let score = 0;
+      
+      if (name.startsWith(searchLower)) {
+        score = 105;
+      } else if (name.includes(searchLower)) {
+        score = 80;
+      }
+      
+      if (score > 0 && !hasGlobalSuggestion.added) {
+        hasGlobalSuggestion.added = true;
+        matches.push({
+          id: 'global',
+          name: pkg.name,
+          type: 'global',
+          description: 'Worldwide coverage',
+          score
+        });
+      }
+    });
+
+    // Match countries - strict matching only
     countries.forEach(country => {
       const name = country.name.toLowerCase();
       let score = 0;
       
+      // Prioritize countries that start with the search term
       if (name.startsWith(searchLower)) {
         score = 100;
-      } else if (name.includes(searchLower)) {
-        score = 75;
-      } else {
-        let textIndex = 0;
-        let nameIndex = 0;
-        while (textIndex < searchLower.length && nameIndex < name.length) {
-          if (searchLower[textIndex] === name[nameIndex]) {
-            score += 10;
-            textIndex++;
-          }
-          nameIndex++;
+      } 
+      // Also show countries that contain the search term, but with lower priority
+      else if (name.includes(searchLower)) {
+        // Check if it's a word boundary match (more relevant)
+        const words = name.split(/[\s-]+/); // Split by space or hyphen
+        const startsWithWord = words.some(word => word.toLowerCase().startsWith(searchLower));
+        
+        if (startsWithWord) {
+          score = 75; // Higher score for word-boundary matches
+        } else {
+          score = 50; // Lower score for mid-word matches
         }
       }
+      // No fuzzy matching - only show exact matches
 
-      if (score > 30) {
+      if (score > 0) {
         const suggestion: Suggestion = {
           id: country.id,
           name: country.name,
@@ -100,9 +153,10 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
           score
         };
 
-        // Add regional coverage if available
+        // Add regional coverage if available (but avoid duplicates)
         regionCoverageData.forEach(region => {
-          if (isCountryInRegion(country.name, region.name)) {
+          if (isCountryInRegion(country.name, region.name) && !addedRegions.has(region.name)) {
+            addedRegions.add(region.name);
             matches.push({
               id: `region-${region.name}`,
               name: region.name,
@@ -113,8 +167,9 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
           }
         });
 
-        // Add global coverage if available
-        if (isCountryInGlobalCoverage(country.name)) {
+        // Add global coverage if available (only once)
+        if (isCountryInGlobalCoverage(country.name) && !hasGlobalSuggestion.added) {
+          hasGlobalSuggestion.added = true;
           matches.push({
             id: 'global',
             name: 'Discover Global',
@@ -162,8 +217,6 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
     setSelectedIndex(index);
     
     setTimeout(() => {
-      setSearchQuery(suggestion.name);
-      handleSearch(suggestion.name);
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 150,
@@ -171,6 +224,10 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
       }).start(() => {
         setShowSuggestions(false);
         setSelectedIndex(-1);
+        setSuggestions([]);
+        
+        // Clear search after navigation
+        setSearchQuery('');
         
         switch (suggestion.type) {
           case 'country':
@@ -188,57 +245,61 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
       });
       Platform.OS !== 'web' && Keyboard.dismiss();
     }, 150);
-  }, [setSearchQuery, handleSearch, fadeAnim, navigation]);
+  }, [setSearchQuery, fadeAnim, navigation]);
 
   const renderSuggestionIcon = (suggestion: Suggestion) => {
     switch (suggestion.type) {
       case 'country':
         return (
           <View style={styles.suggestionFlag}>
-            <FlagIcon countryCode={suggestion.countryCode || ''} size={32} />
+            <FlagIcon countryCode={suggestion.countryCode || ''} size={28} />
           </View>
         );
       case 'region':
         return (
-          <View style={[styles.suggestionFlag, styles.suggestionIcon]}>
-            <Ionicons name="globe-outline" size={20} color="#FF6B6B" />
-          </View>
+          <LinearGradient
+            colors={['#FF6B00', '#FF8533']}
+            style={styles.suggestionFlag}
+          >
+            <Ionicons name="globe-outline" size={20} color="#FFFFFF" />
+          </LinearGradient>
         );
       case 'global':
         return (
-          <View style={[styles.suggestionFlag, styles.suggestionIcon]}>
-            <Ionicons name="earth-outline" size={20} color="#FF6B6B" />
-          </View>
+          <LinearGradient
+            colors={['#FF6B00', '#FF8533']}
+            style={styles.suggestionFlag}
+          >
+            <Ionicons name="earth-outline" size={20} color="#FFFFFF" />
+          </LinearGradient>
         );
     }
   };
 
   return (
     <View style={styles.searchContainer}>
-      <LinearGradient
-        colors={[colors.stone[50], colors.stone[100]]}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 0}}
-        style={styles.searchGradient}
-      >
-        <View style={styles.searchInputContainer}>
+      <View style={styles.searchWrapper}>
+        {Platform.OS === 'ios' && (
+          <BlurView intensity={80} tint="light" style={styles.searchBlur} />
+        )}
+        <View style={styles.searchContent}>
           <Ionicons 
             name="search" 
-            size={24} 
-            color={colors.stone[500]} 
+            size={20} 
+            color="#6B7280" 
           />
           <TextInput
             ref={searchInputRef}
             style={styles.searchInput}
             placeholder={getPlaceholderText()}
-            placeholderTextColor={colors.stone[500]}
+            placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={handleChangeText}
             autoCorrect={false}
             returnKeyType="search"
             autoCapitalize="none"
           />
-          {searchQuery && (
+          {searchQuery.length > 0 && (
             <TouchableOpacity 
               style={styles.clearButton}
               onPress={() => {
@@ -255,12 +316,12 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
               <Ionicons 
                 name="close-circle" 
                 size={20} 
-                color={colors.stone[500]} 
+                color="#9CA3AF" 
               />
             </TouchableOpacity>
           )}
         </View>
-      </LinearGradient>
+      </View>
 
       {showSuggestions && (
         <Animated.View 
@@ -312,65 +373,69 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
 
 const styles = StyleSheet.create({
   searchContainer: {
+    marginHorizontal: 20,
+    marginBottom: 16,
     zIndex: 1000,
-    marginVertical: 16,
-    marginHorizontal: 14,
-    elevation: Platform.OS === 'android' ? 6 : 0,
+    height: 48, // Reduced height
   },
-  searchGradient: {
+  searchWrapper: {
     borderRadius: 16,
-    padding: 1.5,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-    }),
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    height: 48, // Reduced height
   },
-  searchInputContainer: {
+  searchBlur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  searchContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    borderRadius: 10,
     paddingHorizontal: 16,
-    height: 45,
-    borderWidth: 1,
-    borderColor: colors.border.light,
+    paddingVertical: 12,
+    backgroundColor: Platform.OS === 'ios' ? 'transparent' : 'rgba(255, 255, 255, 0.9)',
   },
   searchInput: {
     flex: 1,
-    color: colors.text.primary,
-    fontSize: 16,
-    fontFamily: 'Quicksand',
-    marginLeft: 12,
-    paddingVertical: 12,
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    paddingRight: 8, // Add padding to prevent text overlap
   },
   clearButton: {
-    padding: 8,
+    padding: 2,
     marginLeft: 4,
+    marginRight: -4, // Compensate for padding to ensure icon is visible
   },
   suggestionsContainer: {
     position: 'absolute',
-    top: '100%',
+    top: 54, // Position below the search bar (48px height + 6px gap)
     left: 0,
     right: 0,
-    backgroundColor: colors.background.primary,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    marginTop: 8,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: colors.border.light,
+    borderColor: '#E5E7EB',
+    maxHeight: 350, // Limit height to prevent too many suggestions
     ...Platform.select({
       ios: {
-        shadowColor: colors.stone[900],
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
         shadowRadius: 8,
       },
       android: {
-        elevation: 8,
+        elevation: 6,
       },
     }),
   },
@@ -378,13 +443,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.stone[200],
+    borderBottomColor: '#F3F4F6',
   },
   suggestionItemSelected: {
-    backgroundColor: colors.stone[50],
+    backgroundColor: '#FFF7ED',
   },
   suggestionItemLast: {
     borderBottomWidth: 0,
@@ -395,33 +460,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   suggestionFlag: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background.secondary,
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: colors.stone[200],
+    borderColor: '#E5E7EB',
     overflow: 'hidden',
   },
   suggestionIcon: {
-    backgroundColor: colors.stone[100],
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
   },
   suggestionTextContainer: {
     marginLeft: 12,
     flex: 1,
   },
   suggestionText: {
-    color: colors.text.primary,
+    color: '#1F2937',
     fontSize: 16,
-    fontFamily: 'Quicksand',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
     fontWeight: '600',
   },
   suggestionSubtext: {
-    color: colors.text.secondary,
-    fontSize: 12,
-    fontFamily: 'Quicksand',
+    color: '#6B7280',
+    fontSize: 13,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
     marginTop: 2,
   },
 });

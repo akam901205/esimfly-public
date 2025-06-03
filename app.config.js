@@ -115,9 +115,11 @@ export default {
         {
           android: {
             compileSdkVersion: 35,
-            targetSdkVersion: 35,
+            targetSdkVersion: 34,
             buildToolsVersion: '35.0.0',
-            kotlinVersion: '1.9.24',
+            packagingOptions: {
+              pickFirst: ['**/libc++_shared.so', '**/libjsc.so']
+            }
           },
           ios: {
             useFrameworks: 'static',
@@ -165,7 +167,8 @@ export default {
         {
           enableGooglePay: true,
           enableApplePay: true,
-          merchantIdentifier: 'merchant.net.esimfly.user.app'
+          merchantIdentifier: 'merchant.net.esimfly.user.app',
+          urlScheme: 'esimfly'
         }
       ],
       [

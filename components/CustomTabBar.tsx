@@ -30,7 +30,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
     switch (routeName) {
       case 'Shop':
         return (
-          <Svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <Path 
               d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" 
               stroke={color} 
@@ -45,7 +45,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
         );
       case 'My eSims':
         return (
-          <Svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             {/* Modern SIM card design */}
             <Path 
               d="M16 3H8C6.9 3 6 3.9 6 5v14c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" 
@@ -73,7 +73,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
         );
       case 'Guides':
         return (
-          <Svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <Path 
               d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" 
               stroke={color} 
@@ -94,7 +94,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
         );
       case 'Profile':
         return (
-          <Svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <Path 
               d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" 
               stroke={color} 
@@ -221,11 +221,11 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    height: 72,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,
-    paddingTop: 6,
+    paddingTop: 4,
   },
   button: {
     flex: 1,
@@ -236,14 +236,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 16,
     minWidth: 64,
   },
   iconWrapper: {
     marginBottom: 4,
-    height: 28,
-    width: 28,
+    height: 24,
+    width: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },

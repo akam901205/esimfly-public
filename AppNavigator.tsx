@@ -43,13 +43,13 @@ import OrderProcessingScreen from './screens/OrderProcessingScreen';
 import SupportScreen from './screens/SupportScreen';
 import DeleteAccountScreen from './screens/DeleteAccountScreen';
 
-// Configure platform-specific settings for dark theme
+// Configure platform-specific settings for light theme
 async function configureNavigationBar() {
   if (Platform.OS === 'android') {
     try {
-      await NavigationBar.setBackgroundColorAsync('#1E1E1E');
-      await NavigationBar.setButtonStyleAsync('light');
-      await NavigationBar.setBorderColorAsync('#1E1E1E');
+      await NavigationBar.setBackgroundColorAsync('#F5F5F5');
+      await NavigationBar.setButtonStyleAsync('dark');
+      await NavigationBar.setBorderColorAsync('#F5F5F5');
       await NavigationBar.setVisibilityAsync('visible');
     } catch (error) {
       console.warn('Error setting navigation bar:', error);
