@@ -33,6 +33,8 @@ async function handleApiResponse(response: Response): Promise<AuthResponse> {
   if (data.token) {
     await AsyncStorage.setItem('userToken', data.token);
     await AsyncStorage.setItem('tokenExpires', data.expires_at);
+    // Clear authMethod for regular login
+    await AsyncStorage.removeItem('authMethod');
   }
 
   return data;
@@ -56,6 +58,7 @@ export async function logout(): Promise<Response> {
     if (response.ok) {
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('tokenExpires');
+      await AsyncStorage.removeItem('authMethod');
     }
 
     return response;

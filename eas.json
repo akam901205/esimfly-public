@@ -22,7 +22,8 @@
       "extends": "development",
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "development-device"
     },
     "preview": {
       "distribution": "internal",

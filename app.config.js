@@ -2,7 +2,7 @@ export default {
   expo: {
     name: 'eSimFly',
     slug: 'esimfly-public',
-    version: '1.0.0',
+    version: '1.0.2',
     orientation: 'portrait',
     icon: './assets/icon.png',
     scheme: 'esimfly',
@@ -25,6 +25,10 @@ export default {
       translucent: false
     },
     assetBundlePatterns: ['**/*'],
+    updates: {
+      url: 'https://u.expo.dev/a60875e0-8d9c-43f8-8f0f-ac4605f91fb1'
+    },
+    runtimeVersion: "2.0.0",
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'net.esimfly.user.app',
@@ -33,19 +37,12 @@ export default {
         googleSignIn: {
           reservedClientId: 'com.googleusercontent.apps.1011374155272-a494qa47ev6t5ngn5n8a0p08mbknp7eu',
         },
-        stripe: {
-          merchantIdentifier: 'merchant.net.esimfly.user.app',
-          enableApplePay: true,
-          merchantCapabilities: ['3DS', 'debit', 'credit'],
-          supportedNetworks: ['visa', 'mastercard', 'amex']
-        }
       },
       infoPlist: {
         LSApplicationQueriesSchemes: [
           'itms-apps',
           'stripe',
           'stripecheckout',
-          'merchant.net.esimfly.user.app',
           'esimfly'
         ],
         ITSAppUsesNonExemptEncryption: false,
@@ -87,7 +84,7 @@ export default {
           certificateHash: '97c27b89b3aee4ec38ce4b22143147b0cdfd2610',
         },
         googlePay: {
-          environment: 'test',
+          environment: 'production',
           apiVersion: 2,
           apiVersionMinor: 0,
           merchantId: 'merchant.net.esimfly.user.app',
@@ -100,7 +97,6 @@ export default {
           }
         }
       },
-      versionCode: 1,
       softwareKeyboardLayoutMode: 'pan',
       jsEngine: 'hermes'
     },
@@ -166,8 +162,7 @@ export default {
         '@stripe/stripe-react-native',
         {
           enableGooglePay: true,
-          enableApplePay: true,
-          merchantIdentifier: 'merchant.net.esimfly.user.app',
+          enableApplePay: false,
           urlScheme: 'esimfly'
         }
       ],
@@ -190,22 +185,14 @@ export default {
       },
       stripe: {
         publishableKey: "pk_live_51Qbg8uHbrtyQ1AACqgu82JueHGZak2BUQHFIfWb9TIliG4gP8npvVPm73L6gIyEVxYruu9LBhxk5vL7dC9e3ptOr00smrvDnD7",
-        merchantId: "merchant.net.esimfly.user.app",
-        useTestApi: true,
+        useTestApi: false,
         googlePay: {
-          testEnv: true,
+          testEnv: false,
           merchantCountryCode: 'US',
           currencyCode: 'USD',
           billingAddressRequired: true,
           emailRequired: true
         },
-        applePay: {
-          merchantCapabilities: ['3DS', 'debit', 'credit'],
-          supportedNetworks: ['visa', 'mastercard', 'amex'],
-          countryCode: 'US',
-          currencyCode: 'USD',
-          requiredBillingContactFields: ['emailAddress', 'name', 'phoneNumber', 'postalAddress']
-        }
       }
     },
     owner: 'akam90'

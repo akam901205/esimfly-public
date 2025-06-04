@@ -24,7 +24,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
   const insets = useSafeAreaInsets();
 
   const getIcon = (routeName: string, isFocused: boolean) => {
-    const color = '#6B7280';
+    const color = isFocused ? '#FF6B00' : '#6B7280';
     const strokeWidth = 2;
     
     switch (routeName) {
@@ -153,7 +153,6 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
             }
           };
 
-
           return (
             <TouchableOpacity
               key={index}
@@ -173,8 +172,8 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                 <Text style={[
                   styles.label,
                   { 
-                    color: '#6B7280',
-                    fontWeight: '600'
+                    color: isFocused ? '#FF6B00' : '#6B7280',
+                    fontWeight: isFocused ? '700' : '600'
                   }
                 ]}>
                   {label}
@@ -203,8 +202,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: Platform.OS === 'ios' ? 24 : 0,
+    borderTopRightRadius: Platform.OS === 'ios' ? 24 : 0,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -216,8 +215,8 @@ const styles = StyleSheet.create({
   },
   backgroundWhite: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: Platform.OS === 'ios' ? 24 : 0,
+    borderTopRightRadius: Platform.OS === 'ios' ? 24 : 0,
   },
   buttonContainer: {
     flexDirection: 'row',

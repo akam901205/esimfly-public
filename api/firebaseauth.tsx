@@ -122,7 +122,8 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
         await Promise.all([
           AsyncStorage.setItem('userToken', token),
           data.expires_at ? AsyncStorage.setItem('tokenExpires', data.expires_at) : null,
-          data.user ? AsyncStorage.setItem('userData', JSON.stringify(data.user)) : null
+          data.user ? AsyncStorage.setItem('userData', JSON.stringify(data.user)) : null,
+          AsyncStorage.setItem('authMethod', 'google') // Store auth method
         ].filter(Boolean));
 
         return {
@@ -237,9 +238,10 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
           apple_token: identityToken,
           user_data: {
             email: appleAuthRequestResponse.email || userCredential.user.email,
-            name: appleAuthRequestResponse.fullName ? 
+            name: appleAuthRequestResponse.fullName && 
+                  (appleAuthRequestResponse.fullName.givenName || appleAuthRequestResponse.fullName.familyName) ? 
               `${appleAuthRequestResponse.fullName.givenName || ''} ${appleAuthRequestResponse.fullName.familyName || ''}`.trim() : 
-              userCredential.user.displayName,
+              userCredential.user.displayName || null,
             user: appleAuthRequestResponse.user
           }
         })
@@ -255,7 +257,8 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
         await Promise.all([
           AsyncStorage.setItem('userToken', token),
           data.expires_at ? AsyncStorage.setItem('tokenExpires', data.expires_at) : null,
-          data.user ? AsyncStorage.setItem('userData', JSON.stringify(data.user)) : null
+          data.user ? AsyncStorage.setItem('userData', JSON.stringify(data.user)) : null,
+          AsyncStorage.setItem('authMethod', 'apple') // Store auth method
         ].filter(Boolean));
 
         return {
@@ -314,7 +317,8 @@ export const signOutFirebase = async (): Promise<void> => {
     await Promise.all([
       AsyncStorage.removeItem('userToken'),
       AsyncStorage.removeItem('tokenExpires'),
-      AsyncStorage.removeItem('userData')
+      AsyncStorage.removeItem('userData'),
+      AsyncStorage.removeItem('authMethod')
     ]);
     
     debugLog('Sign-out completed successfully');

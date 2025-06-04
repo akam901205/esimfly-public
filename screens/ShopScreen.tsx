@@ -97,44 +97,27 @@ const FlagIcon = React.memo(({ countryCode, size = 40 }) => {
 
 // Popular Destinations Component
 const PopularDestinations = memo(({ onItemPress }) => {
-  const scrollX = useRef(new Animated.Value(0)).current;
-
   const renderDestination = ({ item, index }) => {
-    const inputRange = [
-      (index - 1) * 140,
-      index * 140,
-      (index + 1) * 140,
-    ];
-
-    const scale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.9, 1, 0.9],
-      extrapolate: 'clamp',
-    });
-
     return (
       <TouchableOpacity
         onPress={() => onItemPress(item)}
         activeOpacity={0.8}
       >
-        <Animated.View style={[
-          styles.destinationCard,
-          { transform: [{ scale }] }
-        ]}>
+        <View style={styles.destinationCard}>
           <LinearGradient
             colors={['#FFFFFF', '#F9FAFB']}
             style={styles.destinationGradient}
           >
             <View style={styles.destinationFlag}>
-              <FlagIcon countryCode={item.flagCode} size={50} />
+              <FlagIcon countryCode={item.flagCode} size={44} />
             </View>
             <Text style={styles.destinationName}>{item.name}</Text>
             <View style={styles.destinationBadge}>
-              <MaterialIcons name="trending-up" size={12} color="#FF6B00" />
+              <MaterialIcons name="trending-up" size={13} color="#FF6B00" />
               <Text style={styles.destinationBadgeText}>Popular</Text>
             </View>
           </LinearGradient>
-        </Animated.View>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -145,18 +128,13 @@ const PopularDestinations = memo(({ onItemPress }) => {
         <MaterialIcons name="local-fire-department" size={24} color="#FF6B00" />
         <Text style={styles.sectionTitle}>Trending Destinations</Text>
       </View>
-      <Animated.FlatList
+      <FlatList
         data={destinations}
         renderItem={renderDestination}
         keyExtractor={(item) => item.id}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.destinationsList}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
         snapToInterval={140}
         decelerationRate="fast"
       />
@@ -313,12 +291,12 @@ const ShopScreen = () => {
             <View style={styles.itemContent}>
               {activeTab === 'Countries' ? (
                 <View style={styles.flagContainer}>
-                  <FlagIcon countryCode={item.id} size={44} />
+                  <FlagIcon countryCode={item.id} size={36} />
                 </View>
               ) : activeTab === 'Regional' ? (
                 <View style={styles.iconContainer}>
                   {item.image ? (
-                    <item.image width={44} height={44} />
+                    <item.image width={36} height={36} />
                   ) : (
                     <LinearGradient
                       colors={['#FF6B00', '#FF8533']}
@@ -326,7 +304,7 @@ const ShopScreen = () => {
                     >
                       <MaterialCommunityIcons 
                         name="earth" 
-                        size={24} 
+                        size={20} 
                         color="#FFFFFF" 
                       />
                     </LinearGradient>
@@ -340,7 +318,7 @@ const ShopScreen = () => {
                   >
                     <Ionicons 
                       name="globe" 
-                      size={24} 
+                      size={20} 
                       color="#FFFFFF" 
                     />
                   </LinearGradient>
@@ -528,7 +506,7 @@ const ShopScreen = () => {
                 colors={['#FF6B00', '#FF8533']}
                 style={styles.balanceGradient}
               >
-                <MaterialIcons name="account-balance-wallet" size={16} color="#FFFFFF" />
+                <MaterialIcons name="account-balance-wallet" size={14} color="#FFFFFF" />
                 <Text style={styles.balanceAmount}>
                   ${balance.balance?.toFixed(2) || '0.00'}
                 </Text>
@@ -642,23 +620,23 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
   balanceCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     shadowColor: '#FF6B00',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   balanceGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
   },
   balanceAmount: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
@@ -762,16 +740,20 @@ const styles = StyleSheet.create({
   },
   destinationsList: {
     paddingHorizontal: 20,
+    paddingBottom: 4,
     gap: 12,
   },
   destinationCard: {
     width: 120,
+    height: 130,
     marginRight: 12,
   },
   destinationGradient: {
-    padding: 16,
+    flex: 1,
+    padding: 12,
     borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     shadowColor: '#000',
@@ -781,10 +763,10 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   destinationFlag: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   destinationName: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
     color: '#1F2937',
     textAlign: 'center',
@@ -793,15 +775,15 @@ const styles = StyleSheet.create({
   destinationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
     backgroundColor: '#FFF7ED',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 8,
     gap: 4,
   },
   destinationBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#FF6B00',
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
@@ -809,7 +791,7 @@ const styles = StyleSheet.create({
   
   // Tabs
   tabsContainer: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   tabsContent: {
     paddingHorizontal: 20,
@@ -866,18 +848,18 @@ const styles = StyleSheet.create({
   itemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
   },
   flagContainer: {
-    marginRight: 16,
+    marginRight: 12,
   },
   iconContainer: {
-    marginRight: 16,
+    marginRight: 12,
   },
   iconGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -885,15 +867,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   itemSubtext: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
-    marginTop: 2,
+    marginTop: 1,
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
   

@@ -20,6 +20,7 @@ import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
 import { useToast } from '../components/ToastNotification';
 import { AuthContext } from '../api/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DeleteAccountScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -30,6 +31,23 @@ const DeleteAccountScreen: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
+  const [isSocialLogin, setIsSocialLogin] = useState(false);
+
+  React.useEffect(() => {
+    // Check if user signed in with Google/Apple
+    checkLoginMethod();
+  }, []);
+
+  const checkLoginMethod = async () => {
+    try {
+      const authMethod = await AsyncStorage.getItem('authMethod');
+      if (authMethod === 'google' || authMethod === 'apple') {
+        setIsSocialLogin(true);
+      }
+    } catch (error) {
+      console.log('Error checking login method:', error);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     // Validate confirmation text
@@ -38,8 +56,8 @@ const DeleteAccountScreen: React.FC = () => {
       return;
     }
 
-    // Validate password
-    if (!password) {
+    // Validate password only for non-social login users
+    if (!isSocialLogin && !password) {
       Alert.alert('Password Required', 'Please enter your password to confirm account deletion');
       return;
     }
@@ -61,14 +79,16 @@ const DeleteAccountScreen: React.FC = () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
             try {
-              // First verify password by attempting login
-              const loginResponse = await newApi.post('/auth/login', {
-                email: auth.userEmail,
-                password: password,
-              });
+              // For non-social login users, verify password first
+              if (!isSocialLogin) {
+                const loginResponse = await newApi.post('/auth/login', {
+                  email: auth.userEmail,
+                  password: password,
+                });
 
-              if (!loginResponse.data.success) {
-                throw new Error('Invalid password');
+                if (!loginResponse.data.success) {
+                  throw new Error('Invalid password');
+                }
               }
 
               // Now delete the account
@@ -188,28 +208,42 @@ const DeleteAccountScreen: React.FC = () => {
             autoCapitalize="characters"
           />
 
-          <Text style={[styles.label, { marginTop: 20 }]}>Enter your password</Text>
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter your password"
-              placeholderTextColor={colors.text.secondary}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity
-              style={styles.passwordToggle}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Ionicons 
-                name={showPassword ? "eye-off" : "eye"} 
-                size={20} 
-                color={colors.text.secondary} 
-              />
-            </TouchableOpacity>
-          </View>
+          {!isSocialLogin && (
+            <>
+              <Text style={[styles.label, { marginTop: 20 }]}>Enter your password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter your password"
+                  placeholderTextColor={colors.text.secondary}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons 
+                    name={showPassword ? "eye-off" : "eye"} 
+                    size={20} 
+                    color={colors.text.secondary} 
+                  />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {isSocialLogin && (
+            <View style={styles.socialLoginInfo}>
+              <Ionicons name="information-circle" size={20} color={colors.primary} />
+              <Text style={styles.socialLoginText}>
+                You signed in with {auth.userEmail?.includes('@privaterelay.appleid.com') ? 'Apple' : 'Google/Apple'}. 
+                No password verification needed.
+              </Text>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity
@@ -432,6 +466,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.primary,
     fontFamily: 'Quicksand-SemiBold',
+  },
+  socialLoginInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+    gap: 12,
+  },
+  socialLoginText: {
+    fontSize: 14,
+    color: colors.text.primary,
+    fontFamily: 'Quicksand-Regular',
+    flex: 1,
+    lineHeight: 20,
   },
 });
 
