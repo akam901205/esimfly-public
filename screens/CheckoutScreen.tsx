@@ -200,7 +200,7 @@ const CheckoutScreenV2 = () => {
 
         if (presentError) {
           if (presentError.code === 'Canceled') {
-            toast.info('Payment canceled');
+            toast.error('Payment canceled');
             return;
           }
           throw new Error(presentError.message);

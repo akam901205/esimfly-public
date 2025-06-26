@@ -3,12 +3,19 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Pla
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors } from '../theme/colors';
 
 const NoESimState = () => {
   const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['#F8F9FA', '#FFFFFF']}
+        style={styles.gradient}
+      />
+      
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={[
@@ -17,15 +24,18 @@ const NoESimState = () => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <LottieView
-          source={require('../assets/animations/simcard.json')}
-          autoPlay
-          loop
-          style={styles.animation}
-        />
+        <View style={styles.animationContainer}>
+          <LottieView
+            source={require('../assets/animations/simcard.json')}
+            autoPlay
+            loop
+            style={styles.animation}
+          />
+        </View>
+        
         <Text style={styles.title}>No eSIMs Found</Text>
         <Text style={styles.description}>
-          Looks like you haven't purchased any eSIMs yet. Get started with our global coverage and stay connected wherever you go.
+          Start your journey with global connectivity. Purchase your first eSIM and stay connected in 200+ countries.
         </Text>
         
         <View style={styles.featuresContainer}>
@@ -35,7 +45,7 @@ const NoESimState = () => {
             </View>
             <View style={styles.featureTextContainer}>
               <Text style={styles.featureTitle}>Global Coverage</Text>
-              <Text style={styles.featureDescription}>Connect in 190+ countries</Text>
+              <Text style={styles.featureDescription}>Connect in 200+ countries</Text>
             </View>
           </View>
           
@@ -66,11 +76,19 @@ const NoESimState = () => {
         Platform.OS === 'ios' && styles.bottomContainerIOS
       ]}>
         <TouchableOpacity 
-          style={styles.button}
+          style={styles.buttonWrapper}
           onPress={() => navigation.navigate('Shop')}
+          activeOpacity={0.8}
         >
-          <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.buttonText}>Purchase eSIM</Text>
+          <LinearGradient
+            colors={['#FF8C42', '#FF6B00']}
+            style={styles.button}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="cart-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.buttonText}>Browse eSIM Packages</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </View>
@@ -80,50 +98,79 @@ const NoESimState = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#F8F9FA',
+  },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: Platform.OS === 'android' ? 24 : 34,
+    paddingBottom: Platform.OS === 'android' ? 160 : 140,
   },
   scrollContentIOS: {
-    paddingBottom: 34,
+    paddingBottom: 160,
+  },
+  animationContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 32,
   },
   animation: {
-    width: 200,
-    height: 200,
-    alignSelf: 'center',
-    marginBottom: 24,
+    width: 180,
+    height: 180,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 12,
     textAlign: 'center',
+    fontFamily: Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+    }),
   },
   description: {
     fontSize: 16,
-    color: '#666666',
+    color: colors.text.secondary,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
     lineHeight: 24,
+    paddingHorizontal: 20,
+    fontFamily: Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+    }),
   },
   featuresContainer: {
     width: '100%',
-    gap: 16,
+    gap: 12,
     marginBottom: 24,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#121212',
-    borderRadius: 12,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 16,
     padding: 16,
     gap: 16,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   featureIconContainer: {
     width: 48,
@@ -139,38 +186,64 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text.primary,
     marginBottom: 4,
+    fontFamily: Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+    }),
   },
   featureDescription: {
     fontSize: 14,
-    color: '#666666',
+    color: colors.text.secondary,
+    fontFamily: Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+    }),
   },
   bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 16,
-    paddingBottom: Platform.OS === 'android' ? 84 : 44, // Default for Android
-    backgroundColor: '#000000',
+    paddingBottom: Platform.OS === 'android' ? 74 : 44,
+    backgroundColor: colors.background.primary,
     borderTopWidth: 1,
-    borderTopColor: '#222222',
+    borderTopColor: colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
   },
   bottomContainerIOS: {
-    paddingBottom: 59, // iOS specific padding
+    paddingBottom: 90,
+  },
+  buttonWrapper: {
+    width: '100%',
+    borderRadius: 28,
+    overflow: 'hidden',
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF6B00',
-    borderRadius: 24,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    width: '100%',
     gap: 8,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+    fontFamily: Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+    }),
   },
 });
 

@@ -197,16 +197,6 @@ const filterOptimalPackages = (packages) => {
         }
       }
 
-      // Same data amount comparison
-      if (currentData === otherData) {
-        const currentPricePerDay = currentPrice / currentPkg.duration;
-        const otherPricePerDay = otherPrice / otherPkg.duration;
-        
-        // Other package is cheaper per day
-        if (otherPricePerDay < currentPricePerDay) {
-          return true;
-        }
-      }
 
       return false;
     });
@@ -322,9 +312,9 @@ const filterOptimalPackages = (packages) => {
         };
       });
 
-      // Filter out packages with less than 1GB data
+      // Filter out packages with less than 1GB data and 1-day packages
       allPackages = allPackages.filter(pkg => 
-        pkg.unlimited || pkg.data >= 1
+        (pkg.unlimited || pkg.data >= 1) && pkg.duration > 1
       );
 
       // Filter by country
@@ -332,14 +322,16 @@ const filterOptimalPackages = (packages) => {
         const searchCountry = country.toLowerCase();
         const pkgRegion = (pkg.region || '').toLowerCase();
         const pkgName = (pkg.name || '').toLowerCase();
-        return pkgRegion.includes(searchCountry) || pkgName.includes(searchCountry);
+        
+        return pkgRegion.includes(searchCountry) || 
+               pkgName.includes(searchCountry);
       });
 
-    // First pass: Group packages by data and price
+    // First pass: Group packages by data and duration
     const packageGroups = new Map();
     
     countryFilteredPackages.forEach(pkg => {
-      const key = `${pkg.data}-${pkg.price}`;
+      const key = `${pkg.data}-${pkg.duration}`;
       if (!packageGroups.has(key)) {
         packageGroups.set(key, []);
       }
@@ -349,12 +341,12 @@ const filterOptimalPackages = (packages) => {
     // Second pass: For each group, keep only the best package
     let optimizedPackages = [];
     packageGroups.forEach((packages, key) => {
-      // Sort packages in the group by duration (descending) and provider priority
+      // Sort packages in the group by price (ascending) and provider priority
       const sortedPackages = packages.sort((a, b) => {
-        if (a.duration !== b.duration) {
-          return b.duration - a.duration; // Longer duration first
+        if (a.price !== b.price) {
+          return a.price - b.price; // Cheaper price first
         }
-        // If durations are equal, sort by provider priority
+        // If prices are equal, sort by provider priority
         const providerPriority = {
           'esimaccess': 3,
           'airalo': 2,
@@ -391,14 +383,6 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
 
     // Regular package filtering logic
     if (!currentPkg.unlimited) {
-      // If same data amount but other package has better price/duration ratio
-      if (currentPkg.data === otherPkg.data) {
-        const currentRatio = currentPkg.duration / currentPkg.price;
-        const otherRatio = otherPkg.duration / otherPkg.price;
-        if (otherRatio > currentRatio) {
-          return true;
-        }
-      }
 
       // If other package has more data, same or longer duration, but same or lower price
       if (otherPkg.data > currentPkg.data && 
@@ -407,14 +391,6 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
         return true;
       }
 
-      // If other package has same or more data, longer duration, and only slightly higher price
-      if (otherPkg.data >= currentPkg.data && 
-          otherPkg.duration > currentPkg.duration) {
-        const priceDiffPercent = (otherPkg.price - currentPkg.price) / currentPkg.price;
-        if (priceDiffPercent <= 0.1) { // 10% price difference threshold
-          return true;
-        }
-      }
     }
 
     return false;

@@ -42,19 +42,25 @@ const destinations = getPopularDestinations();
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
-// Memoized FlagIcon Component
+// Memoized FlagIcon Component with optimizations
 const FlagIcon = React.memo(({ countryCode, size = 40 }) => {
+  const flagStyle = useMemo(() => ({
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+  }), [size]);
+
+  const gradientStyle = useMemo(() => ({
+    ...flagStyle,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }), [flagStyle]);
+
   if (!countryCode) {
     return (
       <LinearGradient
         colors={['#E5E7EB', '#D1D5DB']}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
+        style={gradientStyle}
       >
         <Ionicons name="globe-outline" size={size * 0.5} color="#6B7280" />
       </LinearGradient>
@@ -67,11 +73,9 @@ const FlagIcon = React.memo(({ countryCode, size = 40 }) => {
     return (
       <Image
         source={flagImage}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-        }}
+        style={flagStyle}
+        resizeMode="cover"
+        fadeDuration={0}
       />
     );
   }
@@ -79,19 +83,16 @@ const FlagIcon = React.memo(({ countryCode, size = 40 }) => {
   return (
     <LinearGradient
       colors={['#E5E7EB', '#D1D5DB']}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
+      style={gradientStyle}
     >
       <Text style={{ fontSize: size / 3, color: '#6B7280', fontWeight: '600' }}>
         {countryCode.substring(0, 2).toUpperCase()}
       </Text>
     </LinearGradient>
   );
+}, (prevProps, nextProps) => {
+  return prevProps.countryCode === nextProps.countryCode && 
+         prevProps.size === nextProps.size;
 });
 
 
@@ -401,25 +402,43 @@ const ShopScreen = () => {
     setIsLoadingMore(true);
     
     InteractionManager.runAfterInteractions(() => {
-      const nextPage = page + 1;
-      const startIndex = nextPage * ITEMS_PER_PAGE;
-      const endIndex = startIndex + ITEMS_PER_PAGE;
-      const newItems = countries.slice(startIndex, endIndex);
+      setFilteredData(prev => {
+        const nextPage = Math.floor(prev.length / ITEMS_PER_PAGE);
+        const startIndex = nextPage * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const newItems = countries.slice(startIndex, endIndex);
 
-      if (newItems.length > 0) {
-        setFilteredData(prev => [...prev, ...newItems]);
-        setPage(nextPage);
-        setHasMore(endIndex < countries.length);
-      } else {
-        setHasMore(false);
-      }
+        if (newItems.length > 0) {
+          setPage(nextPage);
+          setHasMore(endIndex < countries.length);
+          return [...prev, ...newItems];
+        } else {
+          setHasMore(false);
+          return prev;
+        }
+      });
       setIsLoadingMore(false);
     });
-  }, [page, isLoadingMore, hasMore, activeTab, searchQuery]);
+  }, [isLoadingMore, hasMore, activeTab, searchQuery]);
+
+  // Handle tab changes
+  useEffect(() => {
+    // Reset data when tab changes
+    if (activeTab === 'Countries') {
+      const initialItems = countries.slice(0, ITEMS_PER_PAGE);
+      setFilteredData(initialItems);
+      setHasMore(countries.length > ITEMS_PER_PAGE);
+      setPage(0);
+    } else {
+      setFilteredData(activeTab === 'Regional' ? regions : globalPackages);
+      setHasMore(false);
+      setPage(0);
+    }
+  }, [activeTab]);
 
   useFocusEffect(
     useCallback(() => {
-      // Refresh balance when screen gains focus
+      // Only refresh balance when screen gains focus
       const loadBalance = async () => {
         if (userToken) {
           try {
@@ -434,20 +453,7 @@ const ShopScreen = () => {
       };
       
       loadBalance();
-      
-      // Handle tab data
-      if (activeTab === 'Countries') {
-        const initialItems = countries.slice(0, ITEMS_PER_PAGE);
-        setFilteredData(initialItems);
-        setHasMore(countries.length > ITEMS_PER_PAGE);
-        setPage(0);
-      } else {
-        setFilteredData(activeTab === 'Regional' ? regions : globalPackages);
-        setHasMore(false);
-      }
-      // Don't clear search query when switching tabs
-      // setSearchQuery('');
-    }, [activeTab, userToken])
+    }, [userToken])
   );
 
   // Header animation
@@ -559,7 +565,7 @@ const ShopScreen = () => {
       <AnimatedFlatList
         data={filteredData}
         renderItem={renderItem}
-        keyExtractor={(item) => `${activeTab}-${item.id || item.name}`}
+        keyExtractor={(item, index) => `${activeTab}-${item.id || item.name}-${index}`}
         ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={ListFooterComponent}
         onEndReached={loadMore}

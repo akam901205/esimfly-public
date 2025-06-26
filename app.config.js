@@ -37,12 +37,19 @@ export default {
         googleSignIn: {
           reservedClientId: 'com.googleusercontent.apps.1011374155272-a494qa47ev6t5ngn5n8a0p08mbknp7eu',
         },
+        stripe: {
+          merchantIdentifier: 'merchant.net.esimfly.user.app',
+          enableApplePay: true,
+          merchantCapabilities: ['3DS', 'debit', 'credit'],
+          supportedNetworks: ['visa', 'mastercard', 'amex']
+        }
       },
       infoPlist: {
         LSApplicationQueriesSchemes: [
           'itms-apps',
           'stripe',
           'stripecheckout',
+          'merchant.net.esimfly.user.app',
           'esimfly'
         ],
         ITSAppUsesNonExemptEncryption: false,
@@ -162,7 +169,8 @@ export default {
         '@stripe/stripe-react-native',
         {
           enableGooglePay: true,
-          enableApplePay: false,
+          enableApplePay: true,
+          merchantIdentifier: 'merchant.net.esimfly.user.app',
           urlScheme: 'esimfly'
         }
       ],
@@ -185,6 +193,7 @@ export default {
       },
       stripe: {
         publishableKey: "pk_live_51Qbg8uHbrtyQ1AACqgu82JueHGZak2BUQHFIfWb9TIliG4gP8npvVPm73L6gIyEVxYruu9LBhxk5vL7dC9e3ptOr00smrvDnD7",
+        merchantId: "merchant.net.esimfly.user.app",
         useTestApi: false,
         googlePay: {
           testEnv: false,
@@ -193,6 +202,13 @@ export default {
           billingAddressRequired: true,
           emailRequired: true
         },
+        applePay: {
+          merchantCapabilities: ['3DS', 'debit', 'credit'],
+          supportedNetworks: ['visa', 'mastercard', 'amex'],
+          countryCode: 'US',
+          currencyCode: 'USD',
+          requiredBillingContactFields: ['emailAddress', 'name', 'phoneNumber', 'postalAddress']
+        }
       }
     },
     owner: 'akam90'

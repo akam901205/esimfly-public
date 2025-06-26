@@ -238,8 +238,6 @@ const countryCodeMap = {
   'Trinidad and Tobago': 'TT',
   'Tunisia': 'TN',
   'Turkey': 'TR',
-  'Turkmenistan': 'TM',
-  'Tuvalu': 'TV',
   'Uganda': 'UG',
   'Ukraine': 'UA',
   'United Arab Emirates': 'AE',

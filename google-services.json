@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "1033438752251-6kk3ekgtf5amqr3umhqi268lll0kjkc8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "net.esimfly.user.app",
+            "certificate_hash": "76400e9ec30852662e43e94288f0efb045c36818"
+          }
+        },
+        {
           "client_id": "1033438752251-c1dmqrv7m6af5od868t99pdgsh7qf87s.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
