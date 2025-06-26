@@ -391,6 +391,37 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
         return true;
       }
 
+      // NEW: If packages have same data amount, filter out shorter duration with higher price
+      if (Math.abs(otherPkg.data - currentPkg.data) < 0.1) { // Same data amount (with small tolerance)
+        // If current package has shorter duration but costs more or same
+        if (currentPkg.duration < otherPkg.duration && currentPkg.price >= otherPkg.price) {
+          console.log(`[DEBUG] Filtering out: ${currentPkg.name} (${currentPkg.data}GB, ${currentPkg.duration} days, $${currentPkg.price}) because ${otherPkg.name} (${otherPkg.data}GB, ${otherPkg.duration} days, $${otherPkg.price}) is better`);
+          return true;
+        }
+      }
+
+      // Check for disproportionate price increases (same duration)
+      if (currentPkg.duration === otherPkg.duration && otherPkg.data < currentPkg.data) {
+        const dataIncreaseFactor = currentPkg.data / otherPkg.data;
+        const priceIncreaseFactor = currentPkg.price / otherPkg.price;
+        
+        // Calculate price per GB for both packages
+        const currentPricePerGB = currentPkg.price / currentPkg.data;
+        const otherPricePerGB = otherPkg.price / otherPkg.data;
+        
+        // If bigger package has higher price per GB, it's bad value
+        if (currentPricePerGB > otherPricePerGB * 1.1) { // Allow only 10% tolerance
+          console.log(`[DEBUG] Filtering out bad value package: ${currentPkg.name} (${currentPkg.data}GB at $${currentPricePerGB.toFixed(2)}/GB) vs ${otherPkg.name} (${otherPkg.data}GB at $${otherPricePerGB.toFixed(2)}/GB)`);
+          return true;
+        }
+        
+        // Also filter if price increase is more than data increase (with small tolerance)
+        if (priceIncreaseFactor > dataIncreaseFactor * 1.05) { // Only 5% tolerance
+          console.log(`[DEBUG] Filtering out disproportionate price: ${currentPkg.name} (${currentPkg.data}GB, $${currentPkg.price}) - ${priceIncreaseFactor.toFixed(2)}x price for ${dataIncreaseFactor.toFixed(2)}x data`);
+          return true;
+        }
+      }
+
     }
 
     return false;
