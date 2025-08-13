@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -18,6 +19,7 @@ const OrderProcessingScreen = () => {
   const navigation = useNavigation();
   const [status, setStatus] = useState('processing');
   const [message, setMessage] = useState(route.params?.isTopup ? 'Processing your top-up...' : 'Processing your payment...');
+  const insets = useSafeAreaInsets();
   
   const { orderReference, packageName, isTopup } = route.params;
 
@@ -216,7 +218,7 @@ const OrderProcessingScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: Math.max(insets.top, 10) }]}>
         {getIcon()}
         <Text style={styles.message}>{message}</Text>
         {status === 'processing' && (

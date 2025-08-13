@@ -28,6 +28,7 @@ import {
 } from '../utils/PackageFilters';
 import { normalizeCountryName } from '../utils/countryNormalizationUtils';
 import { newApi } from '../api/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ICON_COLORS = {
   network: '#1F2937',
@@ -35,6 +36,7 @@ const ICON_COLORS = {
 };
 
 const RegionalPackagesScreen = () => {
+  const insets = useSafeAreaInsets();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -336,7 +338,7 @@ const RegionalPackagesScreen = () => {
   }, [fetchPackages]);
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
       <TouchableOpacity 
         onPress={() => navigation.goBack()} 
         style={styles.headerIcon}
@@ -515,7 +517,7 @@ const renderPackageItem = ({ item, index }) => {
         data={packages}
         renderItem={renderPackageItem}
         keyExtractor={(item, index) => `${item.packageCode}-${index}`}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom + 20, Platform.OS === 'ios' ? 80 : 60) }]}
         ListEmptyComponent={() => (
           <View style={styles.emptyStateContainer}>
             {loading ? (
@@ -556,7 +558,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
     borderBottomColor: '#E5E7EB',
@@ -581,7 +584,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 80 : 60,
   },
   packageItem: {
     borderRadius: 16,

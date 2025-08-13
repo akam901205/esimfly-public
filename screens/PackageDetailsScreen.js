@@ -23,11 +23,13 @@ import esimApi from '../api/esimApi';
 import { newApi } from '../api/api';
 import { colors } from '../theme/colors';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 
 const PackageDetailsScreen = () => {
+  const insets = useSafeAreaInsets();
   const [networkModalVisible, setNetworkModalVisible] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [verifiedPromoCode, setVerifiedPromoCode] = useState('');
@@ -235,14 +237,14 @@ const PackageDetailsScreen = () => {
   }, [packageData.id]);
 
   const renderHeader = () => (
-    <View style={styles.headerContainer}>
+    <View style={[styles.headerContainer, { height: Math.max(insets.top + 60, 60) }]}>
       {/* Fixed header background with blur effect */}
       <View style={styles.headerBackground}>
         <BlurView intensity={80} tint="light" style={styles.headerBlur} />
       </View>
       
       {/* Header content */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
           <LinearGradient
             colors={['#FFFFFF', '#F9FAFB']}
@@ -668,7 +670,7 @@ const PackageDetailsScreen = () => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 20, 40) }]}
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
       >
@@ -684,7 +686,7 @@ const PackageDetailsScreen = () => {
       
       {/* Modern floating bottom container */}
       <View style={[styles.bottomContainer, { backgroundColor: 'transparent' }]}>
-        <View style={styles.bottomGradient}>
+        <View style={[styles.bottomGradient, { paddingBottom: Math.max(insets.bottom + 88, Platform.OS === 'ios' ? 115 : 92) }]}>
           
           <TouchableOpacity onPress={handleBuyPress}>
             <LinearGradient
@@ -741,7 +743,6 @@ const styles = StyleSheet.create({
   // Header styles
   headerContainer: {
     position: 'relative',
-    height: Platform.OS === 'ios' ? 60 : 60,
     zIndex: 10,
   },
   headerBackground: {
@@ -764,7 +765,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 10,
     paddingBottom: 10,
   },
   headerButton: {
@@ -1216,7 +1216,6 @@ const styles = StyleSheet.create({
   bottomGradient: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: Platform.OS === 'ios' ? 115 : 80, // Adjusted padding for tab bar
   },
   buyButton: {
     borderRadius: 20,

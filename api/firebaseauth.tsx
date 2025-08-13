@@ -99,6 +99,10 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
     const firebaseToken = await userCredential.user.getIdToken();
     debugLog('Firebase token obtained');
 
+    // Get stored referral code if available
+    const storedReferralCode = await AsyncStorage.getItem('referralCode');
+    debugLog('Stored referral code:', storedReferralCode);
+
     // Send to backend for verification
     try {
       const response = await fetch(`${API_URL}/google-callback`, {
@@ -109,7 +113,8 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
           'x-client-type': 'mobile'
         },
         body: JSON.stringify({ 
-          id_token: idToken || firebaseToken
+          id_token: idToken || firebaseToken,
+          referralCode: storedReferralCode
         })
       });
 
@@ -123,7 +128,8 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
           AsyncStorage.setItem('userToken', token),
           data.expires_at ? AsyncStorage.setItem('tokenExpires', data.expires_at) : null,
           data.user ? AsyncStorage.setItem('userData', JSON.stringify(data.user)) : null,
-          AsyncStorage.setItem('authMethod', 'google') // Store auth method
+          AsyncStorage.setItem('authMethod', 'google'), // Store auth method
+          AsyncStorage.removeItem('referralCode') // Clear referral code after successful use
         ].filter(Boolean));
 
         return {
@@ -225,6 +231,10 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
       const firebaseToken = await userCredential.user.getIdToken();
       debugLog('Firebase token obtained');
 
+      // Get stored referral code if available
+      const storedReferralCode = await AsyncStorage.getItem('referralCode');
+      debugLog('Stored referral code:', storedReferralCode);
+
       // Send to backend for verification
       const response = await fetch(`${API_URL}/apple-callback`, {
         method: 'POST',
@@ -236,6 +246,7 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
         body: JSON.stringify({ 
           id_token: firebaseToken,
           apple_token: identityToken,
+          referralCode: storedReferralCode,
           user_data: {
             email: appleAuthRequestResponse.email || userCredential.user.email,
             name: appleAuthRequestResponse.fullName && 
@@ -258,7 +269,8 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
           AsyncStorage.setItem('userToken', token),
           data.expires_at ? AsyncStorage.setItem('tokenExpires', data.expires_at) : null,
           data.user ? AsyncStorage.setItem('userData', JSON.stringify(data.user)) : null,
-          AsyncStorage.setItem('authMethod', 'apple') // Store auth method
+          AsyncStorage.setItem('authMethod', 'apple'), // Store auth method
+          AsyncStorage.removeItem('referralCode') // Clear referral code after successful use
         ].filter(Boolean));
 
         return {

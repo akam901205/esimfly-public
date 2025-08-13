@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -39,9 +39,13 @@ const CheckoutScreenV2 = () => {
   const [isAgreed, setIsAgreed] = useState(false);
   const [balance, setBalance] = useState(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState(null);
   const auth = useContext(AuthContext);
   const [verifiedPromoDetails, setVerifiedPromoDetails] = useState(route.params.promoDetails);
+  
+  // Refs for auto-scroll
+  const scrollViewRef = useRef(null);
+  const termsRef = useRef(null);
 
   const { package: packageData, isTopup, esimId, esimDetails } = route.params;
   const isGlobalPackage = route.params.isGlobal;
@@ -110,7 +114,36 @@ const CheckoutScreenV2 = () => {
     return 0;
   };
 
+  const handlePaymentMethodSelect = (method) => {
+    setPaymentMethod(method);
+    
+    // Auto-scroll to terms section after selecting payment method
+    setTimeout(() => {
+      if (scrollViewRef.current) {
+        // Different approaches for iOS and Android for better compatibility
+        if (Platform.OS === 'ios') {
+          // For iOS, use a calculated position that accounts for safe area
+          scrollViewRef.current.scrollTo({ 
+            y: 580, 
+            animated: true 
+          });
+        } else {
+          // For Android, scroll closer to the end
+          scrollViewRef.current.scrollTo({ 
+            y: 650, 
+            animated: true 
+          });
+        }
+      }
+    }, 400); // Slightly longer delay for iOS animations
+  };
+
   const handlePurchase = async () => {
+    if (!paymentMethod) {
+      toast.error('Please select a payment method');
+      return;
+    }
+    
     if (!isAgreed) {
       toast.error('Please agree to the terms and conditions to continue');
       return;
@@ -403,7 +436,7 @@ const CheckoutScreenV2 = () => {
       />
       
       {/* Header */}
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, { height: Math.max(insets.top + 60, 60) }]}>
         {/* Fixed header background with blur effect */}
         <View style={styles.headerBackground}>
           {Platform.OS === 'ios' && (
@@ -412,7 +445,7 @@ const CheckoutScreenV2 = () => {
         </View>
         
         {/* Header content */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
             <LinearGradient
               colors={['#FFFFFF', '#F9FAFB']}
@@ -433,6 +466,7 @@ const CheckoutScreenV2 = () => {
         style={styles.keyboardAvoidingView}
       >
         <ScrollView 
+          ref={scrollViewRef}
           style={styles.scrollView} 
           contentContainerStyle={styles.scrollContentContainer}
           showsVerticalScrollIndicator={false}
@@ -535,7 +569,7 @@ const CheckoutScreenV2 = () => {
                 styles.paymentMethodCard,
                 paymentMethod === 'card' && styles.selectedPaymentMethod
               ]}
-              onPress={() => setPaymentMethod('card')}
+              onPress={() => handlePaymentMethodSelect('card')}
               activeOpacity={0.7}
             >
               <View style={styles.paymentMethodContent}>
@@ -608,7 +642,7 @@ const CheckoutScreenV2 = () => {
                 styles.paymentMethodCard,
                 paymentMethod === 'balance' && styles.selectedPaymentMethod
               ]}
-              onPress={() => setPaymentMethod('balance')}
+              onPress={() => handlePaymentMethodSelect('balance')}
               activeOpacity={0.7}
             >
               <View style={styles.paymentMethodContent}>
@@ -649,7 +683,7 @@ const CheckoutScreenV2 = () => {
           </View>
 
           {/* Terms Agreement */}
-          <View style={styles.termsSection}>
+          <View ref={termsRef} style={styles.termsSection}>
             <TouchableOpacity 
               style={styles.termsContainer}
               onPress={() => setIsAgreed(!isAgreed)}
@@ -710,11 +744,11 @@ const CheckoutScreenV2 = () => {
       <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity 
           onPress={handlePurchase}
-          disabled={!isAgreed || isLoading || (paymentMethod === 'balance' && balance && packageData.price > balance.balance)}
+          disabled={!paymentMethod || !isAgreed || isLoading || (paymentMethod === 'balance' && balance && packageData.price > balance.balance)}
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={isAgreed && !(paymentMethod === 'balance' && balance && packageData.price > balance.balance) 
+            colors={paymentMethod && isAgreed && !(paymentMethod === 'balance' && balance && packageData.price > balance.balance) 
               ? ['#FF6B00', '#FF8533'] 
               : ['#E5E7EB', '#D1D5DB']}
             start={{ x: 0, y: 0 }}
@@ -776,7 +810,6 @@ const styles = StyleSheet.create({
   // Header styles
   headerContainer: {
     position: 'relative',
-    height: Platform.OS === 'ios' ? 60 : 60,
     zIndex: 10,
   },
   headerBackground: {
@@ -799,7 +832,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 10,
     paddingBottom: 10,
   },
   headerButton: {
@@ -1097,10 +1129,17 @@ const styles = StyleSheet.create({
   termsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#F9FAFB',
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   checkbox: {
     width: 22,

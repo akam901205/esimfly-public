@@ -15,9 +15,11 @@ import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 const GlobalPackageTypeScreen = () => {
+  const insets = useSafeAreaInsets();
   const [hasUnlimited, setHasUnlimited] = useState(false);
   const [hasVoiceSMS, setHasVoiceSMS] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ const GlobalPackageTypeScreen = () => {
   };
 	
 const renderHeader = () => (
-  <View style={styles.header}>
+  <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
     <TouchableOpacity 
       onPress={() => navigation.goBack()} 
       style={styles.headerIcon}
@@ -164,7 +166,7 @@ const renderHeader = () => (
           style={styles.backgroundGradient}
         />
         {renderHeader()}
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
           <ActivityIndicator size="large" color="#FF6B00" />
         </View>
       </SafeAreaView>
@@ -179,7 +181,7 @@ const renderHeader = () => (
           style={styles.backgroundGradient}
         />
         {renderHeader()}
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
           <LottieView
             source={require('../assets/Animation - datapacke.json')}
             autoPlay
@@ -205,7 +207,7 @@ const renderHeader = () => (
         style={styles.backgroundGradient}
       />
       {renderHeader()}
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
         <LottieView
           source={require('../assets/Animation - datapacke.json')}
           autoPlay
@@ -289,7 +291,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
   },
@@ -315,7 +318,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   lottieAnimation: {
     width: 200,

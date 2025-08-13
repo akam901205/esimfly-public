@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../AppNavigator';
@@ -12,6 +12,8 @@ type Props = {
 };
 
 export default function MainAppScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
+  
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userToken');
     await AsyncStorage.removeItem('tokenExpires');
@@ -19,7 +21,7 @@ export default function MainAppScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: Math.max(insets.top, 10) }]}>
       <Text style={styles.title}>Welcome to the App!</Text>
       <Text style={styles.subtitle}>You are now logged in.</Text>
       <TouchableOpacity style={styles.button} onPress={handleLogout}>

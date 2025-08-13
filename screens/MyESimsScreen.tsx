@@ -20,6 +20,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
@@ -107,6 +108,7 @@ const DataTypeButton = ({
 const MyESimsScreen = () => {
   const navigation = useNavigation();
   const { userToken, logout } = useContext(AuthContext);
+  const insets = useSafeAreaInsets();
   
   // Use custom hook for eSIM data management
   const {
@@ -148,10 +150,12 @@ const MyESimsScreen = () => {
     };
   }, []);
 
+
   useFocusEffect(
     useCallback(() => {
       if (userToken && isMounted.current) {
-        fetchEsimData();
+        // Preserve selection when auto-refreshing on screen focus
+        fetchEsimData(true, true);
       }
     }, [userToken, fetchEsimData])
   );
@@ -305,16 +309,77 @@ const MyESimsScreen = () => {
     const center = size / 2;
     const circumference = 2 * Math.PI * radius;
     
+    const isUnlimited = selectedEsim.unlimited;
     const isNA = selectedEsim.data_left === 'N/A' || selectedEsim.data_left_formatted === 'N/A';
-    const progress = isNA ? 1 : (selectedEsim.data_left_percentage / 100);
-    const strokeDashoffset = circumference * (1 - progress);
+    
+    let remainingProgress = 1;
+    let usedProgress = 0;
+    let isTimeBased = false;
+    
+    if (isUnlimited && selectedEsim.time_left !== 'N/A') {
+      // For unlimited packages, calculate time-based progress
+      isTimeBased = true;
+      
+      // Parse time_left - it could be "14d 18h 28m" or "15 days"
+      let totalHours = 0;
+      let remainingHours = 0;
+      
+      // Extract days, hours, minutes from time_left
+      const daysMatch = selectedEsim.time_left.match(/(\d+)\s*d(?:ays?)?/i);
+      const hoursMatch = selectedEsim.time_left.match(/(\d+)\s*h(?:ours?)?/i);
+      const minutesMatch = selectedEsim.time_left.match(/(\d+)\s*m(?:ins?|inutes?)?/i);
+      
+      if (daysMatch) remainingHours += parseInt(daysMatch[1]) * 24;
+      if (hoursMatch) remainingHours += parseInt(hoursMatch[1]);
+      if (minutesMatch) remainingHours += parseInt(minutesMatch[1]) / 60;
+      
+      // Use actual package duration from API if available
+      let totalDays = 30; // Default fallback
+      
+      if (selectedEsim.package_duration_days && selectedEsim.package_duration_days > 0) {
+        // Use the actual duration from the API
+        totalDays = selectedEsim.package_duration_days;
+      } else {
+        // Fallback: Try to extract duration from plan name
+        const planDurationMatch = selectedEsim.plan_name.match(/(\d+)\s*(?:days?|day)/i);
+        if (planDurationMatch) {
+          totalDays = parseInt(planDurationMatch[1]);
+        } else {
+          // Last resort: estimate based on remaining time
+          const remainingDays = remainingHours / 24;
+          if (remainingDays <= 7) {
+            totalDays = 7;
+          } else if (remainingDays <= 15) {
+            totalDays = 15;
+          } else if (remainingDays <= 30) {
+            totalDays = 30;
+          } else {
+            // For longer durations, round up to nearest common duration
+            totalDays = Math.ceil(remainingDays / 30) * 30;
+          }
+        }
+      }
+      
+      totalHours = totalDays * 24;
+      
+      if (remainingHours > 0 && remainingHours <= totalHours) {
+        remainingProgress = remainingHours / totalHours;
+        usedProgress = 1 - remainingProgress;
+      }
+    } else if (!isNA) {
+      // For limited packages, use data-based progress
+      remainingProgress = selectedEsim.data_left_percentage / 100;
+      usedProgress = 1 - remainingProgress;
+    }
 
-    const circleColor = isNA ? '#9CA3AF' : '#FF6B00';
+    const primaryColor = '#FF6B00'; // Orange for both time and data
+    const usedColor = '#D1D5DB';
 
     return (
       <View style={styles.progressContainer}>
         <View style={styles.progressCircleWrapper}>
-          <Svg width={size} height={size} style={styles.svg}>
+          {!isTimeBased && (
+            <Svg width={size} height={size} style={styles.svg}>
             {/* Outer decorative circle */}
             <Circle
               cx={center}
@@ -324,7 +389,7 @@ const MyESimsScreen = () => {
               strokeWidth={2}
               fill="none"
             />
-            {/* Background circle with gradient effect */}
+            {/* Background circle */}
             <Circle
               cx={center}
               cy={center}
@@ -332,22 +397,50 @@ const MyESimsScreen = () => {
               stroke="#F3F4F6"
               strokeWidth={strokeWidth}
               fill="none"
-              strokeDasharray="4 2"
-              opacity={0.5}
             />
-            {/* Progress circle */}
+            {/* Used data circle (gray) */}
+            {usedProgress > 0 && (
+              <Circle
+                cx={center}
+                cy={center}
+                r={radius}
+                stroke="#D1D5DB"
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeDasharray={`${circumference * usedProgress} ${circumference}`}
+                strokeDashoffset={0}
+                transform={`rotate(-90 ${center} ${center})`}
+                strokeLinecap="round"
+              />
+            )}
+            {/* Remaining circle (blue for time, orange for data) */}
             <Circle
               cx={center}
               cy={center}
               r={radius}
-              stroke={circleColor}
+              stroke={primaryColor}
               strokeWidth={strokeWidth}
               fill="none"
-              strokeDasharray={`${circumference} ${circumference}`}
-              strokeDashoffset={strokeDashoffset}
-              transform={`rotate(-90 ${center} ${center})`}
+              strokeDasharray={`${circumference * remainingProgress} ${circumference}`}
+              strokeDashoffset={0}
+              transform={`rotate(${-90 + (usedProgress * 360)} ${center} ${center})`}
               strokeLinecap="round"
             />
+            {/* Clock indicators for unlimited packages */}
+            {isTimeBased && (
+              <>
+                {/* 12 hour markers */}
+                {[0, 90, 180, 270].map((angle) => (
+                  <Circle
+                    key={angle}
+                    cx={center + (radius - 25) * Math.cos((angle - 90) * Math.PI / 180)}
+                    cy={center + (radius - 25) * Math.sin((angle - 90) * Math.PI / 180)}
+                    r={2}
+                    fill="#9CA3AF"
+                  />
+                ))}
+              </>
+            )}
             {/* Inner decorative circle */}
             <Circle
               cx={center}
@@ -359,23 +452,94 @@ const MyESimsScreen = () => {
               opacity={0.5}
             />
           </Svg>
+          )}
           <View style={styles.progressContent}>
-            <Text 
-              style={[
-                styles.dataAmount,
-                isNA && styles.naDataAmount
-              ]} 
-              numberOfLines={1} 
-              adjustsFontSizeToFit
-            >
-              {selectedEsim.data_left_formatted}
-            </Text>
-            <Text style={[
-              styles.dataTotal,
-              isNA && styles.naDataTotal
-            ]} numberOfLines={1}>
-              {selectedEsim.unlimited ? 'Unlimited Data' : `Left of ${selectedEsim.total_volume}`}
-            </Text>
+            {isTimeBased ? (
+              <>
+                {/* Clock icon */}
+                <View style={styles.clockContainer}>
+                  <Ionicons 
+                    name="time-outline" 
+                    size={28} 
+                    color={primaryColor}
+                  />
+                </View>
+                
+                {/* Time display with individual boxes */}
+                <View style={styles.timeDisplay}>
+                  {(() => {
+                    // Parse time components
+                    const daysMatch = selectedEsim.time_left.match(/(\d+)\s*d/);
+                    const hoursMatch = selectedEsim.time_left.match(/(\d+)\s*h/);
+                    const minutesMatch = selectedEsim.time_left.match(/(\d+)\s*m/);
+                    
+                    const days = daysMatch ? parseInt(daysMatch[1]) : 0;
+                    const hours = hoursMatch ? parseInt(hoursMatch[1]) : 0;
+                    const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
+                    
+                    return (
+                      <>
+                        {days > 0 && (
+                          <>
+                            <View style={styles.timeBox}>
+                              <Text style={[styles.timeValue, { color: primaryColor }]}>
+                                {days.toString().padStart(2, '0')}
+                              </Text>
+                              <Text style={styles.timeLabel}>DAYS</Text>
+                            </View>
+                            <Text style={[styles.timeSeparator, { color: primaryColor }]}>:</Text>
+                          </>
+                        )}
+                        <View style={styles.timeBox}>
+                          <Text style={[styles.timeValue, { color: primaryColor }]}>
+                            {hours.toString().padStart(2, '0')}
+                          </Text>
+                          <Text style={styles.timeLabel}>HOURS</Text>
+                        </View>
+                        <Text style={[styles.timeSeparator, { color: primaryColor }]}>:</Text>
+                        <View style={styles.timeBox}>
+                          <Text style={[styles.timeValue, { color: primaryColor }]}>
+                            {minutes.toString().padStart(2, '0')}
+                          </Text>
+                          <Text style={styles.timeLabel}>MINS</Text>
+                        </View>
+                      </>
+                    );
+                  })()}
+                </View>
+                
+                <View style={styles.unlimitedBadge}>
+                  <Ionicons 
+                    name="infinite" 
+                    size={16} 
+                    color="#FF6B00"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.unlimitedText}>
+                    Unlimited Data
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text 
+                  style={[
+                    styles.dataAmount,
+                    isNA && styles.naDataAmount
+                  ]} 
+                  numberOfLines={1} 
+                  adjustsFontSizeToFit
+                >
+                  {selectedEsim.data_left_formatted}
+                </Text>
+                <Text style={[
+                  styles.dataTotal,
+                  isNA && styles.naDataTotal
+                ]} numberOfLines={1}>
+                  {selectedEsim.unlimited ? 'Unlimited Data' : `Left of ${selectedEsim.total_volume}`}
+                </Text>
+              </>
+            )}
           </View>
         </View>
       </View>
@@ -573,7 +737,7 @@ const MyESimsScreen = () => {
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity 
             style={styles.retryButton}
-            onPress={() => fetchEsimData()}
+            onPress={() => fetchEsimData(true, true)}
           >
             <Text style={styles.retryText}>Try Again</Text>
           </TouchableOpacity>
@@ -586,7 +750,7 @@ const MyESimsScreen = () => {
   if (!selectedEsim || esimData.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#000000" />
           </TouchableOpacity>
@@ -605,7 +769,7 @@ const MyESimsScreen = () => {
         style={styles.gradient}
       />
       
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
           style={styles.headerIcon}
@@ -631,7 +795,7 @@ const MyESimsScreen = () => {
 
       <ScrollView 
         style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -897,7 +1061,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 16,
-    height: 240,
+    minHeight: 240,
   },
   progressCircleWrapper: {
     position: 'relative',
@@ -910,7 +1074,8 @@ const styles = StyleSheet.create({
   progressContent: {
     position: 'absolute',
     alignItems: 'center',
-    width: '70%',
+    justifyContent: 'center',
+    width: '100%',
   },
   dataAmount: {
     fontSize: 28,
@@ -1423,6 +1588,97 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.slate[500],
     textAlign: 'center',
+  },
+  clockContainer: {
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  clockIcon: {
+    position: 'absolute',
+  },
+  clockHand: {
+    position: 'absolute',
+    width: 2,
+    height: 12,
+    backgroundColor: colors.primary.DEFAULT,
+    bottom: 25,
+    transformOrigin: 'bottom',
+  },
+  timeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  timeBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    minWidth: 50,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  timeValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  timeLabel: {
+    fontSize: 9,
+    color: colors.text.secondary,
+    marginTop: 2,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  timeSeparator: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginHorizontal: 2,
+  },
+  unlimitedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  unlimitedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF6B00',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

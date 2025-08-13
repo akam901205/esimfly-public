@@ -27,9 +27,29 @@ import esimApi from '../api/esimApi';
 import { fetchBalance } from '../api/esimApi';
 import { AuthContext } from '../api/AuthContext';
 import { globalPackages } from '../utils/global';
-import { countries, flagImages } from '../utils/countryData';
+import { countries as rawCountries, flagImages } from '../utils/countryData';
 import debounce from 'lodash/debounce';
 import { EventEmitter } from '../utils/EventEmitter';
+
+// Deduplicate countries to ensure no duplicates appear in the list
+// Remove duplicates by both ID and name to prevent any duplicates
+const seenIds = new Set();
+const seenNames = new Set();
+const countries = rawCountries.filter((country) => {
+  const idLower = country.id.toLowerCase();
+  const nameLower = country.name.toLowerCase();
+  
+  // Skip if we've already seen this ID or name
+  if (seenIds.has(idLower) || seenNames.has(nameLower)) {
+    console.warn(`Duplicate country found and removed: ${country.name} (${country.id})`);
+    return false;
+  }
+  
+  seenIds.add(idLower);
+  seenNames.add(nameLower);
+  return true;
+});
+
 import { getPopularDestinations } from '../utils/popularDestinations';
 import { colors } from '../theme/colors';
 import SearchBar from '../components/SearchBar';
@@ -498,6 +518,7 @@ const ShopScreen = () => {
         {
           transform: [{ translateY: headerTranslate }],
           opacity: headerOpacity,
+          paddingTop: Math.max(insets.top, 10),
         }
       ]}>
         <View style={styles.headerContent}>
@@ -528,6 +549,7 @@ const ShopScreen = () => {
         {
           opacity: stickyHeaderOpacity,
           transform: [{ translateY: stickyHeaderTranslate }],
+          paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 45 : 5),
         }
       ]}>
         <LinearGradient

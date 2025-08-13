@@ -12,6 +12,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +27,7 @@ const DeleteAccountScreen: React.FC = () => {
   const navigation = useNavigation();
   const toast = useToast();
   const auth = React.useContext(AuthContext);
+  const insets = useSafeAreaInsets();
   
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -130,7 +132,7 @@ const DeleteAccountScreen: React.FC = () => {
         style={styles.gradient}
       />
       
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
         <TouchableOpacity 
           style={styles.headerIcon}
           onPress={() => {
@@ -146,7 +148,7 @@ const DeleteAccountScreen: React.FC = () => {
 
       <ScrollView 
         style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 100) }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.warningCard}>
@@ -291,7 +293,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
@@ -319,7 +322,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100, // Increased to account for tab bar
   },
   warningCard: {
     backgroundColor: '#FEF2F2',

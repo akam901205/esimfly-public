@@ -18,6 +18,7 @@ import NetworkModalGlobal from '../components/NetworkModalGlobal';
 import { colors } from '../theme/colors'; //
 import { newApi } from '../api/api';
 import { getNetworks, formatLocationNetworkList } from '../utils/PackageFilters';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ICON_COLORS = {
   network: '#1F2937',
@@ -25,6 +26,7 @@ const ICON_COLORS = {
 };
 
 const GlobalPackagesScreen = () => {
+  const insets = useSafeAreaInsets();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -226,7 +228,7 @@ const fetchPackages = useCallback(async () => {
   }, [fetchPackages]);
 
 const renderHeader = () => (
-  <View style={styles.header}>
+  <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
       <Ionicons name="arrow-back" size={24} color="#374151" />
     </TouchableOpacity>
@@ -482,7 +484,7 @@ const handleNetworkPress = () => {
         data={packages}
         renderItem={renderPackageItem}
         keyExtractor={(item, index) => `${item.packageCode}-${index}`}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom + 20, Platform.OS === 'ios' ? 80 : 60) }]}
         ListEmptyComponent={() => (
           <View style={styles.emptyStateContainer}>
             <Text style={styles.noPackagesText}>
@@ -523,7 +525,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
     borderBottomColor: '#E5E7EB',
@@ -548,7 +551,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 80 : 60,
   },
   packageItem: {
     borderRadius: 16,

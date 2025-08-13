@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Dimensions, 
   Linking, ActivityIndicator, Platform, ScrollView 
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../AppNavigator';
 import { checkESIMSupport } from '../utils/esimUtils';
@@ -23,6 +23,7 @@ export default function WelcomeScreen({ navigation }: Props) {
   const [supportsEsim, setSupportsEsim] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [animationComplete, setAnimationComplete] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     checkEsimSupport();
@@ -62,7 +63,7 @@ export default function WelcomeScreen({ navigation }: Props) {
     return (
       <ScrollView 
         style={styles.scrollContainer}
-        contentContainerStyle={styles.supportContainer}
+        contentContainerStyle={[styles.supportContainer, { paddingBottom: Math.max(insets.bottom, 120) }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[
@@ -157,7 +158,7 @@ export default function WelcomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.skipButton} onPress={navigateToAuth}>
+      <TouchableOpacity style={[styles.skipButton, { top: Math.max(insets.top, 40) }]} onPress={navigateToAuth}>
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
       
@@ -169,6 +170,7 @@ export default function WelcomeScreen({ navigation }: Props) {
           { 
             backgroundColor: supportsEsim ? colors.stone[800] : colors.stone[700],
             borderColor: supportsEsim ? colors.border.dark : colors.border.default,
+            bottom: Math.max(insets.bottom, 40),
           }
         ]}
         onPress={navigateToAuth}
@@ -197,7 +199,6 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     position: 'absolute',
-    top: 40,
     right: 20,
     zIndex: 1,
     padding: 8,
@@ -324,7 +325,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'absolute',
-    bottom: 40,
     left: 20,
     backgroundColor: colors.stone[800],
     borderWidth: 1,

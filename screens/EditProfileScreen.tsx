@@ -202,7 +202,7 @@ const EditProfileScreen: React.FC = () => {
         style={styles.gradient}
       />
       <View style={[styles.content, { height: height - insets.top }]}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
 		  <TouchableOpacity 
 			style={styles.headerIcon}
 			onPress={() => {
@@ -453,7 +453,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,

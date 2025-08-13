@@ -10,6 +10,7 @@ import firebase from '@react-native-firebase/app';
 import auth from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { ToastProvider } from './components/ToastNotification';
+import * as Linking from 'expo-linking';
 
 // Stripe configuration
 const STRIPE_PUBLISHABLE_KEY = 'pk_live_51Qbg8uHbrtyQ1AACqgu82JueHGZak2BUQHFIfWb9TIliG4gP8npvVPm73L6gIyEVxYruu9LBhxk5vL7dC9e3ptOr00smrvDnD7';
@@ -175,6 +176,45 @@ export default function App() {
     };
 
     initializeStripe();
+  }, []);
+
+  // Handle deep links for referral codes
+  useEffect(() => {
+    const handleDeepLink = async (url: string) => {
+      try {
+        console.log('[DeepLink] Received URL:', url);
+        const { queryParams } = Linking.parse(url);
+        
+        if (queryParams?.ref) {
+          const referralCode = queryParams.ref as string;
+          console.log('[DeepLink] Found referral code:', referralCode);
+          
+          // Store referral code for later use during registration
+          await AsyncStorage.setItem('referralCode', referralCode);
+          await AsyncStorage.setItem('referralCodeTimestamp', new Date().toISOString());
+          
+          console.log('[DeepLink] Stored referral code:', referralCode);
+        }
+      } catch (error) {
+        console.error('[DeepLink] Error handling deep link:', error);
+      }
+    };
+
+    // Handle initial URL when app is opened from a link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+
+    // Handle URL changes when app is already open
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   if (isLoading || !isStripeInitialized) {

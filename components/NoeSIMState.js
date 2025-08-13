@@ -4,10 +4,12 @@ import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 const NoESimState = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
@@ -20,7 +22,7 @@ const NoESimState = () => {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          Platform.OS === 'ios' && styles.scrollContentIOS
+          { paddingBottom: Math.max(insets.bottom + 84 + 80, 164) }
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -73,7 +75,7 @@ const NoESimState = () => {
 
       <View style={[
         styles.bottomContainer,
-        Platform.OS === 'ios' && styles.bottomContainerIOS
+        { bottom: Math.max(insets.bottom + 84, 84) }
       ]}>
         <TouchableOpacity 
           style={styles.buttonWrapper}
@@ -112,10 +114,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: Platform.OS === 'android' ? 160 : 140,
-  },
-  scrollContentIOS: {
-    paddingBottom: 160,
   },
   animationContainer: {
     alignItems: 'center',
@@ -207,21 +205,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 16,
-    paddingBottom: Platform.OS === 'android' ? 74 : 44,
     backgroundColor: colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.light,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 8,
-  },
-  bottomContainerIOS: {
-    paddingBottom: 90,
   },
   buttonWrapper: {
     width: '100%',

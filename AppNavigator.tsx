@@ -39,6 +39,7 @@ import DepositScreen from './screens/DepositScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import PrivacyScreen from './screens/PrivacyScreen';
 import TermsScreen from './screens/TermsScreen';
+import RefundPolicyScreen from './screens/RefundPolicyScreen';
 import OrderProcessingScreen from './screens/OrderProcessingScreen';
 import SupportScreen from './screens/SupportScreen';
 import DeleteAccountScreen from './screens/DeleteAccountScreen';
@@ -189,6 +190,7 @@ export type ShopStackParamList = {
   OrderProcessing: {
     orderReference: string;
   };
+  Privacy: undefined;
 };
 
 export type ProfileStackParamList = {
@@ -198,6 +200,7 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   Privacy: undefined;
   Terms: undefined;
+  RefundPolicy: undefined;
   Support: undefined;
   DeleteAccount: undefined;
 };
@@ -254,6 +257,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="Privacy" component={PrivacyScreen} />
       <ProfileStack.Screen name="Terms" component={TermsScreen} />
+      <ProfileStack.Screen name="RefundPolicy" component={RefundPolicyScreen} />
       <ProfileStack.Screen name="Support" component={SupportScreen} />
       <ProfileStack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
     </ProfileStack.Navigator>
@@ -284,6 +288,7 @@ function ShopNavigator() {
       <ShopStack.Screen name="PackageDetails" component={PackageDetailsScreen} />
       <ShopStack.Screen name="Checkout" component={CheckoutScreen} />
       <ShopStack.Screen name="Terms" component={TermsScreen} options={{ presentation: 'modal' }} />
+      <ShopStack.Screen name="Privacy" component={PrivacyScreen} options={{ presentation: 'modal' }} />
       <ShopStack.Screen name="Instructions" component={InstructionsScreen} options={{ presentation: 'modal' }} />
       <ShopStack.Screen name="OrderProcessing" component={OrderProcessingScreen} options={{ presentation: 'modal' }} />
     </ShopStack.Navigator>
@@ -301,8 +306,9 @@ function MainNavigator() {
     if (Platform.OS === 'ios') {
       StatusBar.setBarStyle('dark-content');
     } else {
-      StatusBar.setBarStyle('light-content');
-      StatusBar.setBackgroundColor('#1E1E1E');
+      StatusBar.setBarStyle('dark-content');
+      StatusBar.setBackgroundColor('#F8F9FA');
+      StatusBar.setTranslucent(false);
       configureNavigationBar();
     }
 
@@ -434,8 +440,9 @@ function AppNavigator() {
     if (Platform.OS === 'ios') {
       StatusBar.setBarStyle('dark-content');
     } else {
-      StatusBar.setBarStyle('light-content');
-      StatusBar.setBackgroundColor('#1E1E1E');
+      StatusBar.setBarStyle('dark-content');
+      StatusBar.setBackgroundColor('#F8F9FA');
+      StatusBar.setTranslucent(false);
       configureNavigationBar();
     }
   }, []);
@@ -449,8 +456,9 @@ function AppNavigator() {
       <AuthContext.Provider value={auth}>
         <NavigationContainer>
           <StatusBar 
-            barStyle={Platform.OS === 'ios' ? 'dark-content' : 'light-content'} 
-            backgroundColor={Platform.OS === 'ios' ? 'transparent' : '#1E1E1E'} 
+            barStyle="dark-content" 
+            backgroundColor={Platform.OS === 'ios' ? 'transparent' : '#F8F9FA'}
+            translucent={Platform.OS === 'ios'}
           />
           <RootStack.Navigator 
             screenOptions={{ 

@@ -2,7 +2,6 @@ import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'https://esimfly.net/api/auth';
-const REFERRAL_API_URL = 'https://esimfly.net/api/business/referral';
 
 interface AuthResponse {
   success: boolean;
@@ -13,11 +12,6 @@ interface AuthResponse {
   expires_at?: string;
 }
 
-interface ReferralVerifyResponse {
-  success: boolean;
-  message?: string;
-  business_user_id?: number;
-}
 
 function debugLog(...args: any[]) {
   console.log('[AuthAPI Debug]', ...args);
@@ -114,29 +108,6 @@ async function makeApiRequest(
     }
 }
 
-export async function verifyReferralCode(code: string): Promise<ReferralVerifyResponse> {
-    debugLog('Verifying referral code:', code);
-    try {
-        // Format the request body as form data
-        const formData = new URLSearchParams();
-        formData.append('code', code.trim());
-
-        const response = await fetch(`${REFERRAL_API_URL}/verify_code.php`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: formData.toString()
-        });
-
-        const data = await response.json();
-        debugLog('Referral code verification response:', data);
-        return data;
-    } catch (error) {
-        debugLog('Referral code verification error:', error);
-        throw error;
-    }
-}
 
 export async function signIn(email: string, password: string): Promise<AuthResponse> {
   debugLog('Attempting sign in for email:', email);
@@ -183,6 +154,8 @@ export async function signUp(
         if (data.token) {
             await AsyncStorage.setItem('userToken', data.token);
             await AsyncStorage.setItem('tokenExpires', data.expires_at);
+            // Clear referral code after successful signup
+            await AsyncStorage.removeItem('referralCode');
         }
         
         // If there's a message field but no success field, check status
@@ -241,4 +214,4 @@ export async function checkAccount(email: string): Promise<AuthResponse> {
 }
 
 // Types export
-export type { AuthResponse, ReferralVerifyResponse };
+export type { AuthResponse };

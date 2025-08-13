@@ -14,6 +14,7 @@ import {
   StatusBar,
   RefreshControl,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -236,6 +237,7 @@ const OrderHistoryScreen: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMorePages, setHasMorePages] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const insets = useSafeAreaInsets();
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -379,6 +381,7 @@ const OrderHistoryScreen: React.FC = () => {
           styles.header,
           {
             transform: [{ translateY: headerAnim }],
+            paddingTop: Math.max(insets.top, 16),
           },
         ]}
       >
@@ -407,7 +410,7 @@ const OrderHistoryScreen: React.FC = () => {
           data={orders}
           renderItem={renderOrderItem}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom, 100) }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -443,7 +446,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
@@ -480,7 +484,6 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 100,
   },
   orderCardWrapper: {
     marginBottom: 12,

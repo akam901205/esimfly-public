@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   StatusBar,
+  SafeAreaView,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -21,8 +22,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signUp } from '../api/authApi';
 import { colors } from '../theme/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
   SignUp: undefined;
@@ -48,6 +51,24 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  // Load stored referral code on component mount
+  useEffect(() => {
+    const loadReferralCode = async () => {
+      try {
+        const storedCode = await AsyncStorage.getItem('referralCode');
+        if (storedCode) {
+          console.log('[SignUp] Found stored referral code:', storedCode);
+          setReferralCode(storedCode);
+        }
+      } catch (error) {
+        console.error('[SignUp] Error loading referral code:', error);
+      }
+    };
+
+    loadReferralCode();
+  }, []);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   
   // Input refs for focus management
@@ -242,7 +263,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
         <LinearGradient
           colors={[colors.background.primary, colors.background.secondary]}
@@ -254,11 +275,17 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.keyboardAvoidingView}
         >
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: Math.max(insets.bottom, 20) }
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.content}>
+            <View style={[
+              styles.content,
+              { paddingTop: Math.max(insets.top, 10) }
+            ]}>
               {/* Header */}
               <View style={styles.header}>
                 <TouchableOpacity
@@ -389,7 +416,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </View>
+      </SafeAreaView>
     </TouchableWithoutFeedback>
   );
 };
@@ -504,7 +531,6 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: 16,
     fontFamily: 'Quicksand-Regular',
-    outlineStyle: 'none',
   },
   inputError: {
     color: '#ef4444',

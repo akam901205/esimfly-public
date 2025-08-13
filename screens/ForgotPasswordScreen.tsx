@@ -12,10 +12,12 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
+  SafeAreaView,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { forgotPassword } from '../api/authApi';
 import { colors } from '../theme/colors';
 
@@ -36,6 +38,7 @@ type Props = {
 const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -84,17 +87,23 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
         >
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: Math.max(insets.bottom, 20) }
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.content}>
+            <View style={[
+              styles.content,
+              { paddingTop: Math.max(insets.top, 10) }
+            ]}>
               {/* Header */}
               <View style={styles.header}>
                 <TouchableOpacity
@@ -168,7 +177,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </View>
+      </SafeAreaView>
     </TouchableWithoutFeedback>
   );
 };
@@ -260,7 +269,6 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: 16,
     fontFamily: 'Quicksand-Regular',
-    outlineStyle: 'none',
   },
   submitButton: {
     backgroundColor: colors.stone[800],

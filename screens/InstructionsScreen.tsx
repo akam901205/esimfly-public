@@ -51,7 +51,6 @@ const Step = ({ number, text }) => (
 
 
 const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ esimDetails, params }) => {
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const getQRCodeUrl = () => {
@@ -87,7 +86,6 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ esimDetails, params }) =>
       provider: esimDetails?.qr_code_url?.includes('qrsim.net') ? 'Provider1' : 'Other'
     });
     setError('Failed to load QR code image');
-    setIsLoading(false);
   };
 
   const qrCodeUrl = getQRCodeUrl();
@@ -95,7 +93,6 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ esimDetails, params }) =>
   // Reset error state when URL changes
   useEffect(() => {
     setError(null);
-    setIsLoading(true);
   }, [qrCodeUrl]);
 
   if (!qrCodeUrl) {
@@ -118,19 +115,17 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ esimDetails, params }) =>
           style={styles.qrImage}
           resizeMode="contain"
           onLoadStart={() => {
-            setIsLoading(true);
+            console.log('QR Code loading started');
             setError(null);
           }}
-          onLoadEnd={() => setIsLoading(false)}
+          onLoadEnd={() => {
+            console.log('QR Code loading ended');
+          }}
+          onLoad={() => {
+            console.log('QR Code loaded successfully');
+          }}
           onError={handleError}
         />
-        {isLoading && (
-          <ActivityIndicator 
-            size="large" 
-            color="#FF6B00" 
-            style={styles.loader}
-          />
-        )}
         {error && (
           <View style={styles.errorOverlay}>
             <Text style={styles.errorText}>{error}</Text>
@@ -1124,9 +1119,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-  loader: {
-    position: 'absolute',
   },
   errorOverlay: {
     position: 'absolute',

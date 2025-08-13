@@ -24,7 +24,7 @@ const PrivacyScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={[styles.content, { height: WINDOW_HEIGHT - insets.top }]}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={() => navigation.goBack()}
@@ -176,7 +176,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
     backgroundColor: colors.background.primary,

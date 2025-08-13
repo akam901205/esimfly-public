@@ -12,13 +12,13 @@ import {
   Animated,
   Dimensions,
   Platform,
-  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../api/AuthContext';
 import * as esimApi from '../api/esimApi';
@@ -48,6 +48,7 @@ interface MenuItemProps {
 
 const ProfileScreen: React.FC = ({ navigation }: any) => {
   const auth = React.useContext(AuthContext);
+  const insets = useSafeAreaInsets();
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -214,25 +215,31 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
     return email ? email.charAt(0).toUpperCase() : 'U';
   };
 
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
       <LinearGradient
         colors={[colors.background.primary, colors.background.secondary]}
         style={styles.gradient}
       />
       
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary.DEFAULT}
-          />
-        }
-      >
-        <View style={styles.content}>
+      {/* Fixed safe area spacer - NOT scrollable */}
+      <View style={{ paddingTop: Math.max(insets.top, 10) }}>
+        
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 40, 60) }}
+          bounces={false}
+          overScrollMode="never"
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary.DEFAULT}
+            />
+          }
+        >
+          <View style={styles.content}>
           {/* Header Section */}
           <View style={styles.headerSection}>
             <LinearGradient
@@ -352,6 +359,12 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
                 color="#10b981"
               />
               <MenuItem
+                icon="cash-outline"
+                title="Refund Policy"
+                onPress={() => navigation.navigate('RefundPolicy')}
+                color="#f59e0b"
+              />
+              <MenuItem
                 icon="document-text-outline"
                 title="Terms of Service"
                 onPress={() => navigation.navigate('Terms')}
@@ -389,7 +402,9 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
           {/* Version Info */}
           <Text style={styles.versionText}>Version 1.0.0</Text>
         </View>
-      </ScrollView>
+        </ScrollView>
+        
+      </View>
     </SafeAreaView>
   );
 };
@@ -397,7 +412,7 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+    backgroundColor: '#F8F9FA',
   },
   gradient: {
     position: 'absolute',
@@ -630,6 +645,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.tertiary,
     marginTop: 24,
+    marginBottom: 20,
     fontFamily: 'Quicksand-Regular',
   },
 });

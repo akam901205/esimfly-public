@@ -30,17 +30,56 @@ export const transformEsimData = (esim: any): ESim => {
     plan_name: esim.package,
     status: esim.status === 'new' ? 'New' : (esim.rawStatus || esim.status),
     status_key: esim.status,
-    data_left: esim.dataTotal === 'Unlimited' ? 'Unlimited' : (esim.dataTotal - esim.dataUsed),
-    data_left_formatted: esim.dataTotal === 'Unlimited' ? 'Unlimited' : `${(esim.dataTotal - esim.dataUsed).toFixed(2)} GB`,
-    data_left_percentage: 100 - esim.dataPercentage,
-    total_volume: esim.dataTotal === 'Unlimited' ? 'Unlimited' : `${esim.dataTotal} GB`,
+    data_left: (() => {
+      // For inactive eSIMs, show Unlimited until activation
+      if ((esim.status === 'new' || esim.status === 'inactive' || esim.status === 'not_active') && esim.dataTotal === 0) {
+        return 'Unlimited';
+      }
+      return esim.dataTotal === 'Unlimited' ? 'Unlimited' : (esim.dataTotal - esim.dataUsed);
+    })(),
+    data_left_formatted: (() => {
+      // For inactive eSIMs, show Unlimited until activation
+      if ((esim.status === 'new' || esim.status === 'inactive' || esim.status === 'not_active') && esim.dataTotal === 0) {
+        return 'Unlimited';
+      }
+      return esim.dataTotal === 'Unlimited' ? 'Unlimited' : `${(esim.dataTotal - esim.dataUsed).toFixed(2)} GB`;
+    })(),
+    data_left_percentage: (() => {
+      // For inactive eSIMs, set percentage to 100
+      if ((esim.status === 'new' || esim.status === 'inactive' || esim.status === 'not_active') && esim.dataTotal === 0) {
+        return 100;
+      }
+      return 100 - esim.dataPercentage;
+    })(),
+    total_volume: (() => {
+      // For inactive eSIMs, show Unlimited until activation
+      if ((esim.status === 'new' || esim.status === 'inactive' || esim.status === 'not_active') && esim.dataTotal === 0) {
+        return 'Unlimited';
+      }
+      return esim.dataTotal === 'Unlimited' ? 'Unlimited' : `${esim.dataTotal} GB`;
+    })(),
+    package_duration_days: esim.packageDurationDays || null,
+    created_at: esim.createdAt || null,
     time_left: esim.expires && esim.expires !== 'N/A' ? 
       (() => {
         const expiryDate = new Date(esim.expires);
         const now = new Date();
-        const diffTime = expiryDate.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays > 0 ? `${diffDays} days` : 'Expired';
+        const diffMs = expiryDate.getTime() - now.getTime();
+        
+        if (diffMs <= 0) return 'Expired';
+        
+        // Calculate days, hours, minutes
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        // Format the time string
+        let timeStr = '';
+        if (days > 0) timeStr += `${days}d `;
+        if (hours > 0 || days > 0) timeStr += `${hours}h `;
+        if (minutes > 0 || hours > 0 || days > 0) timeStr += `${minutes}m`;
+        
+        return timeStr.trim() || '0m';
       })() : 'N/A',
     activated_before: 'N/A',
     iccid: esim.iccid,
@@ -67,7 +106,7 @@ export const transformEsimData = (esim: any): ESim => {
       return esim.countries && esim.countries.length > 0 ? esim.countries[0] : 'International';
     })(),
     package_code: esim.provider || '',
-    unlimited: esim.dataTotal === 'Unlimited',
+    unlimited: esim.dataTotal === 'Unlimited' || ((esim.status === 'new' || esim.status === 'inactive' || esim.status === 'not_active') && esim.dataTotal === 0),
     assigned_user: null
   };
 };

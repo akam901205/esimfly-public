@@ -389,8 +389,7 @@ export const isEuropeanPackage = (pkg) => {
     'africa', 
     'global', 
     'china', 
-    'middle east',
-    'gulf'
+    'middle east'
   ];
 
   return !otherRegions.some(region => pkgName.includes(region));

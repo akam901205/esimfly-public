@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as DocumentPicker from 'expo-document-picker';
@@ -45,6 +46,7 @@ interface SelectedFile {
 
 const SupportScreen: React.FC = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'faq' | 'contact'>('faq');
   const [searchQuery, setSearchQuery] = useState('');
@@ -285,7 +287,7 @@ const SupportScreen: React.FC = () => {
       />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
         <TouchableOpacity
           style={styles.headerIcon}
           onPress={() => {
@@ -335,7 +337,11 @@ const SupportScreen: React.FC = () => {
       </View>
 
       {activeTab === 'faq' ? (
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 60 }}
+        >
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color={colors.text.secondary} />
@@ -409,7 +415,10 @@ const SupportScreen: React.FC = () => {
           style={styles.content}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          >
             <View style={styles.contactForm}>
               <Text style={styles.formTitle}>Send us a message</Text>
               <Text style={styles.formDescription}>

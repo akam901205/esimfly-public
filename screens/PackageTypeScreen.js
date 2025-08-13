@@ -7,19 +7,22 @@ import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PackageTypeScreen = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute();
   const { country } = route.params;
   const [hasUnlimited, setHasUnlimited] = useState(false);
+  const [hasVoiceSms, setHasVoiceSms] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkUnlimitedAvailability();
+    checkPackageAvailability();
   }, []);
 
-  const checkUnlimitedAvailability = async () => {
+  const checkPackageAvailability = async () => {
     try {
       console.log(`[DEBUG] Checking plans for country: ${country}`);
       
@@ -72,6 +75,27 @@ const PackageTypeScreen = () => {
 
       console.log(`[DEBUG] Has unlimited packages: ${unlimitedExists}`);
       setHasUnlimited(unlimitedExists);
+      
+      // Check for voice/SMS packages
+      const voiceSmsExists = filteredPackages.some(pkg => {
+        const hasVoiceOrSms = (pkg.voiceMinutes && pkg.voiceMinutes > 0) || 
+                              (pkg.smsCount && pkg.smsCount > 0);
+        
+        if (hasVoiceOrSms) {
+          console.log('[DEBUG] Found voice/SMS package:', {
+            name: pkg.name,
+            provider: pkg.provider,
+            voiceMinutes: pkg.voiceMinutes,
+            smsCount: pkg.smsCount
+          });
+        }
+        
+        return hasVoiceOrSms;
+      });
+      
+      console.log(`[DEBUG] Has voice/SMS packages: ${voiceSmsExists}`);
+      setHasVoiceSms(voiceSmsExists);
+      
       setLoading(false);
 
     } catch (error) {
@@ -87,7 +111,7 @@ const PackageTypeScreen = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
             <Ionicons name="arrow-back" size={24} color="#374151" />
           </TouchableOpacity>
@@ -96,7 +120,7 @@ const PackageTypeScreen = () => {
             <Ionicons name="location-outline" size={24} color="#374151" />
           </View>
         </View>
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
           <ActivityIndicator size="large" color="#FF6B00" />
         </View>
       </SafeAreaView>
@@ -109,7 +133,7 @@ const PackageTypeScreen = () => {
         colors={['#F8F9FA', '#F3F4F6']}
         style={styles.backgroundGradient}
       />
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
           <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
@@ -119,7 +143,7 @@ const PackageTypeScreen = () => {
         </View>
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
         <LottieView
           source={require('../assets/Animation - datapacke.json')}
           autoPlay
@@ -162,6 +186,25 @@ const PackageTypeScreen = () => {
             </View>
           </TouchableOpacity>
         )}
+        
+        {hasVoiceSms && (
+          <TouchableOpacity
+            style={[styles.buttonCard, { marginTop: 16 }]}
+            onPress={() => navigateToPackages('voice')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.buttonContent}>
+              <View style={styles.buttonIconContainer}>
+                <Ionicons name="call" size={24} color="#FF6B00" />
+              </View>
+              <View style={styles.buttonTextContainer}>
+                <Text style={styles.buttonTitle}>Voice & SMS</Text>
+                <Text style={styles.buttonSubtitle}>Plans with calling and texting</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -183,7 +226,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
   },
@@ -209,7 +253,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   lottieAnimation: {
     width: 200,

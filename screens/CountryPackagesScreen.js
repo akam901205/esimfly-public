@@ -18,6 +18,7 @@ import { countries, FlagIcon } from '../utils/countryData';
 import NetworkModal from '../components/NetworkModalSingelCountry';
 import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const packageColors = [['#f4f4f5', '#f4f4f5']];
 
@@ -27,6 +28,7 @@ const ICON_COLORS = {
 };
 
 const CountryPackagesScreen = () => {
+  const insets = useSafeAreaInsets();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -160,70 +162,7 @@ const handleNetworkPress = (packageData) => {
     return Array.isArray(plan.networks) ? plan.networks.length : 0;
   };
 	
-const filterOptimalPackages = (packages) => {
-  // Separate unlimited and regular packages
-  const unlimitedPackages = packages.filter(pkg => 
-    pkg.data === 'Unlimited' || pkg.data === Infinity || pkg.unlimited
-  );
-  
-  const regularPackages = packages.filter(pkg => 
-    pkg.data !== 'Unlimited' && pkg.data !== Infinity && !pkg.unlimited
-  );
-
-  // Only apply optimization to regular packages
-  const optimizedRegularPackages = regularPackages.filter(currentPkg => {
-    return !regularPackages.some(otherPkg => {
-      if (currentPkg === otherPkg) return false;
-
-      const currentPrice = parseFloat(currentPkg.price);
-      const otherPrice = parseFloat(otherPkg.price);
-      const currentData = parseFloat(currentPkg.data);
-      const otherData = parseFloat(otherPkg.data);
-      
-      // Cross-data amount comparison
-      if (otherData > currentData) {
-        // Remove current package if there's another with more data for same/less price
-        if (otherPrice <= currentPrice && otherPkg.duration >= currentPkg.duration) {
-          return true;
-        }
-
-        // Remove if price difference is minimal (within 10%) but data difference is significant (>20%)
-        const priceDiffPercentage = (otherPrice - currentPrice) / currentPrice;
-        const dataDiffPercentage = (otherData - currentData) / currentData;
-        
-        if (priceDiffPercentage <= 0.1 && dataDiffPercentage > 0.2 && 
-            otherPkg.duration >= currentPkg.duration) {
-          return true;
-        }
-      }
-
-
-      return false;
-    });
-  });
-
-  // For unlimited packages, only filter within unlimited packages for better duration/price
-  const optimizedUnlimitedPackages = unlimitedPackages.filter(currentPkg => {
-    return !unlimitedPackages.some(otherPkg => {
-      if (currentPkg === otherPkg) return false;
-
-      const currentPrice = parseFloat(currentPkg.price);
-      const otherPrice = parseFloat(otherPkg.price);
-      
-      // Only compare unlimited packages with same or better duration
-      if (otherPkg.duration >= currentPkg.duration) {
-        // Remove if other package is cheaper or same price with longer duration
-        return otherPrice < currentPrice || 
-               (otherPrice === currentPrice && otherPkg.duration > currentPkg.duration);
-      }
-      
-      return false;
-    });
-  });
-
-  // Combine optimized packages
-  return [...optimizedUnlimitedPackages, ...optimizedRegularPackages];
-};
+// Removed filterOptimalPackages function - API handles all filtering
 
 
  const fetchPackages = useCallback(async () => {
@@ -312,126 +251,31 @@ const filterOptimalPackages = (packages) => {
         };
       });
 
-      // Filter out packages with less than 1GB data and 1-day packages
-      allPackages = allPackages.filter(pkg => 
-        (pkg.unlimited || pkg.data >= 1) && pkg.duration > 1
-      );
+      // Trust the API - it already filters out 1-day and <1GB plans (except unlimited)
+      // and only returns packages for the requested country
+      const countryFilteredPackages = allPackages;
 
-      // Filter by country
-      const countryFilteredPackages = allPackages.filter(pkg => {
-        const searchCountry = country.toLowerCase();
-        const pkgRegion = (pkg.region || '').toLowerCase();
-        const pkgName = (pkg.name || '').toLowerCase();
-        
-        return pkgRegion.includes(searchCountry) || 
-               pkgName.includes(searchCountry);
-      });
-
-    // First pass: Group packages by data and duration
-    const packageGroups = new Map();
-    
-    countryFilteredPackages.forEach(pkg => {
-      const key = `${pkg.data}-${pkg.duration}`;
-      if (!packageGroups.has(key)) {
-        packageGroups.set(key, []);
-      }
-      packageGroups.get(key).push(pkg);
-    });
-
-    // Second pass: For each group, keep only the best package
-    let optimizedPackages = [];
-    packageGroups.forEach((packages, key) => {
-      // Sort packages in the group by price (ascending) and provider priority
-      const sortedPackages = packages.sort((a, b) => {
-        if (a.price !== b.price) {
-          return a.price - b.price; // Cheaper price first
-        }
-        // If prices are equal, sort by provider priority
-        const providerPriority = {
-          'esimaccess': 3,
-          'airalo': 2,
-          'esimgo': 1
-        };
-        return providerPriority[b.provider] - providerPriority[a.provider];
-      });
-      
-      // Keep only the first (best) package from each group
-      optimizedPackages.push(sortedPackages[0]);
-    });
-
-    // Third pass: Remove suboptimal packages
-   // Third pass: Remove suboptimal packages with separate logic for unlimited packages
-optimizedPackages = optimizedPackages.filter(currentPkg => {
-  return !optimizedPackages.some(otherPkg => {
-    if (currentPkg === otherPkg) return false;
-
-    // If current package is unlimited, use simpler filtering logic
-    if (currentPkg.unlimited) {
-      // Only filter out if there's another unlimited package with:
-      // 1. Same duration but lower price, or
-      // 2. Longer duration but same or lower price
-      if (otherPkg.unlimited) {
-        if (currentPkg.duration === otherPkg.duration) {
-          return otherPkg.price < currentPkg.price;
-        }
-        if (otherPkg.duration > currentPkg.duration) {
-          return otherPkg.price <= currentPkg.price;
-        }
-      }
-      return false;
-    }
-
-    // Regular package filtering logic
-    if (!currentPkg.unlimited) {
-
-      // If other package has more data, same or longer duration, but same or lower price
-      if (otherPkg.data > currentPkg.data && 
-          otherPkg.duration >= currentPkg.duration && 
-          otherPkg.price <= currentPkg.price) {
-        return true;
-      }
-
-      // NEW: If packages have same data amount, filter out shorter duration with higher price
-      if (Math.abs(otherPkg.data - currentPkg.data) < 0.1) { // Same data amount (with small tolerance)
-        // If current package has shorter duration but costs more or same
-        if (currentPkg.duration < otherPkg.duration && currentPkg.price >= otherPkg.price) {
-          console.log(`[DEBUG] Filtering out: ${currentPkg.name} (${currentPkg.data}GB, ${currentPkg.duration} days, $${currentPkg.price}) because ${otherPkg.name} (${otherPkg.data}GB, ${otherPkg.duration} days, $${otherPkg.price}) is better`);
-          return true;
-        }
-      }
-
-      // Check for disproportionate price increases (same duration)
-      if (currentPkg.duration === otherPkg.duration && otherPkg.data < currentPkg.data) {
-        const dataIncreaseFactor = currentPkg.data / otherPkg.data;
-        const priceIncreaseFactor = currentPkg.price / otherPkg.price;
-        
-        // Calculate price per GB for both packages
-        const currentPricePerGB = currentPkg.price / currentPkg.data;
-        const otherPricePerGB = otherPkg.price / otherPkg.data;
-        
-        // If bigger package has higher price per GB, it's bad value
-        if (currentPricePerGB > otherPricePerGB * 1.1) { // Allow only 10% tolerance
-          console.log(`[DEBUG] Filtering out bad value package: ${currentPkg.name} (${currentPkg.data}GB at $${currentPricePerGB.toFixed(2)}/GB) vs ${otherPkg.name} (${otherPkg.data}GB at $${otherPricePerGB.toFixed(2)}/GB)`);
-          return true;
-        }
-        
-        // Also filter if price increase is more than data increase (with small tolerance)
-        if (priceIncreaseFactor > dataIncreaseFactor * 1.05) { // Only 5% tolerance
-          console.log(`[DEBUG] Filtering out disproportionate price: ${currentPkg.name} (${currentPkg.data}GB, $${currentPkg.price}) - ${priceIncreaseFactor.toFixed(2)}x price for ${dataIncreaseFactor.toFixed(2)}x data`);
-          return true;
-        }
-      }
-
-    }
-
-    return false;
-  });
-});
+    // Trust the API to provide optimized packages - no client-side filtering needed
+    // The API already applies plan display rules and optimization
+    let optimizedPackages = countryFilteredPackages;
 
     // Filter by package type
-    const typeFilteredPackages = packageType === 'unlimited' 
-      ? optimizedPackages.filter(pkg => pkg.unlimited)
-      : optimizedPackages.filter(pkg => !pkg.unlimited);
+    let typeFilteredPackages;
+    if (packageType === 'unlimited') {
+      typeFilteredPackages = optimizedPackages.filter(pkg => pkg.unlimited);
+    } else if (packageType === 'voice') {
+      typeFilteredPackages = optimizedPackages.filter(pkg => 
+        (pkg.voiceMinutes && pkg.voiceMinutes > 0) || 
+        (pkg.smsCount && pkg.smsCount > 0)
+      );
+    } else {
+      // Regular packages - exclude unlimited and voice/SMS packages
+      typeFilteredPackages = optimizedPackages.filter(pkg => 
+        !pkg.unlimited && 
+        !(pkg.voiceMinutes && pkg.voiceMinutes > 0) && 
+        !(pkg.smsCount && pkg.smsCount > 0)
+      );
+    }
 
     // Final sorting
     const sortedPackages = typeFilteredPackages.sort((a, b) => {
@@ -464,7 +308,7 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
   }, [fetchPackages]);
 
   const renderHeader = () => (
-  <View style={styles.header}>
+  <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
     <TouchableOpacity 
       onPress={() => navigation.goBack()} 
       style={styles.headerIcon}
@@ -475,7 +319,9 @@ optimizedPackages = optimizedPackages.filter(currentPkg => {
         color="#374151" 
       />
     </TouchableOpacity>
-    <Text style={styles.headerTitle}>{country} Plans</Text>
+    <Text style={styles.headerTitle}>
+      {country} {packageType === 'voice' ? 'Voice & SMS' : packageType === 'unlimited' ? 'Unlimited' : 'Regular'} Plans
+    </Text>
     <View style={styles.headerIcon}>
       <Ionicons 
         name="pricetag-outline" 
@@ -546,7 +392,7 @@ const renderPackageItem = ({ item, index }) => {
         <View style={styles.packageHeader}>
           <View style={styles.countryInfo}>
             <FlagIcon countryCode={countryCode} size={24} />
-            <Text style={styles.countryName}>{country}</Text>
+            <Text style={styles.countryName} numberOfLines={1} ellipsizeMode="tail">{country}</Text>
           </View>
           {highestSpeed && (
             <View style={[styles.speedContainer, { backgroundColor: `${ICON_COLORS.speed}15` }]}>
@@ -617,7 +463,7 @@ const renderPackageItem = ({ item, index }) => {
 	  data={packages}
 	  renderItem={renderPackageItem}
 	  keyExtractor={(item, index) => `${item.id}-${index}`}
-	  contentContainerStyle={styles.listContainer}
+	  contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom + 20, Platform.OS === 'ios' ? 80 : 60) }]}
 	  ListEmptyComponent={() => (
 		<View style={styles.emptyStateContainer}>
 		  {loading ? (
@@ -658,7 +504,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
     borderBottomColor: '#E5E7EB',
@@ -683,7 +530,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 80 : 60,
   },
   listFooter: {
     height: 20,
@@ -713,12 +559,15 @@ packageItem: {
   countryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
   },
   countryName: {
     marginLeft: 8,
     fontSize: 18,
     color: colors.text.primary,
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    flex: 1,
   },
   speedContainer: {
     flexDirection: 'row',

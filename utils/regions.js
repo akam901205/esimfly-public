@@ -7,7 +7,6 @@ const AsiaIcon = require('../assets/flags/region/asia.png');
 const BalkansIcon = require('../assets/flags/region/balkans.png');
 const CaribbeanIcon = require('../assets/flags/region/caribbean.png');
 const EuropeIcon = require('../assets/flags/region/europe.png');
-const GulfRegionIcon = require('../assets/flags/region/gulf-region.png');
 const MiddleEastIcon = require('../assets/flags/region/middle-east.png');
 const NorthAmericaIcon = require('../assets/flags/region/north-america.png');
 const OceaniaIcon = require('../assets/flags/region/oceania.png');
@@ -28,7 +27,6 @@ const AsiaComponent = createRegionComponent(AsiaIcon);
 const BalkansComponent = createRegionComponent(BalkansIcon);
 const CaribbeanComponent = createRegionComponent(CaribbeanIcon);
 const EuropeComponent = createRegionComponent(EuropeIcon);
-const GulfRegionComponent = createRegionComponent(GulfRegionIcon);
 const MiddleEastComponent = createRegionComponent(MiddleEastIcon);
 const NorthAmericaComponent = createRegionComponent(NorthAmericaIcon);
 const OceaniaComponent = createRegionComponent(OceaniaIcon);
@@ -40,7 +38,6 @@ export const regions = [
   { id: "balkans", name: "Balkans", image: BalkansComponent },
   { id: "caribbean", name: "Caribbean", image: CaribbeanComponent },
   { id: "europe", name: "Europe", image: EuropeComponent },
-  { id: "gulf-region", name: "Gulf Region", image: GulfRegionComponent },
   { id: "latin-america", name: "Latin America", image: LatinAmericaComponent },
   { id: "middle-east", name: "Middle East", image: MiddleEastComponent },
   { id: "north-america", name: "North America", image: NorthAmericaComponent },

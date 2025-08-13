@@ -14,6 +14,7 @@ import {
   StatusBar,
   TextInput
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -509,6 +510,7 @@ const GuidesScreen = () => {
   const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const insets = useSafeAreaInsets();
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -629,7 +631,7 @@ const GuidesScreen = () => {
         style={styles.backgroundGradient}
       />
       
-      <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.header, { opacity: fadeAnim, paddingTop: Math.max(insets.top, 20) }]}>
         <Text style={styles.title}>eSIM Guide</Text>
         <Text style={styles.subtitle}>Everything you need to know</Text>
         
@@ -669,7 +671,7 @@ const GuidesScreen = () => {
         data={filteredGuides}
         renderItem={renderGuideItem}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom, 100) }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -737,6 +739,7 @@ const GuidesScreen = () => {
 
             <ScrollView 
               style={styles.modalContent}
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
               showsVerticalScrollIndicator={false}
               bounces={true}
             >
@@ -780,7 +783,6 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   header: {
-    paddingTop: 20,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },

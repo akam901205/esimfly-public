@@ -15,6 +15,7 @@ export const useESimData = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMounted = useRef(true);
+  const selectedEsimRef = useRef<ESim | null>(null);
 
   useEffect(() => {
     return () => {
@@ -22,7 +23,12 @@ export const useESimData = () => {
     };
   }, []);
 
-  const fetchEsimData = useCallback(async (showLoading = true) => {
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedEsimRef.current = selectedEsim;
+  }, [selectedEsim]);
+
+  const fetchEsimData = useCallback(async (showLoading = true, preserveSelection = false) => {
     if (showLoading) {
       setLoading(true);
     }
@@ -46,7 +52,21 @@ export const useESimData = () => {
         if (transformedEsims.length > 0) {
           const initialVisibleEsims = transformedEsims.slice(0, 5);
           setVisibleEsims(initialVisibleEsims);
-          setSelectedEsim(initialVisibleEsims[0]);
+          
+          // If preserveSelection is true and we have a selected eSIM, try to keep it selected
+          if (preserveSelection && selectedEsimRef.current) {
+            // Find the same eSIM in the new data by ID
+            const updatedSelectedEsim = transformedEsims.find(esim => esim.id === selectedEsimRef.current!.id);
+            if (updatedSelectedEsim) {
+              setSelectedEsim(updatedSelectedEsim);
+            } else {
+              // If the previously selected eSIM is not found, select the first one
+              setSelectedEsim(initialVisibleEsims[0]);
+            }
+          } else {
+            // Default behavior: select the first eSIM
+            setSelectedEsim(initialVisibleEsims[0]);
+          }
         } else {
           setVisibleEsims([]);
           setSelectedEsim(null);
@@ -90,7 +110,7 @@ export const useESimData = () => {
   }, []);
 
   const refreshData = useCallback(() => {
-    return fetchEsimData(true);
+    return fetchEsimData(true, true); // Pass true to preserve selection
   }, [fetchEsimData]);
 
   return {

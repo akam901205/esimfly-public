@@ -12,6 +12,7 @@ import {
   Dimensions,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { AuthContext } from '../../api/AuthContext';
@@ -41,6 +42,7 @@ const themeColors = {
 
 export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onTopUpSelect }) => {
   const { userEmail } = useContext(AuthContext);
+  const insets = useSafeAreaInsets();
   const [topUpPlans, setTopUpPlans] = useState<AddOnPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -278,7 +280,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
       onRequestClose={onClose}
     >
       <View style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-        <View style={[styles.modalContent, { backgroundColor: themeColors.background }]}>
+        <View style={[styles.modalContent, { backgroundColor: themeColors.background, paddingBottom: Math.max(insets.bottom, 20) }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: themeColors.text }]}>
               Top-Up Plans

@@ -114,20 +114,10 @@ export const regionCoverageData: RegionCoverage[] = [
     ]
   },
   {
-    name: 'Gulf Region',
-    countries: [
-      'Bahrain',
-      'Iraq',
-      'Kuwait',
-      'Qatar',
-      'Saudi Arabia',
-      'United Arab Emirates'
-    ]
-  },
-  {
     name: 'Middle East',
     countries: [
       'Egypt',
+      'Iraq',
       'Israel',
       'Jordan',
       'Kuwait',

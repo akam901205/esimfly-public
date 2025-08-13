@@ -24,7 +24,7 @@ const TermsScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={[styles.content, { height: WINDOW_HEIGHT - insets.top }]}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={() => navigation.goBack()}
@@ -49,7 +49,7 @@ const TermsScreen = () => {
         >
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Last updated: April 20, 2025
+              Last updated: June 30, 2025
             </Text>
           </View>
 
@@ -113,6 +113,19 @@ const TermsScreen = () => {
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Payments and Refunds</Text>
+            <Text style={styles.text}>
+              All payments are processed through secure third-party payment processors. By making a purchase, you agree to the payment terms of our payment processors and acknowledge that we incur non-refundable processing fees on each transaction.{'\n\n'}
+              Refunds are governed by our Refund Policy, which is incorporated into these Terms by reference. Where permitted by applicable law, refunds may be subject to deductions for payment processing costs and administrative fees. In jurisdictions where such deductions are not permitted (including but not limited to the European Union, United Kingdom, and Australia), full refunds will be provided as required by law.{'\n\n'}
+              By purchasing our services, you acknowledge that:{'\n'}
+              • eSIMs are digital products that cannot be returned once activated{'\n'}
+              • Refunds are only available for unactivated eSIMs within the timeframe specified in our Refund Policy{'\n'}
+              • Payment processing fees incurred by us are non-refundable{'\n'}
+              • Where legally permitted, administrative fees may apply to refund processing
+            </Text>
+          </View>
+
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Termination</Text>
             <Text style={styles.text}>
               We may terminate or suspend your access to our services immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach these Terms. Upon termination, your right to use our services will immediately cease.
@@ -161,7 +174,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
     backgroundColor: colors.background.primary,

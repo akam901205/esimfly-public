@@ -4,7 +4,7 @@ import {
   Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback,
   Keyboard, StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signIn as apiSignIn } from '../api/authApi';
 import { signInWithGoogle, signInWithApple } from '../api/firebaseauth';
 import { AuthContext } from '../api/AuthContext';
@@ -18,6 +18,7 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const { signIn } = useContext(AuthContext);
 
@@ -80,7 +81,7 @@ export default function LoginScreen({ navigation }) {
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <ScrollView
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 20) }]}
               bounces={false}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"

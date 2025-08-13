@@ -2,7 +2,7 @@ export default {
   expo: {
     name: 'eSimFly',
     slug: 'esimfly-public',
-    version: '1.0.2',
+    version: '1.0.4',
     orientation: 'portrait',
     icon: './assets/icon.png',
     scheme: 'esimfly',
@@ -28,11 +28,17 @@ export default {
     updates: {
       url: 'https://u.expo.dev/a60875e0-8d9c-43f8-8f0f-ac4605f91fb1'
     },
-    runtimeVersion: "2.0.0",
+    runtimeVersion: {
+      policy: "sdkVersion"
+    },
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'net.esimfly.user.app',
       googleServicesFile: './GoogleService-Info.plist',
+      associatedDomains: [
+        'applinks:esimfly.net',
+        'applinks:www.esimfly.net'
+      ],
       config: {
         googleSignIn: {
           reservedClientId: 'com.googleusercontent.apps.1011374155272-a494qa47ev6t5ngn5n8a0p08mbknp7eu',
@@ -75,6 +81,34 @@ export default {
       },
       package: 'net.esimfly.user.app',
       googleServicesFile: './google-services.json',
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: 'esimfly.net',
+              pathPrefix: '/'
+            },
+            {
+              scheme: 'https',
+              host: 'www.esimfly.net',
+              pathPrefix: '/'
+            }
+          ],
+          category: ['BROWSABLE', 'DEFAULT']
+        },
+        {
+          action: 'VIEW',
+          data: [
+            {
+              scheme: 'esimfly'
+            }
+          ],
+          category: ['BROWSABLE', 'DEFAULT']
+        }
+      ],
       permissions: [
         'INTERNET',
         'CAMERA',
@@ -118,7 +152,7 @@ export default {
         {
           android: {
             compileSdkVersion: 35,
-            targetSdkVersion: 34,
+            targetSdkVersion: 35,
             buildToolsVersion: '35.0.0',
             packagingOptions: {
               pickFirst: ['**/libc++_shared.so', '**/libjsc.so']
