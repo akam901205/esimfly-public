@@ -795,7 +795,7 @@ const MyESimsScreen = () => {
 
       <ScrollView 
         style={styles.content}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 104, 124) }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
