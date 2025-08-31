@@ -25,6 +25,7 @@ import * as esimApi from '../api/esimApi';
 import { logout } from '../api/authApi';
 import { colors } from '../theme/colors';
 import notificationService from '../services/notificationService';
+import { formatBalance, SupportedCurrency } from '../utils/currencyUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +34,11 @@ interface BalanceResponse {
   data?: {
     balance: number;
     currency: string;
+    currencyBalances?: Array<{
+      currency: string;
+      balance: number;
+      isPrimary: boolean;
+    }>;
   };
 }
 
@@ -202,13 +208,8 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
     );
   };
 
-  const formatBalance = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+  const formatUserBalance = (amount: number, currency: string) => {
+    return formatBalance(amount, (currency as SupportedCurrency) || 'USD');
   };
 
   const getInitials = (email: string) => {
@@ -273,7 +274,7 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
                     </View>
                   ) : (
                     <Text style={styles.balanceAmount}>
-                      {balance?.data ? formatBalance(balance.data.balance, balance.data.currency) : '$0.00'}
+                      {balance?.data ? formatUserBalance(balance.data.balance, balance.data.currency) : '$0.00'}
                     </Text>
                   )}
                 </View>

@@ -29,6 +29,7 @@ import {
 import { normalizeCountryName } from '../utils/countryNormalizationUtils';
 import { newApi } from '../api/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion';
 
 const ICON_COLORS = {
   network: '#1F2937',
@@ -46,6 +47,7 @@ const RegionalPackagesScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { region, packageType } = route.params;
+  const { formatPrice, userCurrency } = useCurrencyConversion();
 
   // Local formatLocationNetworkList function - use only API data
   const formatLocationNetworkList = (packageData) => {
@@ -419,7 +421,7 @@ const renderPackageItem = ({ item, index }) => {
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.priceText}>
-                ${parseFloat(item.price).toFixed(2)}
+                {formatPrice(parseFloat(item.price))}
               </Text>
               <TouchableOpacity 
                 onPress={navigateToDetails}

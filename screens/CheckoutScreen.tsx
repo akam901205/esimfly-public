@@ -26,6 +26,8 @@ import esimApi from '../api/esimApi';
 import { EventEmitter } from '../utils/EventEmitter';
 import { colors } from '../theme/colors';
 import { useToast } from '../components/ToastNotification';
+import { formatBalance, SupportedCurrency } from '../utils/currencyUtils';
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -42,6 +44,7 @@ const CheckoutScreenV2 = () => {
   const [paymentMethod, setPaymentMethod] = useState(null);
   const auth = useContext(AuthContext);
   const [verifiedPromoDetails, setVerifiedPromoDetails] = useState(route.params.promoDetails);
+  const { userCurrency, formatPrice, formatActualBalance, loading: currencyLoading } = useCurrencyConversion();
   
   // Refs for auto-scroll
   const scrollViewRef = useRef(null);
@@ -71,7 +74,7 @@ const CheckoutScreenV2 = () => {
   const getFormattedBalance = () => {
     if (isLoadingBalance) return 'Loading...';
     if (!balance?.balance) return '$0.00';
-    return `$${Number(balance.balance).toFixed(2)}`;
+    return formatActualBalance(balance.balance, balance.currency || 'USD');
   };
 
   const formatDuration = (duration) => {
@@ -349,7 +352,7 @@ const CheckoutScreenV2 = () => {
     if (orderResponse.data?.errorCode === 'INSUFFICIENT_BALANCE') {
       Alert.alert(
         'Insufficient Balance',
-        `You need to add $${orderResponse.data.needToLoad?.toFixed(2)} to complete this purchase.`,
+        `You need to add ${formatPrice(orderResponse.data.needToLoad || 0)} to complete this purchase.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { 
@@ -536,21 +539,23 @@ const CheckoutScreenV2 = () => {
               <View style={styles.priceContainer}>
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabel}>Subtotal</Text>
-                  <Text style={styles.priceValue}>${packageData.price.toFixed(2)}</Text>
+                  <Text style={styles.priceValue}>{formatPrice(packageData.price)}</Text>
                 </View>
                 {verifiedPromoDetails && (
                   <View style={styles.priceRow}>
                     <Text style={styles.discountLabel}>Discount</Text>
-                    <Text style={styles.discountValue}>-${verifiedPromoDetails.discountAmount.toFixed(2)}</Text>
+                    <Text style={styles.discountValue}>-{formatPrice(verifiedPromoDetails.discountAmount)}</Text>
                   </View>
                 )}
                 <View style={styles.totalDivider} />
                 <View style={styles.priceRow}>
                   <Text style={styles.totalLabel}>Total</Text>
                   <Text style={styles.totalValue}>
-                    ${(verifiedPromoDetails ? 
-                      packageData.price - verifiedPromoDetails.discountAmount : 
-                      packageData.price).toFixed(2)}
+                    {formatPrice(
+                      verifiedPromoDetails ? 
+                        packageData.price - verifiedPromoDetails.discountAmount : 
+                        packageData.price
+                    )}
                   </Text>
                 </View>
               </View>
@@ -767,9 +772,11 @@ const CheckoutScreenV2 = () => {
                     <View>
                       <Text style={styles.payButtonLabel}>Total Amount</Text>
                       <Text style={styles.payButtonPrice}>
-                        ${(verifiedPromoDetails ? 
-                          packageData.price - verifiedPromoDetails.discountAmount : 
-                          packageData.price).toFixed(2)}
+                        {formatPrice(
+                          verifiedPromoDetails ? 
+                            packageData.price - verifiedPromoDetails.discountAmount : 
+                            packageData.price
+                        )}
                       </Text>
                     </View>
                   </View>

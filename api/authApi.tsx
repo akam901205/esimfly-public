@@ -1,7 +1,7 @@
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://esimfly.net/api/auth';
+const API_URL = 'https://dev.esimfly.net/api/auth';
 
 interface AuthResponse {
   success: boolean;

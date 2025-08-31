@@ -19,6 +19,7 @@ import { colors } from '../theme/colors'; //
 import { newApi } from '../api/api';
 import { getNetworks, formatLocationNetworkList } from '../utils/PackageFilters';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion';
 
 const ICON_COLORS = {
   network: '#1F2937',
@@ -34,7 +35,7 @@ const GlobalPackagesScreen = () => {
   const navigation = useNavigation();
 const [networkModalVisible, setNetworkModalVisible] = useState(false);
 const [selectedPackage, setSelectedPackage] = useState(null);
-
+  const { formatPrice } = useCurrencyConversion();
   
   const { packageType, globalPackageName } = route.params || {};
 
@@ -434,7 +435,7 @@ const handleNetworkPress = () => {
             </TouchableOpacity>
           </View>
           <View style={styles.priceContainer}>
-            <Text style={styles.priceText}>${parseFloat(item.price).toFixed(2)}</Text>
+            <Text style={styles.priceText}>{formatPrice(parseFloat(item.price))}</Text>
             <TouchableOpacity 
               onPress={navigateToDetails}
               style={styles.buyButton}

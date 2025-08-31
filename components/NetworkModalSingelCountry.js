@@ -80,6 +80,10 @@ const NetworkModal = ({ visible, onClose, networks = [] }) => {
   const groupedNetworks = networks.reduce((acc, network) => {
     if (network.type === 'speed') {
       acc.speed = network.value;
+    } else if (network.type === 'voice') {
+      acc.voice = network.value;
+    } else if (network.type === 'sms') {
+      acc.sms = network.value;
     } else {
       if (!acc.operators) acc.operators = [];
       acc.operators.push(network);
@@ -177,7 +181,7 @@ const NetworkModal = ({ visible, onClose, networks = [] }) => {
                 end={{ x: 1, y: 1 }}
               >
                 <View style={styles.statIcon}>
-                  <Ionicons name="cellular" size={24} color="#F59E0B" />
+                  <Ionicons name="cellular" size={20} color="#F59E0B" />
                 </View>
                 <View style={styles.statContent}>
                   <Text style={styles.statNumber}>
@@ -194,15 +198,53 @@ const NetworkModal = ({ visible, onClose, networks = [] }) => {
                 end={{ x: 1, y: 1 }}
               >
                 <View style={styles.statIcon}>
-                  <Ionicons name="speedometer" size={24} color="#3B82F6" />
+                  <Ionicons name="speedometer" size={20} color="#3B82F6" />
                 </View>
                 <View style={styles.statContent}>
                   <Text style={styles.statNumber}>
-                    {groupedNetworks.speed || '5G/LTE'}
+                    {groupedNetworks.speed || '5G'}
                   </Text>
                   <Text style={styles.statLabel}>Speed</Text>
                 </View>
               </LinearGradient>
+
+              {groupedNetworks.voice && (
+                <LinearGradient
+                  colors={['#F0FDF4', '#DCFCE7']}
+                  style={styles.statCard}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.statIcon}>
+                    <Ionicons name="call" size={20} color="#16A34A" />
+                  </View>
+                  <View style={styles.statContent}>
+                    <Text style={styles.statNumber}>
+                      {groupedNetworks.voice}
+                    </Text>
+                    <Text style={styles.statLabel}>Minutes</Text>
+                  </View>
+                </LinearGradient>
+              )}
+
+              {groupedNetworks.sms && (
+                <LinearGradient
+                  colors={['#F3E8FF', '#E9D5FF']}
+                  style={styles.statCard}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.statIcon}>
+                    <Ionicons name="chatbubble" size={20} color="#9333EA" />
+                  </View>
+                  <View style={styles.statContent}>
+                    <Text style={styles.statNumber}>
+                      {groupedNetworks.sms}
+                    </Text>
+                    <Text style={styles.statLabel}>SMS</Text>
+                  </View>
+                </LinearGradient>
+              )}
             </View>
 
             {/* Network List */}
@@ -383,12 +425,29 @@ const getStyles = (dimensions) => StyleSheet.create({
   },
   quickStats: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: 20,
     marginBottom: 24,
     gap: 12,
+    justifyContent: 'space-between',
   },
   statCard: {
-    flex: 1,
+    width: '47%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  combinedStatCard: {
+    flex: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
@@ -402,29 +461,54 @@ const getStyles = (dimensions) => StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
+  combinedStatContent: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  combinedStatText: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
   statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   statContent: {
     flex: 1,
   },
   statNumber: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
-    marginTop: 2,
+    marginTop: 1,
   },
   networkList: {
     flex: 1,

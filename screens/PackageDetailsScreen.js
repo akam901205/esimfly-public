@@ -23,6 +23,7 @@ import esimApi from '../api/esimApi';
 import { newApi } from '../api/api';
 import { colors } from '../theme/colors';
 import { BlurView } from 'expo-blur';
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -41,6 +42,7 @@ const PackageDetailsScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params;
+  const { formatPrice, userCurrency } = useCurrencyConversion();
   const packageData = params.package;
   const country = params.country;
   
@@ -67,7 +69,7 @@ const PackageDetailsScreen = () => {
         
         Alert.alert(
           'Success',
-          `Promo code applied! Discount: $${discountAmount.toFixed(2)}`
+          `Promo code applied! Discount: ${formatPrice(discountAmount)}`
         );
       } else {
         setVerifiedPromoCode('');
@@ -309,7 +311,10 @@ const PackageDetailsScreen = () => {
                 </LinearGradient>
               </View>
               <Text style={styles.sectionLabel}>Data</Text>
-              <Text style={styles.dataAmount}>
+              <Text style={[
+                styles.dataAmount,
+                userCurrency === 'IQD' && styles.dataAmountIQD
+              ]}>
                 {packageData.data === 'Unlimited' || 
                  packageData.data === 'infinity' || 
                  packageData.data === '∞' || 
@@ -332,11 +337,14 @@ const PackageDetailsScreen = () => {
               <Text style={styles.sectionLabel}>Price</Text>
               {discountedPrice !== null ? (
                 <View style={styles.priceContainer}>
-                  <Text style={styles.priceAmount}>
-                    ${discountedPrice.toFixed(2)}
+                  <Text style={[
+                    styles.priceAmount,
+                    userCurrency === 'IQD' && styles.priceAmountIQD
+                  ]}>
+                    {formatPrice(discountedPrice)}
                   </Text>
                   <Text style={styles.originalPrice}>
-                    ${originalPrice.toFixed(2)}
+                    {formatPrice(originalPrice)}
                   </Text>
                   <View style={styles.discountBadge}>
                     <Text style={styles.discountText}>
@@ -345,8 +353,11 @@ const PackageDetailsScreen = () => {
                   </View>
                 </View>
               ) : (
-                <Text style={styles.priceAmount}>
-                  ${originalPrice?.toFixed(2)}
+                <Text style={[
+                  styles.priceAmount,
+                  userCurrency === 'IQD' && styles.priceAmountIQD
+                ]}>
+                  {formatPrice(originalPrice || 0)}
                 </Text>
               )}
             </View>
@@ -422,7 +433,7 @@ const PackageDetailsScreen = () => {
           
           Alert.alert(
             'Success! 🎉',
-            `Gift card applied!\nDiscount: $${discountAmount.toFixed(2)}`
+            `Gift card applied!\nDiscount: ${formatPrice(discountAmount)}`
           );
         } else {
           setVerifiedPromoCode('');
@@ -703,7 +714,7 @@ const PackageDetailsScreen = () => {
                   <View>
                     <Text style={styles.buyButtonLabel}>Total Price</Text>
                     <Text style={styles.buyButtonPrice}>
-                      ${(discountedPrice || originalPrice)?.toFixed(2)}
+                      {formatPrice(discountedPrice || originalPrice || 0)}
                     </Text>
                   </View>
                 </View>
@@ -910,6 +921,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  priceAmountIQD: {
+    fontSize: Platform.OS === 'ios' ? 18 : 22, // Smaller font for IQD
+    letterSpacing: -0.5, // Tighter spacing for IQD to match data formatting
+    marginTop: Platform.OS === 'ios' ? -2 : -4, // Move up to align with data baseline
+  },
+  dataAmountIQD: {
+    fontSize: Platform.OS === 'ios' ? 18 : 22, // Match price font size for IQD
+    letterSpacing: -0.5, // Tighter spacing for IQD to match price formatting
+    marginTop: Platform.OS === 'ios' ? -2 : -4, // Move up to align with price baseline
   },
   originalPrice: {
     fontSize: 18,

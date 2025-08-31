@@ -19,11 +19,12 @@ import NetworkModal from '../components/NetworkModalSingelCountry';
 import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion';
 
 const packageColors = [['#f4f4f5', '#f4f4f5']];
 
 const ICON_COLORS = {
-  network: '#FF6B00',
+  network: '#6B7280',
   speed: '#FF6B00',
 };
 
@@ -37,6 +38,7 @@ const CountryPackagesScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { country, packageType } = route.params;
+  const { formatPrice, userCurrency } = useCurrencyConversion();
 	
 const getNetworks = (packageData) => {
     const networks = [];
@@ -118,6 +120,21 @@ const getNetworks = (packageData) => {
 	
 const handleNetworkPress = (packageData) => {
     const networks = getNetworks(packageData);
+    // Add voice and SMS data to the networks array for the modal
+    if (packageData.voiceMinutes > 0) {
+      networks.push({
+        type: 'voice',
+        value: packageData.voiceMinutes,
+        icon: 'call-outline'
+      });
+    }
+    if (packageData.smsCount > 0) {
+      networks.push({
+        type: 'sms',
+        value: packageData.smsCount,
+        icon: 'chatbubble-outline'
+      });
+    }
     setSelectedNetworks(networks);
     setNetworkModalVisible(true);
   };
@@ -394,14 +411,35 @@ const renderPackageItem = ({ item, index }) => {
             <FlagIcon countryCode={countryCode} size={24} />
             <Text style={styles.countryName} numberOfLines={1} ellipsizeMode="tail">{country}</Text>
           </View>
-          {highestSpeed && (
-            <View style={[styles.speedContainer, { backgroundColor: `${ICON_COLORS.speed}15` }]}>
-              <Ionicons name="speedometer-outline" size={16} color={ICON_COLORS.speed} />
-              <Text style={[styles.speedText, { color: ICON_COLORS.speed }]}>
-                {highestSpeed.toUpperCase()}
-              </Text>
-            </View>
-          )}
+          <View style={styles.headerBadgesContainer}>
+            {(item.voiceMinutes > 0 || item.smsCount > 0) ? (
+              <View style={styles.voiceSmsHeaderContainer}>
+                {item.voiceMinutes > 0 && (
+                  <View style={styles.voiceSmsHeaderItem}>
+                    <Ionicons name="call-outline" size={14} color="#FF6B00" />
+                    <Text style={styles.voiceSmsHeaderText}>
+                      {item.voiceMinutes}
+                    </Text>
+                  </View>
+                )}
+                {item.smsCount > 0 && (
+                  <View style={styles.voiceSmsHeaderItem}>
+                    <Ionicons name="chatbubble-outline" size={14} color="#FF6B00" />
+                    <Text style={styles.voiceSmsHeaderText}>
+                      {item.smsCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : highestSpeed ? (
+              <View style={[styles.speedContainer, { backgroundColor: `${ICON_COLORS.speed}15` }]}>
+                <Ionicons name="speedometer-outline" size={16} color={ICON_COLORS.speed} />
+                <Text style={[styles.speedText, { color: ICON_COLORS.speed }]}>
+                  {highestSpeed.toUpperCase()}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <View style={styles.packageDetails}>
@@ -414,25 +452,35 @@ const renderPackageItem = ({ item, index }) => {
             <Text style={styles.validityPeriod}>
               VALID FOR {item.duration} DAYS
             </Text>
-            {item.networkCount > 0 && (
-              <TouchableOpacity
-                onPress={() => handleNetworkPress(item)}
-                style={styles.networkButton}
-              >
-                <View style={styles.networkContent}>
-                  <Ionicons 
-                    name="cellular-outline" 
-                    size={16} 
-                    color={ICON_COLORS.network}
-                  />
-                  <Text style={styles.networkButtonText}>Networks</Text>
-                </View>
-              </TouchableOpacity>
-            )}
+            {(() => {
+              const networks = getNetworks(item);
+              const networkCount = networks.filter(n => n.type === 'network').length;
+              
+              if (networkCount > 0) {
+                return (
+                  <TouchableOpacity
+                    onPress={() => handleNetworkPress(item)}
+                    style={styles.networkButton}
+                  >
+                    <View style={styles.networkContent}>
+                      <Ionicons 
+                        name="cellular-outline" 
+                        size={16} 
+                        color={ICON_COLORS.network}
+                      />
+                      <Text style={styles.networkButtonText}>
+                        {networkCount} Network{networkCount > 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+              return null;
+            })()}
           </View>
           <View style={styles.priceContainer}>
             <Text style={styles.priceText}>
-              ${item.price.toFixed(2)}
+              {formatPrice(item.price)}
             </Text>
             <TouchableOpacity 
               onPress={handlePackagePress} 
@@ -804,29 +852,29 @@ networkButton: {
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#FF6B0010',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FF6B0020',
+    borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
     ...Platform.select({
       ios: {
-        shadowColor: '#FF6B00',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 3,
       },
       android: {
-        elevation: 1,
+        elevation: 2,
       },
     }),
   },
   networkButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#FF6B00',
+    color: '#374151',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginLeft: 4,
   },
@@ -834,6 +882,43 @@ networkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerBadgesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  voiceSmsHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  voiceSmsHeaderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  voiceSmsHeaderText: {
+    fontSize: 12,
+    color: '#374151',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginLeft: 3,
+    fontWeight: '600',
   },
 });
 

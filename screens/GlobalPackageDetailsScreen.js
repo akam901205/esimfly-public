@@ -25,6 +25,7 @@ import { getNetworks, formatLocationNetworkList } from '../utils/PackageFilters'
 import { countries } from '../utils/countryData';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -43,6 +44,7 @@ const GlobalPackageDetailsScreen = () => {
   const params = route.params;
   const packageData = params.package;
   const globalPackageName = params.globalPackageName;
+  const { formatPrice, userCurrency } = useCurrencyConversion();
   
   useEffect(() => {
     setOriginalPrice(packageData.price);
@@ -228,7 +230,7 @@ const GlobalPackageDetailsScreen = () => {
                 </LinearGradient>
               </View>
               <Text style={styles.sectionLabel}>Data</Text>
-              <Text style={styles.dataAmount}>
+              <Text style={[styles.dataAmount, userCurrency === 'IQD' && styles.dataAmountIQD]}>
                 {packageData.data === 'Unlimited' || 
                  packageData.data === 'infinity' || 
                  packageData.data === '∞' || 
@@ -251,11 +253,11 @@ const GlobalPackageDetailsScreen = () => {
               <Text style={styles.sectionLabel}>Price</Text>
               {discountedPrice !== null ? (
                 <View style={styles.priceContainer}>
-                  <Text style={styles.priceAmount}>
-                    ${discountedPrice.toFixed(2)}
+                  <Text style={[styles.priceAmount, userCurrency === 'IQD' && styles.priceAmountIQD]}>
+                    {formatPrice(discountedPrice)}
                   </Text>
                   <Text style={styles.originalPrice}>
-                    ${originalPrice.toFixed(2)}
+                    {formatPrice(originalPrice)}
                   </Text>
                   <View style={styles.discountBadge}>
                     <Text style={styles.discountText}>
@@ -264,8 +266,8 @@ const GlobalPackageDetailsScreen = () => {
                   </View>
                 </View>
               ) : (
-                <Text style={styles.priceAmount}>
-                  ${originalPrice?.toFixed(2)}
+                <Text style={[styles.priceAmount, userCurrency === 'IQD' && styles.priceAmountIQD]}>
+                  {formatPrice(originalPrice || 0)}
                 </Text>
               )}
             </View>
@@ -339,7 +341,7 @@ const GlobalPackageDetailsScreen = () => {
           
           Alert.alert(
             'Success! 🎉',
-            `Gift card applied!\nDiscount: $${discountAmount.toFixed(2)}`
+            `Gift card applied!\nDiscount: ${formatPrice(discountAmount)}`
           );
         } else {
           setVerifiedPromoCode('');
@@ -620,7 +622,7 @@ const GlobalPackageDetailsScreen = () => {
                   <View>
                     <Text style={styles.buyButtonLabel}>Total Price</Text>
                     <Text style={styles.buyButtonPrice}>
-                      ${(discountedPrice || originalPrice)?.toFixed(2)}
+                      {formatPrice(discountedPrice || originalPrice || 0)}
                     </Text>
                   </View>
                 </View>
@@ -892,6 +894,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1F2937',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  priceAmountIQD: {
+    fontSize: Platform.OS === 'ios' ? 18 : 22, // Smaller font for IQD
+    letterSpacing: -0.5, // Tighter spacing for IQD to match data formatting
+    marginTop: Platform.OS === 'ios' ? -2 : -4, // Move up to align with data baseline
+  },
+  dataAmountIQD: {
+    fontSize: Platform.OS === 'ios' ? 18 : 22, // Match price font size for IQD
+    letterSpacing: -0.5, // Tighter spacing for IQD to match price formatting
+    marginTop: Platform.OS === 'ios' ? -2 : -4, // Move up to align with price baseline
   },
   originalPrice: {
     fontSize: 18,

@@ -28,6 +28,8 @@ import { fetchBalance } from '../api/esimApi';
 import { AuthContext } from '../api/AuthContext';
 import { globalPackages } from '../utils/global';
 import { countries as rawCountries, flagImages } from '../utils/countryData';
+import { formatBalance, SupportedCurrency } from '../utils/currencyUtils';
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion';
 import debounce from 'lodash/debounce';
 import { EventEmitter } from '../utils/EventEmitter';
 
@@ -225,6 +227,7 @@ const ShopScreen = () => {
   const { userEmail, userToken } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const { formatPrice, formatActualBalance } = useCurrencyConversion();
 
   const username = useMemo(() => {
     if (userEmail) {
@@ -535,7 +538,7 @@ const ShopScreen = () => {
               >
                 <MaterialIcons name="account-balance-wallet" size={14} color="#FFFFFF" />
                 <Text style={styles.balanceAmount}>
-                  ${balance.balance?.toFixed(2) || '0.00'}
+                  {balance ? formatActualBalance(balance.balance || 0, balance.currency || 'USD') : '$0.00'}
                 </Text>
               </LinearGradient>
             </View>

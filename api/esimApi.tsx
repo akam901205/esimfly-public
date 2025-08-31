@@ -24,6 +24,14 @@ export interface BalanceResponse {
 export interface Balance {
   balance: number;
   currency: string;
+  currencyBalances?: CurrencyBalance[];
+}
+
+export interface CurrencyBalance {
+  currency: string;
+  balance: number;
+  isPrimary: boolean;
+  lastTransactionAt?: string;
 }
 
 export interface GiftCardResponse {
@@ -922,7 +930,8 @@ export const fetchBalance = async (): Promise<ApiResponse<Balance>> => {
         success: true,
         data: {
           balance: Number(response.data.balance) || 0,
-          currency: 'USD'
+          currency: response.data.currency || 'USD',
+          currencyBalances: response.data.currencyBalances || []
         },
         user_email: response.data.email,
         business_email: response.data.referralCode ? 'Referred user' : undefined

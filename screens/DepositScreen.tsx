@@ -25,6 +25,7 @@ import { EventEmitter } from '../utils/EventEmitter';
 import esimApi from '../api/esimApi';
 import type { BalanceData } from '../api/esimApi';
 import { colors } from '../theme/colors';
+import { formatBalance, SupportedCurrency } from '../utils/currencyUtils';
 
 
 const TAB_BAR_HEIGHT = 84;
@@ -56,7 +57,7 @@ const DepositScreen: React.FC = () => {
   const getFormattedBalance = () => {
     if (isLoadingBalance) return 'Loading...';
     if (!balance?.balance) return '$0.00';
-    return `$${Number(balance.balance).toFixed(2)}`;
+    return formatBalance(balance.balance, (balance.currency as SupportedCurrency) || 'USD');
   };
 
   const logError = (error: ErrorLog) => {
@@ -162,9 +163,14 @@ const DepositScreen: React.FC = () => {
 		});
 	  }
 
+	  // Get the currency from the gift card response or fallback to user's currency
+	  const giftCardCurrency = (response.data.currency as SupportedCurrency) || 
+	                           (balanceResponse.data?.currency as SupportedCurrency) || 
+	                           (balance?.currency as SupportedCurrency) || 'USD';
+	  
 	  Alert.alert(
 		'Success', 
-		`Balance of $${Number(response.data.amount).toFixed(2)} has been added to your account`,
+		`Balance of ${formatBalance(response.data.amount, giftCardCurrency)} has been added to your account`,
 		[{ text: 'OK', onPress: () => navigation.goBack() }]
 	  );
       } else {
