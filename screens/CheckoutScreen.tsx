@@ -44,7 +44,7 @@ const CheckoutScreenV2 = () => {
   const [paymentMethod, setPaymentMethod] = useState(null);
   const auth = useContext(AuthContext);
   const [verifiedPromoDetails, setVerifiedPromoDetails] = useState(route.params.promoDetails);
-  const { userCurrency, formatPrice, formatActualBalance, loading: currencyLoading } = useCurrencyConversion();
+  const { userCurrency, formatPrice, formatActualBalance, convertPrice, loading: currencyLoading } = useCurrencyConversion();
   
   // Refs for auto-scroll
   const scrollViewRef = useRef(null);
@@ -57,6 +57,13 @@ const CheckoutScreenV2 = () => {
   useEffect(() => {
     fetchUserBalance();
   }, []);
+
+  // Automatically set payment method to balance for non-USD users
+  useEffect(() => {
+    if (userCurrency !== 'USD' && paymentMethod !== 'balance') {
+      setPaymentMethod('balance');
+    }
+  }, [userCurrency]);
 
   const fetchUserBalance = async () => {
     try {
@@ -157,11 +164,18 @@ const CheckoutScreenV2 = () => {
     try {
       if (paymentMethod === 'card') {
         // Create payment intent for card payment
+        const finalPrice = verifiedPromoDetails ? 
+          packageData.price - verifiedPromoDetails.discountAmount : 
+          packageData.price;
+        const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
+        
         const paymentResponse = await esimApi.createCheckoutSession({
           items: [{
             id: packageData.package_code || packageData.packageCode || packageData.id,
             name: packageData.name,
-            price: packageData.price,
+            price: convertedPrice, // Use converted price
+            originalPrice: packageData.price, // Keep original for reference
+            currency: userCurrency,
             quantity: 1,
             data_amount: packageData.data,
             duration: packageData.duration,
@@ -262,10 +276,25 @@ const CheckoutScreenV2 = () => {
           orderResponse = await esimApi.processTopUpNew(esimId, packageData.id);
         } else {
           // For new eSIMs, use the regular order API
+          const finalPrice = verifiedPromoDetails ? 
+            packageData.price - verifiedPromoDetails.discountAmount : 
+            packageData.price;
+          const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
+          
+          console.log('Currency Debug:', {
+            originalPrice: packageData.price,
+            finalPrice,
+            convertedPrice,
+            userCurrency,
+            convertPrice: !!convertPrice
+          });
+          
           const orderRequest = {
             packageCode: packageData.package_code || packageData.packageCode || packageData.id,
             packageName: packageData.originalName || packageData.name,
-            price: packageData.price,
+            price: finalPrice, // USD price after discount for security validation
+            displayPrice: convertedPrice, // Converted price for display/storage
+            currency: userCurrency,
             data: packageData.data,
             duration: packageData.duration,
             region: packageData.region || packageData.location,
@@ -569,14 +598,16 @@ const CheckoutScreenV2 = () => {
               <Text style={styles.sectionTitle}>Payment Method</Text>
             </View>
             
-            <TouchableOpacity 
-              style={[
-                styles.paymentMethodCard,
-                paymentMethod === 'card' && styles.selectedPaymentMethod
-              ]}
-              onPress={() => handlePaymentMethodSelect('card')}
-              activeOpacity={0.7}
-            >
+            {/* Only show Stripe payment for USD users */}
+            {userCurrency === 'USD' && (
+              <TouchableOpacity 
+                style={[
+                  styles.paymentMethodCard,
+                  paymentMethod === 'card' && styles.selectedPaymentMethod
+                ]}
+                onPress={() => handlePaymentMethodSelect('card')}
+                activeOpacity={0.7}
+              >
               <View style={styles.paymentMethodContent}>
                 <View style={[
                   styles.paymentIconContainer,
@@ -641,6 +672,7 @@ const CheckoutScreenV2 = () => {
                 </View>
               </View>
             </TouchableOpacity>
+            )}
 
             <TouchableOpacity 
               style={[

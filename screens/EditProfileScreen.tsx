@@ -1,4 +1,4 @@
-import React, { useState, useContext, useCallback } from 'react';
+import React, { useState, useContext, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../api/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import esimApi from '../api/esimApi';
@@ -35,6 +36,7 @@ const EditProfileScreen: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<TabType>('password');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSocialLogin, setIsSocialLogin] = useState(false);
   
   // Form states
   const [formData, setFormData] = useState({
@@ -61,6 +63,23 @@ const EditProfileScreen: React.FC = () => {
     }));
   }, []);
 
+  // Check if user signed in with Google/Apple
+  useEffect(() => {
+    const checkLoginMethod = async () => {
+      try {
+        const authMethod = await AsyncStorage.getItem('authMethod');
+        if (authMethod === 'google' || authMethod === 'apple') {
+          setIsSocialLogin(true);
+          setActiveTab('email'); // Default to email tab for social users
+        }
+      } catch (error) {
+        console.log('Error checking login method:', error);
+      }
+    };
+    
+    checkLoginMethod();
+  }, []);
+
   // Toggle password visibility
   const togglePasswordVisibility = useCallback((field: keyof typeof showPasswords) => {
     setShowPasswords(prev => ({
@@ -70,6 +89,14 @@ const EditProfileScreen: React.FC = () => {
   }, []);
 
   const handleChangePassword = async () => {
+    if (isSocialLogin) {
+      notificationManager.warning(
+        'Not Available',
+        'Password changes are not available for social login accounts'
+      );
+      return;
+    }
+
     const { currentPassword, newPassword, confirmPassword } = formData;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -135,10 +162,19 @@ const EditProfileScreen: React.FC = () => {
   const handleChangeEmail = async () => {
     const { newEmail, emailPassword } = formData;
 
-    if (!newEmail || !emailPassword) {
+    if (!newEmail) {
       notificationManager.warning(
         'Missing Fields',
-        'Please fill in all email fields'
+        'Please enter a new email address'
+      );
+      return;
+    }
+
+    // For social login users, don't require password
+    if (!isSocialLogin && !emailPassword) {
+      notificationManager.warning(
+        'Missing Fields',
+        'Please enter your current password'
       );
       return;
     }
@@ -163,7 +199,7 @@ const EditProfileScreen: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await esimApi.changeEmail({
-        current_password: emailPassword,
+        current_password: isSocialLogin ? '' : emailPassword,
         new_email: newEmail
       });
 
@@ -216,47 +252,49 @@ const EditProfileScreen: React.FC = () => {
 		  <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
 		</View>
 
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              activeTab === 'password' && styles.activeTab
-            ]}
-            onPress={() => setActiveTab('password')}
-          >
-            <Ionicons
-		  name="lock-closed-outline"
-		  size={20}
-		  color={colors.text.secondary}
-		/>
-            <Text style={[
-              styles.tabText,
-              false
-            ]}>
-              Change Password
-            </Text>
-          </TouchableOpacity>
+        {!isSocialLogin && (
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'password' && styles.activeTab
+              ]}
+              onPress={() => setActiveTab('password')}
+            >
+              <Ionicons
+            name="lock-closed-outline"
+            size={20}
+            color={colors.text.secondary}
+          />
+              <Text style={[
+                styles.tabText,
+                false
+              ]}>
+                Change Password
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              activeTab === 'email' && styles.activeTab
-            ]}
-            onPress={() => setActiveTab('email')}
-          >
-            <Ionicons
-			  name="mail-outline"
-			  size={20}
-			  color={colors.text.secondary}
-			/>
-            <Text style={[
-              styles.tabText,
-              false
-            ]}>
-              Change Email
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'email' && styles.activeTab
+              ]}
+              onPress={() => setActiveTab('email')}
+            >
+              <Ionicons
+              name="mail-outline"
+              size={20}
+              color={colors.text.secondary}
+            />
+              <Text style={[
+                styles.tabText,
+                false
+              ]}>
+                Change Email
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <ScrollView 
           style={styles.scrollContent}
@@ -267,7 +305,45 @@ const EditProfileScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.card}>
-            {activeTab === 'password' ? (
+            {isSocialLogin ? (
+              // For social login users, only show email change form
+              <>
+                <Text style={styles.description}>
+                  Change your account email. You signed in with {auth.userEmail?.includes('@privaterelay.appleid.com') ? 'Apple' : 'Google'}, so no password verification is needed.
+                </Text>
+
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Current Email</Text>
+                  <Text style={styles.currentEmail}>{auth.userEmail}</Text>
+                </View>
+
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>New Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter new email"
+                    placeholderTextColor="#888"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={formData.newEmail}
+                    onChangeText={(text) => handleInputChange('newEmail', text)}
+                  />
+                </View>
+
+
+                <TouchableOpacity
+                  style={[styles.button, isLoading && styles.buttonDisabled]}
+                  onPress={handleChangeEmail}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.buttonText}>Update Email</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : activeTab === 'password' ? (
               <>
                 <Text style={styles.description}>
                   Change your account password. You'll need your current password to make this change.
@@ -369,7 +445,7 @@ const EditProfileScreen: React.FC = () => {
             ) : (
               <>
                 <Text style={styles.description}>
-                  Change your account email. You'll need your current password to make this change.
+                  Change your account email. {!isSocialLogin && "You'll need your current password to make this change."}
                 </Text>
 
                 <View style={styles.fieldContainer}>
@@ -390,29 +466,41 @@ const EditProfileScreen: React.FC = () => {
                   />
                 </View>
 
-                <View style={styles.fieldContainer}>
-                  <Text style={styles.label}>Current Password</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter current password"
-                      placeholderTextColor="#888"
-                      secureTextEntry={!showPasswords.email}
-                      value={formData.emailPassword}
-                      onChangeText={(text) => handleInputChange('emailPassword', text)}
-                    />
-                    <TouchableOpacity
-                      style={styles.eyeIcon}
-                      onPress={() => togglePasswordVisibility('email')}
-                    >
-                      <Ionicons
-                        name={showPasswords.email ? "eye-off" : "eye"}
-                        size={24}
-                        color="#888"
+                {!isSocialLogin && (
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.label}>Current Password</Text>
+                    <View style={styles.inputWrapper}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter current password"
+                        placeholderTextColor="#888"
+                        secureTextEntry={!showPasswords.email}
+                        value={formData.emailPassword}
+                        onChangeText={(text) => handleInputChange('emailPassword', text)}
                       />
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.eyeIcon}
+                        onPress={() => togglePasswordVisibility('email')}
+                      >
+                        <Ionicons
+                          name={showPasswords.email ? "eye-off" : "eye"}
+                          size={24}
+                          color="#888"
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
+                )}
+
+                {isSocialLogin && (
+                  <View style={styles.socialLoginInfo}>
+                    <Ionicons name="information-circle" size={20} color={colors.primary.DEFAULT} />
+                    <Text style={styles.socialLoginText}>
+                      You signed in with {auth.userEmail?.includes('@privaterelay.appleid.com') ? 'Apple' : 'Google'}. 
+                      No password verification needed for email changes.
+                    </Text>
+                  </View>
+                )}
 
                 <TouchableOpacity
                   style={[styles.button, isLoading && styles.buttonDisabled]}
@@ -566,6 +654,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Quicksand-SemiBold',
+  },
+  disabledTab: {
+    opacity: 0.5,
+  },
+  disabledTabText: {
+    color: colors.text.tertiary,
+  },
+  socialLoginInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.primary.DEFAULT + '20',
+    gap: 12,
+  },
+  socialLoginText: {
+    fontSize: 14,
+    color: colors.text.primary,
+    fontFamily: 'Quicksand-Regular',
+    flex: 1,
+    lineHeight: 20,
   },
 });
 

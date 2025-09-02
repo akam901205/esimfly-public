@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { AuthContext } from '../../api/AuthContext';
 import esimApi from '../../api/esimApi';
+import { formatBalance, SupportedCurrency } from '../../utils/currencyUtils';
 import { newApi } from '../../api/api';
 import { ModalState, AddOnPlan } from '../../types/esim.types';
 import { getStatusColor } from '../../constants/esim.constants';
@@ -190,7 +191,11 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
                 Price
               </Text>
               <Text style={[styles.planDetailValue, { color: '#FF6B00' }]}>
-                ${typeof selectedPlan.price === 'number' ? selectedPlan.price.toFixed(2) : parseFloat(selectedPlan.price).toFixed(2)}
+                {formatBalance(
+                  typeof selectedPlan.price === 'number' ? selectedPlan.price : 
+                  (selectedPlan.price && !isNaN(parseFloat(selectedPlan.price))) ? parseFloat(selectedPlan.price) : 0,
+                  'USD'
+                )}
               </Text>
             </View>
           </View>
@@ -253,9 +258,12 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
             <View style={styles.planPriceSection}>
               <Text style={styles.priceLabel}>Price</Text>
               <View style={styles.priceContainer}>
-                <Text style={styles.currencySymbol}>$</Text>
                 <Text style={styles.planPrice}>
-                  {typeof plan.price === 'number' ? plan.price.toFixed(2) : parseFloat(plan.price).toFixed(2)}
+                  {formatBalance(
+                    typeof plan.price === 'number' ? plan.price : 
+                    (plan.price && !isNaN(parseFloat(plan.price))) ? parseFloat(plan.price) : 0,
+                    'USD'
+                  )}
                 </Text>
               </View>
             </View>

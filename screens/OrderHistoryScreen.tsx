@@ -23,6 +23,7 @@ import { formatDistance } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import esimApi from '../api/esimApi';
 import { colors } from '../theme/colors';
+import { formatBalance, SupportedCurrency } from '../utils/currencyUtils';
 
 const { width, height } = Dimensions.get('window');
 const BASE_URL = 'https://esimfly.net';
@@ -33,6 +34,7 @@ interface Order {
   order_date: string;
   amount: number;
   amount_numeric?: number;
+  currency?: string;
   status: string;
   status_formatted?: string;
   payment_method: string;
@@ -222,7 +224,9 @@ const OrderItem: React.FC<OrderItemProps> = ({ item, index }) => {
             </View>
           </View>
           <View style={styles.orderRight}>
-            <Text style={styles.priceAmount}>${item.amount.toFixed(2)}</Text>
+            <Text style={styles.priceAmount}>
+              {formatBalance(item.amount, (item.currency as SupportedCurrency) || 'USD')}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>

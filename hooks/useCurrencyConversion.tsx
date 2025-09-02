@@ -103,10 +103,14 @@ export function useCurrencyConversion() {
 
   // Convert USD price to user's currency
   const convertPrice = useCallback((usdAmount) => {
+    // Ensure usdAmount is a valid number
+    const amount = typeof usdAmount === 'number' ? usdAmount : 
+                   (usdAmount && !isNaN(parseFloat(usdAmount))) ? parseFloat(usdAmount) : 0;
+    
     if (userCurrency === 'IQD') {
-      return Math.round(usdAmount * exchangeRate);
+      return Math.round(amount * exchangeRate);
     }
-    return usdAmount;
+    return amount;
   }, [userCurrency, exchangeRate]);
 
   // Format price for display (converts USD to user currency and formats)
@@ -115,20 +119,28 @@ export function useCurrencyConversion() {
       return 'Loading...';
     }
     
+    // Ensure usdAmount is a valid number
+    const amount = typeof usdAmount === 'number' ? usdAmount : 
+                   (usdAmount && !isNaN(parseFloat(usdAmount))) ? parseFloat(usdAmount) : 0;
+    
     if (userCurrency === 'IQD') {
-      const iqdAmount = Math.round(usdAmount * exchangeRate);
+      const iqdAmount = Math.round(amount * exchangeRate);
       return `${iqdAmount.toLocaleString('en-US')} IQD`;
     } else {
-      return `$${usdAmount.toFixed(2)}`;
+      return `$${amount.toFixed(2)}`;
     }
   }, [userCurrency, exchangeRate, loading]);
 
   // Format actual balance (already in correct currency)
   const formatActualBalance = useCallback((amount, currency) => {
+    // Ensure amount is a valid number
+    const validAmount = typeof amount === 'number' ? amount : 
+                        (amount && !isNaN(parseFloat(amount))) ? parseFloat(amount) : 0;
+    
     if (currency === 'IQD') {
-      return `${Math.round(amount).toLocaleString('en-US')} IQD`;
+      return `${Math.round(validAmount).toLocaleString('en-US')} IQD`;
     } else {
-      return `$${amount.toFixed(2)}`;
+      return `$${validAmount.toFixed(2)}`;
     }
   }, []);
 

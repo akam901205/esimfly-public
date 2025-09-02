@@ -315,6 +315,13 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
           <View style={styles.menuSection}>
             <Text style={styles.sectionTitle}>Preferences</Text>
             <View style={styles.menuCard}>
+              <MenuItem
+                icon="globe-outline"
+                title="Currency"
+                subtitle="USD, IQD (Iraqi Dinar)"
+                onPress={() => navigation.navigate('CurrencySelection')}
+                color="#8B5CF6"
+              />
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <View style={styles.menuIconContainer}>

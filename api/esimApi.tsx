@@ -530,7 +530,9 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
       const requestData = {
         packageCode: data.packageCode,
         packageName: data.packageName,
-        price: data.price,
+        price: data.price, // USD price for security validation
+        displayPrice: data.displayPrice, // Converted price for storage
+        currency: data.currency, // User's currency preference
         quantity: data.quantity || 1,
         flagUrl: data.flagUrl,
         paymentMethod: 'balance',
@@ -1131,6 +1133,8 @@ export const createCheckoutSession = async (data: {
     id: string;
     name: string;
     price: number;
+    originalPrice?: number;
+    currency?: string;
     quantity: number;
     data_amount: number;
     duration: number;

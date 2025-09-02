@@ -37,6 +37,7 @@ import OrderHistoryScreen from './screens/OrderHistoryScreen';
 import InstructionsScreen from './screens/InstructionsScreen';
 import DepositScreen from './screens/DepositScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
+import CurrencySelectionScreen from './screens/CurrencySelectionScreen';
 import PrivacyScreen from './screens/PrivacyScreen';
 import TermsScreen from './screens/TermsScreen';
 import RefundPolicyScreen from './screens/RefundPolicyScreen';
@@ -255,6 +256,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen name="OrderHistory" component={OrderHistoryScreen} />
       <ProfileStack.Screen name="Deposit" component={DepositScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+      <ProfileStack.Screen name="CurrencySelection" component={CurrencySelectionScreen} />
       <ProfileStack.Screen name="Privacy" component={PrivacyScreen} />
       <ProfileStack.Screen name="Terms" component={TermsScreen} />
       <ProfileStack.Screen name="RefundPolicy" component={RefundPolicyScreen} />
