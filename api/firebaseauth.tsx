@@ -3,6 +3,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { appleAuth } from '@invertase/react-native-apple-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
+import { NEW_API_BASE_URL } from './api';
 
 interface AuthResponse {
   success: boolean;
@@ -14,7 +15,8 @@ interface AuthResponse {
   user?: any;
 }
 
-const API_URL = 'https://esimfly.net/api/auth';
+// Use the centralized base URL
+const API_URL = `${NEW_API_BASE_URL}/auth`;
 const GOOGLE_WEB_CLIENT_ID = '1033438752251-fqjcq85gla40nd9k2tvj61stiuvaem2o.apps.googleusercontent.com';
 const GOOGLE_IOS_CLIENT_ID = '1033438752251-rdl49po6ughkl452ijk0lav7k7cb07vt.apps.googleusercontent.com';
 

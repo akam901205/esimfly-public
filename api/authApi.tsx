@@ -1,7 +1,9 @@
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NEW_API_BASE_URL } from './api';
 
-const API_URL = 'https://dev.esimfly.net/api/auth';
+// Use the centralized base URL
+const API_URL = `${NEW_API_BASE_URL}/auth`;
 
 interface AuthResponse {
   success: boolean;
