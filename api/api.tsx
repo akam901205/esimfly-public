@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Centralized API base URL - change here to affect all API calls
-export const NEW_API_BASE_URL = 'https://esimfly.net/api';
+export const NEW_API_BASE_URL = 'https://dev.esimfly.net/api';
 
 // Export just the domain for other config files
 export const API_DOMAIN = NEW_API_BASE_URL.replace('/api', '');
@@ -20,6 +20,26 @@ export const newApi = axios.create({
     'x-client-type': 'mobile'
   }
 });
+
+// Add request interceptor for newApi to include auth token
+newApi.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('userToken');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Debug logging for newApi
+    console.log('NewAPI Request:', config.method.toUpperCase(), config.url);
+    console.log('NewAPI Headers:', config.headers);
+    
+    return config;
+  },
+  (error) => {
+    console.error('NewAPI Request Error:', error);
+    return Promise.reject(error);
+  }
+);
 
 // Request interceptor
 api.interceptors.request.use(

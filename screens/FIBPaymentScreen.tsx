@@ -80,9 +80,10 @@ const FIBPaymentScreen: React.FC = () => {
     };
     pulse();
 
-    // Calculate time left
+    // Calculate time left and poll payment status
     if (expiresAt) {
       const expiryTime = new Date(expiresAt).getTime();
+      
       const updateTimer = () => {
         const now = new Date().getTime();
         const remaining = Math.max(0, Math.floor((expiryTime - now) / 1000));
@@ -93,9 +94,47 @@ const FIBPaymentScreen: React.FC = () => {
         }
       };
       
+      // Check payment status every 3 seconds
+      let timer: NodeJS.Timeout;
+      let statusTimer: NodeJS.Timeout;
+      
+      const checkPaymentStatus = async () => {
+        try {
+          const response = await newApi.get(`/orders/status/${orderReference}`);
+          const orderData = response.data?.data;
+          
+          if (orderData && (orderData.status === 'completed' || orderData.payment_status === 'succeeded') && !isPaid) {
+            setIsPaid(true);
+            
+            // Clear timers immediately to stop polling
+            clearInterval(timer);
+            clearInterval(statusTimer);
+            
+            // Navigate to Instructions after showing success
+            setTimeout(() => {
+              navigation.navigate('Instructions', {
+                qrCodeUrl: orderData.qrCodeUrl,
+                directAppleInstallUrl: orderData.directAppleInstallUrl,
+                packageName: packageName,
+                iccid: orderData.iccid || '',
+                esimId: orderData.esimId,
+                orderReference: orderReference
+              });
+            }, 3000);
+          }
+        } catch (error) {
+          // Continue polling silently on errors
+        }
+      };
+      
       updateTimer();
-      const timer = setInterval(updateTimer, 1000);
-      return () => clearInterval(timer);
+      timer = setInterval(updateTimer, 1000);
+      statusTimer = setInterval(checkPaymentStatus, 3000);
+      
+      return () => {
+        clearInterval(timer);
+        clearInterval(statusTimer);
+      };
     }
   }, []);
 

@@ -275,8 +275,9 @@ const RegionalPackagesScreen = () => {
         groupedByData[dataKey].push(pkg);
       });
       
-      // Process each group: only keep the cheapest package
+      // Process each group: special handling for Europe region
       const processedPackages = [];
+      const isEuropeRegion = region.toLowerCase() === 'europe';
       
       Object.keys(groupedByData).forEach(dataKey => {
         const packagesForData = groupedByData[dataKey];
@@ -292,21 +293,44 @@ const RegionalPackagesScreen = () => {
         
         if (validPackages.length === 0) return; // Skip if no valid packages
         
-        // Sort by price (cheapest first)
-        validPackages.sort((a, b) => a.price - b.price);
-        
-        // Only keep the cheapest package
-        const cheapestPackage = validPackages[0];
-        console.log(`[DEBUG] Keeping cheapest ${dataKey} package: ${cheapestPackage.name} ($${cheapestPackage.price})`);
-        
-        // Log what we're hiding
-        if (validPackages.length > 1) {
-          validPackages.slice(1).forEach(pkg => {
-            console.log(`[DEBUG] Hiding more expensive ${dataKey} package: ${pkg.name} ($${pkg.price})`);
+        if (isEuropeRegion) {
+          // For Europe region, show ALL unique packages (deduplicate exact matches)
+          const uniquePackages = [];
+          const seen = new Set();
+          
+          validPackages.forEach(pkg => {
+            // Create key based on name, duration, and price to identify exact duplicates
+            const uniqueKey = `${pkg.name}-${pkg.duration}-${pkg.price}`;
+            
+            if (!seen.has(uniqueKey)) {
+              seen.add(uniqueKey);
+              uniquePackages.push(pkg);
+              console.log(`[DEBUG] Keeping unique Europe package: ${pkg.name} ($${pkg.price})`);
+            } else {
+              console.log(`[DEBUG] Skipping duplicate Europe package: ${pkg.name} ($${pkg.price})`);
+            }
           });
+          
+          console.log(`[DEBUG] Europe region: ${validPackages.length} packages → ${uniquePackages.length} unique packages for ${dataKey}`);
+          uniquePackages.forEach(pkg => processedPackages.push(pkg));
+        } else {
+          // For other regions, use normal cheapest-only logic
+          // Sort by price (cheapest first)
+          validPackages.sort((a, b) => a.price - b.price);
+          
+          // Only keep the cheapest package
+          const cheapestPackage = validPackages[0];
+          console.log(`[DEBUG] Keeping cheapest ${dataKey} package: ${cheapestPackage.name} ($${cheapestPackage.price})`);
+          
+          // Log what we're hiding
+          if (validPackages.length > 1) {
+            validPackages.slice(1).forEach(pkg => {
+              console.log(`[DEBUG] Hiding more expensive ${dataKey} package: ${pkg.name} ($${pkg.price})`);
+            });
+          }
+          
+          processedPackages.push(cheapestPackage);
         }
-        
-        processedPackages.push(cheapestPackage);
       });
       
       // Sort final list by data amount (ascending) then by price

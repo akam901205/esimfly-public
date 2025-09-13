@@ -320,44 +320,76 @@ const GlobalPackageDetailsScreen = () => {
         return;
       }
 
-      if (localPromoCode.length < 6) {
-        Alert.alert('Error', 'Promo code must be 6 characters');
-        return;
-      }
-
       setLocalIsRedeeming(true);
       try {
-        const response = await newApi.post('/user/gift-card/check', {
-          card_number: localPromoCode.toUpperCase()
-        });
+        // Check if it's a 6-digit code (gift card) or text code (coupon)
+        const isGiftCard = /^\d{6}$/.test(localPromoCode);
         
-        if (response.data.success && response.data.data?.remaining_balance > 0) {
-          const discountAmount = Math.min(response.data.data.remaining_balance, originalPrice);
-          const newPrice = originalPrice - discountAmount;
+        let response;
+        if (isGiftCard) {
+          // Use gift card API for 6-digit codes
+          response = await newApi.post('/user/gift-card/check', {
+            card_number: localPromoCode.toUpperCase()
+          });
           
-          setDiscountedPrice(newPrice);
-          setVerifiedPromoCode(localPromoCode.toUpperCase());
-          setPromoCode(localPromoCode.toUpperCase());
-          
-          Alert.alert(
-            'Success! 🎉',
-            `Gift card applied!\nDiscount: ${formatPrice(discountAmount)}`
-          );
+          if (response.data.success && response.data.data?.remaining_balance > 0) {
+            const discountAmount = Math.min(response.data.data.remaining_balance, originalPrice);
+            const newPrice = originalPrice - discountAmount;
+            
+            setDiscountedPrice(newPrice);
+            setVerifiedPromoCode(localPromoCode.toUpperCase());
+            setPromoCode(localPromoCode.toUpperCase());
+            
+            Alert.alert(
+              'Success! 🎉',
+              `Gift card applied!\nDiscount: ${formatPrice(discountAmount)}`
+            );
+          } else {
+            setVerifiedPromoCode('');
+            setDiscountedPrice(null);
+            Alert.alert(
+              'Invalid Gift Card',
+              response.data.message || 'Invalid or empty gift card'
+            );
+          }
         } else {
-          setVerifiedPromoCode('');
-          setDiscountedPrice(null);
-          Alert.alert(
-            'Invalid Code',
-            response.data.message || 'Invalid or empty gift card'
-          );
+          // Use coupon validation API for text codes
+          response = await newApi.post('/coupons/validate', {
+            code: localPromoCode.toUpperCase(),
+            cartTotal: originalPrice,
+            packageCode: packageData.package_code || packageData.packageCode || packageData.id,
+            provider: packageData.provider,
+            packageType: packageData.type || 'global'
+          });
+          
+          if (response.data.success && response.data.coupon) {
+            const discountAmount = response.data.coupon.discountAmount;
+            const newPrice = originalPrice - discountAmount;
+            
+            setDiscountedPrice(newPrice);
+            setVerifiedPromoCode(localPromoCode.toUpperCase());
+            setPromoCode(localPromoCode.toUpperCase());
+            
+            Alert.alert(
+              'Success! 🎉',
+              `Coupon applied!\nDiscount: ${formatPrice(discountAmount)}`
+            );
+          } else {
+            setVerifiedPromoCode('');
+            setDiscountedPrice(null);
+            Alert.alert(
+              'Invalid Coupon',
+              response.data.error || 'Invalid or expired coupon code'
+            );
+          }
         }
       } catch (error) {
-        console.error('Gift card check error:', error);
+        console.error('Code validation error:', error);
         setVerifiedPromoCode('');
         setDiscountedPrice(null);
         Alert.alert(
           'Error',
-          'An error occurred while checking the gift card'
+          'An error occurred while checking the code'
         );
       } finally {
         setLocalIsRedeeming(false);
@@ -378,20 +410,20 @@ const GlobalPackageDetailsScreen = () => {
           <View style={styles.promoInputContainer}>
             <TextInput
               style={styles.promoInput}
-              placeholder="Enter 6-digit code"
+              placeholder="Enter coupon code or 6-digit gift card"
               placeholderTextColor="#9CA3AF"
               value={localPromoCode}
               onChangeText={(text) => {
                 const cleanText = text.replace(/[^A-Za-z0-9]/g, '');
-                setLocalPromoCode(cleanText.slice(0, 6));
+                setLocalPromoCode(cleanText.slice(0, 20)); // Allow longer codes for coupons
               }}
               autoCapitalize="characters"
-              maxLength={6}
+              maxLength={20}
               selectionColor="#FF6B00"
             />
             {localPromoCode.length > 0 && (
               <Text style={styles.charCounter}>
-                {localPromoCode.length}/6
+                {localPromoCode.length}/20
               </Text>
             )}
           </View>
@@ -399,14 +431,14 @@ const GlobalPackageDetailsScreen = () => {
           <TouchableOpacity
             style={[
               styles.redeemButton,
-              (!localPromoCode.trim() || localPromoCode.length < 6) && styles.redeemButtonDisabled
+              (!localPromoCode.trim() || localPromoCode.length < 3) && styles.redeemButtonDisabled
             ]}
             onPress={localHandleRedemption}
-            disabled={!localPromoCode.trim() || localPromoCode.length < 6 || localIsRedeeming}
+            disabled={!localPromoCode.trim() || localPromoCode.length < 3 || localIsRedeeming}
           >
             <LinearGradient
               colors={
-                (!localPromoCode.trim() || localPromoCode.length < 6)
+                (!localPromoCode.trim() || localPromoCode.length < 3)
                   ? ['#E5E7EB', '#D1D5DB']
                   : ['#FF6B00', '#FF8533']
               }
@@ -558,7 +590,7 @@ const GlobalPackageDetailsScreen = () => {
         ...packageData,
         data: packageData.data === 'Unlimited' || packageData.unlimited ? 'Unlimited' : packageData.data,
         duration: packageData.duration.toString().replace(' days', ''),
-        price: discountedPrice || originalPrice,
+        price: originalPrice, // Always pass original price
         coverage: getCountryCount(),
         voice_minutes: packageData.voice_minutes || undefined,
         sms_count: packageData.sms_count || undefined
@@ -568,7 +600,8 @@ const GlobalPackageDetailsScreen = () => {
       promoDetails: verifiedPromoCode && discountedPrice !== null ? {
         code: verifiedPromoCode,
         originalPrice: originalPrice,
-        discountAmount: originalPrice - discountedPrice
+        discountAmount: originalPrice - discountedPrice,
+        isGiftCard: /^\d{6}$/.test(verifiedPromoCode) // Track if it's a gift card or coupon
       } : null
     });
   };
