@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     color: '#4F46E5',
-    fontFamily: 'Quicksand-Bold',
+    fontFamily: undefined, // Use system font to prevent loading issues
   },
   logoSubtext: {
     fontSize: 20,
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: colors.text.secondary,
-    fontFamily: 'Quicksand-Regular',
+    fontFamily: undefined, // Use system font to prevent loading issues
   },
 });
 

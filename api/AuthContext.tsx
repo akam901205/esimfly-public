@@ -74,13 +74,28 @@ export const useAuth = () => {
   }, []);
 
   const signOut = useCallback(async () => {
-    setIsLoading(true);
-    await AsyncStorage.removeItem('userToken');
-    await AsyncStorage.removeItem('userEmail');
-    await AsyncStorage.removeItem('tokenExpires');
-    setUserToken(null);
-    setUserEmail(null);
-    setIsLoading(false);
+    try {
+      setIsLoading(true);
+      
+      // Clear all auth-related storage
+      await Promise.all([
+        AsyncStorage.removeItem('userToken'),
+        AsyncStorage.removeItem('userEmail'),
+        AsyncStorage.removeItem('tokenExpires'),
+        AsyncStorage.removeItem('authMethod')
+      ]);
+      
+      // Clear state
+      setUserToken(null);
+      setUserEmail(null);
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Even if there's an error, clear the state
+      setUserToken(null);
+      setUserEmail(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   return { isLoading, userToken, userEmail, signIn, signOut };

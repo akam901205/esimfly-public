@@ -125,11 +125,26 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
           onPress: async () => {
             try {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              await logout();
+              
+              // Try to logout from server, but don't block local logout if it fails
+              try {
+                await logout();
+              } catch (serverError) {
+                console.warn('Server logout failed, proceeding with local logout:', serverError);
+              }
+              
+              // Always perform local logout
               await auth.signOut();
+              
             } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
+              console.error('Critical logout error:', error);
+              // Force local logout even on error
+              try {
+                await auth.signOut();
+              } catch (fallbackError) {
+                console.error('Fallback logout failed:', fallbackError);
+                Alert.alert('Error', 'Failed to sign out completely. Please restart the app.');
+              }
             }
           },
         },
