@@ -1,4 +1,5 @@
-import auth from '@react-native-firebase/auth';
+// Firebase auth removed to fix iOS build conflicts in Expo SDK 54
+// We'll use direct Google/Apple sign-in and send tokens to our backend
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { appleAuth } from '@invertase/react-native-apple-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -93,13 +94,9 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
 
     debugLog('ID Token obtained successfully');
 
-    // Get Firebase credential
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-    const userCredential = await auth().signInWithCredential(googleCredential);
-    debugLog('Firebase credential obtained');
-
-    const firebaseToken = await userCredential.user.getIdToken();
-    debugLog('Firebase token obtained');
+    // Use Google ID token directly (Firebase auth plugin incompatible with Expo SDK 54)
+    const googleToken = idToken;
+    debugLog('Using Google ID token directly');
 
     // Get stored referral code if available
     const storedReferralCode = await AsyncStorage.getItem('referralCode');
@@ -115,7 +112,7 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
           'x-client-type': 'mobile'
         },
         body: JSON.stringify({ 
-          id_token: idToken || firebaseToken,
+          id_token: googleToken,
           referralCode: storedReferralCode
         })
       });
@@ -123,7 +120,7 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
       const data = await handleApiResponse(response);
 
       if (data.success) {
-        const token = data.token || firebaseToken;
+        const token = data.token || googleToken;
         
         // Store all auth data concurrently
         await Promise.all([
@@ -222,16 +219,10 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
     if (credentialState === appleAuth.State.AUTHORIZED) {
       debugLog('User is authorized');
       
-      // Create a Firebase credential with the token
+      // Use Apple identity token directly (Firebase auth plugin incompatible with Expo SDK 54)
       const { identityToken, nonce } = appleAuthRequestResponse;
-      const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce);
-      
-      // Sign in with Firebase
-      const userCredential = await auth().signInWithCredential(appleCredential);
-      debugLog('Firebase sign-in successful');
-      
-      const firebaseToken = await userCredential.user.getIdToken();
-      debugLog('Firebase token obtained');
+      const appleToken = identityToken;
+      debugLog('Using Apple identity token directly');
 
       // Get stored referral code if available
       const storedReferralCode = await AsyncStorage.getItem('referralCode');
@@ -246,15 +237,15 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
           'x-client-type': 'mobile'
         },
         body: JSON.stringify({ 
-          id_token: firebaseToken,
+          id_token: appleToken,
           apple_token: identityToken,
           referralCode: storedReferralCode,
           user_data: {
-            email: appleAuthRequestResponse.email || userCredential.user.email,
+            email: appleAuthRequestResponse.email,
             name: appleAuthRequestResponse.fullName && 
                   (appleAuthRequestResponse.fullName.givenName || appleAuthRequestResponse.fullName.familyName) ? 
               `${appleAuthRequestResponse.fullName.givenName || ''} ${appleAuthRequestResponse.fullName.familyName || ''}`.trim() : 
-              userCredential.user.displayName || null,
+              null,
             user: appleAuthRequestResponse.user
           }
         })
@@ -264,7 +255,7 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
       debugLog('Server response:', data);
 
       if (data.success) {
-        const token = data.token || firebaseToken;
+        const token = data.token || googleToken;
         
         // Store all auth data
         await Promise.all([

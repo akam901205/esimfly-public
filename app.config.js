@@ -2,19 +2,12 @@ export default {
   expo: {
     name: 'eSimFly',
     slug: 'esimfly-public',
-    version: '1.0.4',
+    version: '1.0.5',
     orientation: 'portrait',
     icon: './assets/icon.png',
     scheme: 'esimfly',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
-    backgroundColor: '#1E1E1E',
-    splash: {
-      image: './assets/splash.png',
-      imageWidth: 200,
-      resizeMode: 'contain',
-      backgroundColor: '#1E1E1E'
-    },
     androidNavigationBar: {
       backgroundColor: '#1E1E1E',
       barStyle: 'light-content'
@@ -151,12 +144,19 @@ export default {
         'expo-build-properties',
         {
           android: {
-            compileSdkVersion: 35,
-            targetSdkVersion: 35,
-            buildToolsVersion: '35.0.0',
+            compileSdkVersion: 36,
+            targetSdkVersion: 36,
+            buildToolsVersion: '36.0.0',
+            minSdkVersion: 24,
+            ndkVersion: '27.0.12077973',
             packagingOptions: {
               pickFirst: ['**/libc++_shared.so', '**/libjsc.so']
-            }
+            },
+            // Enable 16 KB page size support (Google Play requirement Nov 2025)
+            // SDK 54 with React Native 0.81 has native 16 KB support
+            useLegacyPackaging: false,
+            enableR8: true,
+            newArchEnabled: true
           },
           ios: {
             useFrameworks: 'static',
@@ -167,14 +167,6 @@ export default {
       'expo-router',
       'expo-camera',
       'expo-localization',
-      [
-        '@react-native-firebase/app',
-        {
-          android_google_services_version: '4.4.0',
-          ios_google_services_version: '10.18.0',
-        },
-      ],
-      '@react-native-firebase/auth',
       [
         '@react-native-google-signin/google-signin',
         {
@@ -245,6 +237,14 @@ export default {
         }
       }
     },
-    owner: 'akam90'
+    owner: 'akam90',
+    doctor: {
+      lockFileCheck: {
+        enabled: false
+      },
+      duplicateDependencyCheck: {
+        exclude: ['expo-dev-menu']
+      }
+    }
   }
 };

@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 11.0.2",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
   },
   "build": {
     "development": {
@@ -11,12 +12,20 @@
         "simulator": false,
         "buildConfiguration": "Debug",
         "resourceClass": "m-medium",
-        "image": "latest"
+        "image": "latest",
+        "node": "20.19.4"
       },
       "android": {
         "buildType": "apk"
       },
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "NPM_CONFIG_FUND": "false",
+        "NPM_CONFIG_UPDATE_NOTIFIER": "false"
+      },
+      "cache": {
+        "disabled": true
+      }
     },
     "development-device": {
       "extends": "development",
@@ -30,7 +39,8 @@
       "ios": {
         "buildConfiguration": "Release",
         "resourceClass": "m-medium",
-        "image": "latest"
+        "image": "latest",
+        "node": "20.19.4"
       },
       "android": {
         "buildType": "apk"
@@ -41,10 +51,14 @@
       "ios": {
         "buildConfiguration": "Release",
         "resourceClass": "m-medium",
-        "image": "latest"
+        "image": "latest",
+        "node": "20.19.4"
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "env": {
+          "EXPO_USE_FABRIC": "true"
+        }
       },
       "channel": "production",
       "autoIncrement": true

@@ -453,13 +453,33 @@ createPaymentIntent: async (data: CreatePaymentIntentRequest): Promise<ApiRespon
 };
 	
 	
-export const orderAddOnPlan = async (data: OrderAddOnPlanRequest): Promise<ApiResponse<OrderEsimResponse>> => {
+export const orderAddOnPlan = async (data: OrderAddOnPlanRequest & { esimId?: number }): Promise<ApiResponse<OrderEsimResponse>> => {
   try {
-    // Process the top-up directly without ordering a new eSIM
-    const processResponse = await processTopUp({
-      iccid: data.iccid,
-      packageCode: data.packageCode
-    });
+    // Extract eSIM ID from ICCID if not provided
+    let esimIdToUse = data.esimId;
+    
+    if (!esimIdToUse) {
+      // Try to extract from ICCID if it's numeric
+      const numericMatch = data.iccid.match(/^(\d+)/);
+      if (numericMatch) {
+        esimIdToUse = parseInt(numericMatch[1]);
+      } else {
+        // Fallback: get eSIM ID from database
+        const response = await newApi.get('/myesims', {
+          params: { search: data.iccid, limit: 1 }
+        });
+        if (response.data?.success && response.data?.esims?.[0]) {
+          esimIdToUse = response.data.esims[0].id;
+        }
+      }
+    }
+    
+    if (!esimIdToUse) {
+      throw new Error('Could not determine eSIM ID for top-up');
+    }
+
+    // Use the new top-up API
+    const processResponse = await processTopUpNew(esimIdToUse, data.packageCode);
 
     if (!processResponse.success) {
       return {
@@ -481,7 +501,7 @@ export const orderAddOnPlan = async (data: OrderAddOnPlanRequest): Promise<ApiRe
         price: data.price,
         newBalance: processResponse.data?.newBalance,
         orderReference: processResponse.data?.orderReference,
-        currency: 'USD'
+        currency: processResponse.data?.currency || 'USD'
       }
     };
   } catch (error) {
@@ -1087,14 +1107,29 @@ export const fetchEsimDetails = async (iccid: string): Promise<ApiResponse<EsimD
 };
 
 
-// New function to process top-up using the new API endpoint
-export const processTopUpNew = async (esimId: number, packageCode: string): Promise<ApiResponse<any>> => {
+// New function to process top-up using the new API endpoint with multi-currency support
+export const processTopUpNew = async (
+  esimId: number, 
+  packageCode: string, 
+  options?: { 
+    price?: number; 
+    displayPrice?: number; 
+    currency?: string; 
+    paymentMethod?: string;
+  }
+): Promise<ApiResponse<any>> => {
   try {
-    console.log('Processing top-up with new API:', { esimId, packageCode });
+    console.log('Processing top-up with new API:', { esimId, packageCode, options });
     
-    const response = await newApi.post(`/myesims/${esimId}/topup`, {
-      packageCode
-    });
+    const requestData = {
+      packageCode,
+      paymentMethod: options?.paymentMethod || 'balance',
+      ...(options?.price && { price: options.price }), // USD price for security validation
+      ...(options?.displayPrice && { displayPrice: options.displayPrice }), // User currency price
+      ...(options?.currency && { currency: options.currency }) // User currency preference
+    };
+    
+    const response = await newApi.post(`/myesims/${esimId}/topup`, requestData);
 
     console.log('Top-up response:', response.data);
 
@@ -1102,7 +1137,7 @@ export const processTopUpNew = async (esimId: number, packageCode: string): Prom
       return {
         success: true,
         message: response.data.message || 'Top-up successful',
-        data: response.data
+        data: response.data.data || response.data
       };
     } else {
       return {
@@ -1123,6 +1158,61 @@ export const processTopUpNew = async (esimId: number, packageCode: string): Prom
     return {
       success: false,
       message: 'An unexpected error occurred during top-up'
+    };
+  }
+};
+
+// Create FIB payment session for Iraqi users
+export const createFIBSession = async (data: {
+  items: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    data_amount: number;
+    duration: number;
+    flag_url?: string;
+    metadata?: any;
+  }>;
+  promoDetails?: any;
+  isTopup?: boolean;
+  esimId?: number;
+  provider?: string;
+}): Promise<ApiResponse<{
+  paymentId: string;
+  orderReference: string;
+  qrCode: string;
+  personalAppLink: string;
+  businessAppLink: string;
+  corporateAppLink: string;
+  readableCode: string;
+  expiresAt: string;
+}>> => {
+  try {
+    console.log('Creating FIB payment session');
+    
+    const response = await newApi.post('/checkout/create-fib-session', data);
+    console.log('FIB session response:', response.data);
+    
+    if (response.data.success) {
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } else {
+      return {
+        success: false,
+        message: response.data.message || 'Failed to create FIB payment session',
+        error_code: response.data.error_code
+      };
+    }
+  } catch (error) {
+    const errorInfo = handleApiError(error);
+    console.error('Error creating FIB session:', error);
+    return {
+      success: false,
+      message: errorInfo.message || 'Failed to create FIB payment session',
+      ...errorInfo
     };
   }
 };
@@ -1240,6 +1330,7 @@ const esimApi = {
   processTopUpNew,
   orderAddOnPlan,
   createCheckoutSession,
+  createFIBSession,
   checkOrderStatus,
 };
 

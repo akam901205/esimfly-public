@@ -298,6 +298,11 @@ export const SearchBar: React.FC<SearchBarProps> = React.memo(({
             autoCorrect={false}
             returnKeyType="search"
             autoCapitalize="none"
+            allowFontScaling={false}
+            multiline={false}
+            numberOfLines={1}
+            blurOnSubmit={true}
+            clearButtonMode="never"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity 
@@ -399,17 +404,26 @@ const styles = StyleSheet.create({
   searchContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: Platform.OS === 'ios' ? 'transparent' : 'rgba(255, 255, 255, 0.9)',
+    paddingVertical: Platform.OS === 'ios' ? 4 : 8,
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.9)',
+    height: 48,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 15,
+    fontSize: 16,
     color: '#1F2937',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
-    paddingRight: 8, // Add padding to prevent text overlap
+    fontFamily: undefined, // Remove custom font to use system default
+    fontWeight: '400',
+    paddingRight: 8,
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+    height: Platform.OS === 'ios' ? 36 : 40,
+    lineHeight: Platform.OS === 'android' ? 20 : 20,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   clearButton: {
     padding: 2,

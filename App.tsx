@@ -6,8 +6,8 @@ import AppNavigator from './AppNavigator';
 import * as Notifications from 'expo-notifications';
 import { NotificationManager, notificationManager } from './components/NotificationManager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import firebase from '@react-native-firebase/app';
-import auth from '@react-native-firebase/auth';
+// Firebase completely removed - using Google/Apple direct authentication
+// Firebase auth removed to fix Expo SDK 54 iOS build conflicts
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { ToastProvider } from './components/ToastNotification';
 import * as Linking from 'expo-linking';
@@ -101,46 +101,22 @@ function NotificationConfiguration() {
 }
 
 export default function App() {
-  const [isFirebaseInitialized, setIsFirebaseInitialized] = useState(false);
+  const [isAppInitialized, setIsAppInitialized] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isStripeInitialized, setIsStripeInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize Firebase
+  // Initialize app without Firebase (using direct Google/Apple auth)
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        const firebaseConfig = Platform.select({
-          ios: {
-            apiKey: "AIzaSyBppTW3G86gDswrWNG2G6XLSmOQT9YU8pM",
-            authDomain: "esimfly-public.firebaseapp.com",
-            projectId: "esimfly-public",
-            storageBucket: "esimfly-public.firebasestorage.app",
-            messagingSenderId: "1033438752251",
-            appId: "1:1033438752251:ios:3685161cd7eb3acdd42f5e",
-            bundleId: "net.esimfly.user.app",
-            clientId: "1033438752251-rdl49po6ughkl452ijk0lav7k7cb07vt.apps.googleusercontent.com",
-          },
-          android: {
-            apiKey: "AIzaSyD0LjpBFaDVVo31gbKCuZ6Ys78sl0CfyyM",
-            authDomain: "esimfly-public.firebaseapp.com",
-            projectId: "esimfly-public",
-            storageBucket: "esimfly-public.firebasestorage.app",
-            messagingSenderId: "1033438752251",
-            appId: "1:1033438752251:android:26b80c83fd5bf473d42f5e",
-          },
-        });
-
-        if (!firebase.apps.length) {
-          await firebase.initializeApp(firebaseConfig);
-        }
-
-        setIsFirebaseInitialized(true);
+        // App initialization without Firebase
+        setIsAppInitialized(true);
+        setIsLoading(false);
       } catch (error) {
         console.error('Error during app initialization:', error);
         setError('Failed to initialize app');
-      } finally {
         setIsLoading(false);
       }
     };
@@ -148,17 +124,24 @@ export default function App() {
     initializeApp();
   }, []);
 
-  // Listen for authentication state changes
+  // Check authentication state using token-based auth (instead of Firebase auth)
   useEffect(() => {
-    if (isFirebaseInitialized) {
-      const unsubscribe = auth().onAuthStateChanged((user) => {
-        setIsAuthenticated(!!user);
+    const checkAuthState = async () => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        setIsAuthenticated(!!token);
         setIsLoading(false);
-      });
+      } catch (error) {
+        console.log('Error checking auth state:', error);
+        setIsAuthenticated(false);
+        setIsLoading(false);
+      }
+    };
 
-      return unsubscribe;
+    if (isAppInitialized) {
+      checkAuthState();
     }
-  }, [isFirebaseInitialized]);
+  }, [isAppInitialized]);
 
   // Initialize Stripe
   useEffect(() => {

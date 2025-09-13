@@ -38,6 +38,7 @@ import InstructionsScreen from './screens/InstructionsScreen';
 import DepositScreen from './screens/DepositScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import CurrencySelectionScreen from './screens/CurrencySelectionScreen';
+import FIBPaymentScreen from './screens/FIBPaymentScreen';
 import PrivacyScreen from './screens/PrivacyScreen';
 import TermsScreen from './screens/TermsScreen';
 import RefundPolicyScreen from './screens/RefundPolicyScreen';
@@ -289,6 +290,7 @@ function ShopNavigator() {
       <ShopStack.Screen name="GlobalPackageDetails" component={GlobalPackageDetailsScreen} />
       <ShopStack.Screen name="PackageDetails" component={PackageDetailsScreen} />
       <ShopStack.Screen name="Checkout" component={CheckoutScreen} />
+      <ShopStack.Screen name="FIBPayment" component={FIBPaymentScreen} />
       <ShopStack.Screen name="Terms" component={TermsScreen} options={{ presentation: 'modal' }} />
       <ShopStack.Screen name="Privacy" component={PrivacyScreen} options={{ presentation: 'modal' }} />
       <ShopStack.Screen name="Instructions" component={InstructionsScreen} options={{ presentation: 'modal' }} />

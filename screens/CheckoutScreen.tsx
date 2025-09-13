@@ -58,9 +58,13 @@ const CheckoutScreenV2 = () => {
     fetchUserBalance();
   }, []);
 
-  // Automatically set payment method to balance for non-USD users
+  // Automatically set payment method based on user currency
   useEffect(() => {
-    if (userCurrency !== 'USD' && paymentMethod !== 'balance') {
+    if (userCurrency === 'IQD' && paymentMethod !== 'fib') {
+      // Default to FIB for Iraqi users (local bank payment)
+      setPaymentMethod('fib');
+    } else if (userCurrency !== 'USD' && userCurrency !== 'IQD' && paymentMethod !== 'balance') {
+      // Default to balance for other non-USD currencies
       setPaymentMethod('balance');
     }
   }, [userCurrency]);
@@ -267,13 +271,95 @@ const CheckoutScreenV2 = () => {
           });
         }, 1500);
 
+      } else if (paymentMethod === 'fib') {
+        // Create FIB payment session
+        const finalPrice = verifiedPromoDetails ? 
+          packageData.price - verifiedPromoDetails.discountAmount : 
+          packageData.price;
+        const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
+        
+        const fibResponse = await esimApi.createFIBSession({
+          items: [{
+            id: packageData.package_code || packageData.packageCode || packageData.id,
+            name: packageData.name,
+            price: convertedPrice, // IQD price
+            quantity: 1,
+            data_amount: packageData.data,
+            duration: packageData.duration,
+            flag_url: packageData.flag_url || getFlagUrl(),
+            ...(isTopup && {
+              metadata: {
+                is_topup: true,
+                esim_id: esimId,
+                iccid: esimDetails?.iccid,
+                provider: packageData.metadata?.provider || packageData.provider || esimDetails?.provider || 'auto'
+              }
+            })
+          }],
+          promoDetails: verifiedPromoDetails,
+          // Add topup parameters at root level (like Stripe)
+          ...(isTopup && {
+            isTopup: true,
+            esimId: esimId,
+            provider: packageData.metadata?.provider || packageData.provider || esimDetails?.provider || 'auto'
+          })
+        });
+
+        if (!fibResponse.success || !fibResponse.data) {
+          // If FIB is not available, show error and suggest balance payment
+          Alert.alert(
+            'FIB Payment Unavailable',
+            'FIB payment is currently not available. Would you like to use your wallet balance instead?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              },
+              {
+                text: 'Use Balance',
+                onPress: () => {
+                  setPaymentMethod('balance');
+                  // Retry with balance payment
+                  handlePurchase();
+                }
+              }
+            ]
+          );
+          return;
+        }
+
+        // Navigate to FIB payment screen with payment details
+        navigation.navigate('FIBPayment', {
+          paymentId: fibResponse.data.paymentId,
+          orderReference: fibResponse.data.orderReference,
+          amount: convertedPrice,
+          currency: 'IQD',
+          qrCode: fibResponse.data.qrCode,
+          personalAppLink: fibResponse.data.personalAppLink,
+          businessAppLink: fibResponse.data.businessAppLink,
+          corporateAppLink: fibResponse.data.corporateAppLink,
+          readableCode: fibResponse.data.readableCode,
+          expiresAt: fibResponse.data.expiresAt,
+          packageName: packageData.name
+        });
+
       } else {
         // Process balance payment
         let orderResponse;
         
         if (isTopup) {
-          // For topups, use the topup API
-          orderResponse = await esimApi.processTopUpNew(esimId, packageData.id);
+          // For topups, use the topup API with currency support
+          const finalPrice = verifiedPromoDetails ? 
+            packageData.price - verifiedPromoDetails.discountAmount : 
+            packageData.price;
+          const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
+          
+          orderResponse = await esimApi.processTopUpNew(esimId, packageData.id, {
+            price: finalPrice, // USD price for security validation
+            displayPrice: convertedPrice, // User currency price
+            currency: userCurrency, // User's currency preference
+            paymentMethod: 'balance'
+          });
         } else {
           // For new eSIMs, use the regular order API
           const finalPrice = verifiedPromoDetails ? 
@@ -672,6 +758,54 @@ const CheckoutScreenV2 = () => {
                 </View>
               </View>
             </TouchableOpacity>
+            )}
+
+            {/* FIB Payment - only for IQD users */}
+            {userCurrency === 'IQD' && (
+              <TouchableOpacity 
+                style={[
+                  styles.paymentMethodCard,
+                  paymentMethod === 'fib' && styles.selectedPaymentMethod
+                ]}
+                onPress={() => handlePaymentMethodSelect('fib')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.paymentMethodContent}>
+                  <View style={[
+                    styles.paymentIconContainer,
+                    paymentMethod === 'fib' && styles.selectedPaymentIcon
+                  ]}>
+                    <Ionicons 
+                      name="card" 
+                      size={24} 
+                      color={paymentMethod === 'fib' ? '#FF6B00' : '#6B7280'} 
+                    />
+                  </View>
+                  <View style={styles.paymentMethodInfo}>
+                    <Text style={[
+                      styles.paymentMethodTitle,
+                      paymentMethod === 'fib' && styles.selectedPaymentTitle
+                    ]}>FIB Payment</Text>
+                    <Text style={styles.paymentMethodSubtitle}>
+                      Pay with First Iraqi Bank
+                    </Text>
+                    <View style={styles.fibLogos}>
+                      <View style={[styles.fibLogoBadge]}>
+                        <Text style={styles.fibLogoText}>FIB</Text>
+                      </View>
+                      <Text style={styles.fibCurrency}>IQD Only</Text>
+                    </View>
+                  </View>
+                  <View style={[
+                    styles.radioButton,
+                    paymentMethod === 'fib' && styles.radioButtonActive
+                  ]}>
+                    {paymentMethod === 'fib' && (
+                      <View style={styles.radioInner} />
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
             )}
 
             <TouchableOpacity 
@@ -1301,6 +1435,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  
+  // FIB Payment styles
+  fibLogos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  fibLogoBadge: {
+    backgroundColor: '#1E40AF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  fibLogoText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  fibCurrency: {
+    fontSize: 11,
+    color: '#F59E0B',
+    fontWeight: '600',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
 });

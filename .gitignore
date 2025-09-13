@@ -44,3 +44,4 @@ android/
 # Native folders managed by Expo
 ios/
 android/
+package-lock.json

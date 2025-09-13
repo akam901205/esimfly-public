@@ -21,6 +21,7 @@ import { formatBalance, SupportedCurrency } from '../../utils/currencyUtils';
 import { newApi } from '../../api/api';
 import { ModalState, AddOnPlan } from '../../types/esim.types';
 import { getStatusColor } from '../../constants/esim.constants';
+import { useCurrencyConversion } from '../../hooks/useCurrencyConversion';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -48,6 +49,9 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<AddOnPlan | null>(null);
+  
+  // Use the same currency conversion hook as country packages
+  const { formatPrice, userCurrency, loading: currencyLoading } = useCurrencyConversion();
 
   useEffect(() => {
     if (modalState.isVisible && modalState.esim) {
@@ -191,10 +195,9 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
                 Price
               </Text>
               <Text style={[styles.planDetailValue, { color: '#FF6B00' }]}>
-                {formatBalance(
+                {formatPrice(
                   typeof selectedPlan.price === 'number' ? selectedPlan.price : 
-                  (selectedPlan.price && !isNaN(parseFloat(selectedPlan.price))) ? parseFloat(selectedPlan.price) : 0,
-                  'USD'
+                  (selectedPlan.price && !isNaN(parseFloat(selectedPlan.price))) ? parseFloat(selectedPlan.price) : 0
                 )}
               </Text>
             </View>
@@ -259,10 +262,9 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
               <Text style={styles.priceLabel}>Price</Text>
               <View style={styles.priceContainer}>
                 <Text style={styles.planPrice}>
-                  {formatBalance(
+                  {formatPrice(
                     typeof plan.price === 'number' ? plan.price : 
-                    (plan.price && !isNaN(parseFloat(plan.price))) ? parseFloat(plan.price) : 0,
-                    'USD'
+                    (plan.price && !isNaN(parseFloat(plan.price))) ? parseFloat(plan.price) : 0
                   )}
                 </Text>
               </View>
