@@ -148,7 +148,8 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      const response = await signUp(email, password, referralCode || undefined, fullName);
+      const normalizedEmail = email.toLowerCase().trim();
+      const response = await signUp(normalizedEmail, password, referralCode || undefined, fullName);
       
       if (response.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

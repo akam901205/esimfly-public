@@ -61,7 +61,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      const response = await forgotPassword(email);
+      const response = await forgotPassword(email.toLowerCase().trim());
       
       if (response.success) {
         Alert.alert(

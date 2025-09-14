@@ -5,16 +5,17 @@ import {
   StyleSheet,
   StatusBar,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../theme/colors';
+import { Ionicons } from '@expo/vector-icons';
 
 const LoadingScreen: React.FC = () => {
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background.primary} />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <LinearGradient
-        colors={[colors.background.primary, colors.background.secondary]}
+        colors={['#FFFFFF', '#FFF7ED', '#FEF3C7']}
         style={styles.gradient}
       />
       
@@ -22,12 +23,19 @@ const LoadingScreen: React.FC = () => {
         {/* Logo Container */}
         <View style={styles.logoContainer}>
           <View style={styles.logo}>
-            <Text style={styles.logoText}>ESIMFLY</Text>
+            <LinearGradient
+              colors={['#FF6B00', '#FF8533']}
+              style={styles.logoGradient}
+            >
+              <Ionicons name="globe" size={40} color="#FFFFFF" />
+            </LinearGradient>
+            <Text style={styles.logoText}>eSIMfly</Text>
+            <Text style={styles.logoSubtext}>Stay Connected Worldwide</Text>
           </View>
         </View>
 
         {/* Loading Indicator */}
-        <ActivityIndicator size="large" color="#4F46E5" style={styles.loader} />
+        <ActivityIndicator size="large" color="#FF6B00" style={styles.loader} />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     </View>
@@ -37,7 +45,7 @@ const LoadingScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -52,44 +60,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainer: {
-    marginBottom: 40,
+    marginBottom: 50,
   },
   logo: {
-    backgroundColor: '#ffffff',
-    width: 200,
-    height: 200,
-    borderRadius: 90,
+    alignItems: 'center',
+  },
+  logoGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    marginBottom: 16,
+    shadowColor: '#FF6B00',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 8,
   },
   logoText: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
-    color: '#4F46E5',
-    fontFamily: undefined, // Use system font to prevent loading issues
+    color: '#1F2937',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : undefined, // Use system fonts
   },
   logoSubtext: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#7C3AED',
-    fontFamily: 'Quicksand-SemiBold',
-    marginTop: -6,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'System' : undefined, // Use system fonts
   },
   loader: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   loadingText: {
     fontSize: 16,
-    color: colors.text.secondary,
-    fontFamily: undefined, // Use system font to prevent loading issues
+    color: '#6B7280',
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : undefined, // Use system fonts
   },
 });
 

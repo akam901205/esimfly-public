@@ -25,9 +25,10 @@ export default function LoginScreen({ navigation }) {
   const handleSignIn = async () => {
     setIsLoading(true);
     try {
-      const response = await apiSignIn(email, password);
+      const normalizedEmail = email.toLowerCase().trim();
+      const response = await apiSignIn(normalizedEmail, password);
       if (response.success) {
-        await signIn(response.token, email, response.expires_at);
+        await signIn(response.token, normalizedEmail, response.expires_at);
       } else {
         Alert.alert('Error', response.error || 'Failed to sign in');
       }
