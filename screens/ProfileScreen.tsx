@@ -26,6 +26,7 @@ import { logout } from '../api/authApi';
 import { colors } from '../theme/colors';
 import notificationService from '../services/notificationService';
 import { formatBalance, SupportedCurrency } from '../utils/currencyUtils';
+import { BackHandler } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -136,11 +137,20 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
               // Always perform local logout
               await auth.signOut();
               
+              // Close the app after successful logout (common pattern for production apps)
+              setTimeout(() => {
+                BackHandler.exitApp();
+              }, 500); // Small delay to ensure logout completes
+              
             } catch (error) {
               console.error('Critical logout error:', error);
               // Force local logout even on error
               try {
                 await auth.signOut();
+                // Still close app even if there were errors
+                setTimeout(() => {
+                  BackHandler.exitApp();
+                }, 500);
               } catch (fallbackError) {
                 console.error('Fallback logout failed:', fallbackError);
                 Alert.alert('Error', 'Failed to sign out completely. Please restart the app.');
