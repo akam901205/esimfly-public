@@ -14,7 +14,6 @@
     "@expo/vector-icons": "^15.0.2",
     "@invertase/react-native-apple-authentication": "^2.4.1",
     "@react-native-async-storage/async-storage": "2.2.0",
- 
     "@react-native-google-signin/google-signin": "^13.1.0",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
@@ -83,7 +82,9 @@
     "jest-expo": "~54.0.10",
     "react-native-svg-transformer": "^1.5.0",
     "react-test-renderer": "19.1.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~10.0.0"
   },
   "private": true,
   "expo": {

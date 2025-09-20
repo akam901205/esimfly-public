@@ -157,31 +157,55 @@ const FIBPaymentScreen: React.FC = () => {
   const openFIBApp = async (appType: 'personal' | 'business' | 'corporate') => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
-      // Always use App Store links like the B2B app (deep links don't work reliably)
+
+      // Get the appropriate deep link from route params
+      let deepLink = '';
       let appStoreUrl = '';
-      
+
       switch (appType) {
         case 'personal':
-          appStoreUrl = Platform.OS === 'ios' 
+          deepLink = personalAppLink;
+          appStoreUrl = Platform.OS === 'ios'
             ? 'https://apps.apple.com/us/app/first-iraqi-bank/id1545549339'
             : 'https://play.google.com/store/apps/details?id=com.firstiraqibank.personal';
           break;
         case 'business':
-          appStoreUrl = Platform.OS === 'ios' 
+          deepLink = businessAppLink;
+          appStoreUrl = Platform.OS === 'ios'
             ? 'https://apps.apple.com/us/app/first-iraqi-bank-for-business/id1548261487'
             : 'https://play.google.com/store/apps/details?id=com.firstiraqibank.business';
           break;
         case 'corporate':
-          appStoreUrl = Platform.OS === 'ios' 
+          deepLink = corporateAppLink;
+          appStoreUrl = Platform.OS === 'ios'
             ? 'https://apps.apple.com/us/app/first-iraqi-bank-for-corporate/id1575329166'
             : 'https://play.google.com/store/apps/details?id=com.firstiraqibank.corporate';
           break;
       }
-      
+
+      // First try to open the deep link if available
+      if (deepLink) {
+        try {
+          const canOpen = await Linking.canOpenURL(deepLink);
+          if (canOpen) {
+            console.log('Opening FIB app directly via deep link:', deepLink);
+            await Linking.openURL(deepLink);
+            return; // Success - no need for fallback
+          } else {
+            console.log('Deep link not supported, trying app store fallback');
+          }
+        } catch (deepLinkError) {
+          console.log('Deep link failed, falling back to app store:', deepLinkError);
+        }
+      } else {
+        console.log('No deep link available, using app store fallback');
+      }
+
+      // Fallback to App Store if deep link fails or is not available
+      console.log('Opening app store:', appStoreUrl);
       await Linking.openURL(appStoreUrl);
     } catch (error) {
-      Alert.alert('Error', 'Could not open app store. Please try scanning the QR code instead.');
+      Alert.alert('Error', 'Could not open FIB app. Please try scanning the QR code instead.');
     }
   };
 

@@ -128,6 +128,18 @@ const CheckoutScreenV2 = () => {
     return 0;
   };
 
+  // Helper function to calculate final price after discount
+  const getFinalPrice = () => {
+    return verifiedPromoDetails ?
+      packageData.price - verifiedPromoDetails.discountAmount :
+      packageData.price;
+  };
+
+  // Helper function to check if balance is insufficient
+  const isBalanceInsufficient = () => {
+    return balance && getFinalPrice() > balance.balance;
+  };
+
   const handlePaymentMethodSelect = (method) => {
     setPaymentMethod(method);
     
@@ -168,9 +180,7 @@ const CheckoutScreenV2 = () => {
     try {
       if (paymentMethod === 'card') {
         // Create payment intent for card payment
-        const finalPrice = verifiedPromoDetails ? 
-          packageData.price - verifiedPromoDetails.discountAmount : 
-          packageData.price;
+        const finalPrice = getFinalPrice();
         const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
         
         const paymentResponse = await esimApi.createCheckoutSession({
@@ -273,9 +283,7 @@ const CheckoutScreenV2 = () => {
 
       } else if (paymentMethod === 'fib') {
         // Create FIB payment session
-        const finalPrice = verifiedPromoDetails ? 
-          packageData.price - verifiedPromoDetails.discountAmount : 
-          packageData.price;
+        const finalPrice = getFinalPrice();
         const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
         
         const fibResponse = await esimApi.createFIBSession({
@@ -349,9 +357,7 @@ const CheckoutScreenV2 = () => {
         
         if (isTopup) {
           // For topups, use the topup API with currency support
-          const finalPrice = verifiedPromoDetails ? 
-            packageData.price - verifiedPromoDetails.discountAmount : 
-            packageData.price;
+          const finalPrice = getFinalPrice();
           const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
           
           orderResponse = await esimApi.processTopUpNew(esimId, packageData.id, {
@@ -362,9 +368,7 @@ const CheckoutScreenV2 = () => {
           });
         } else {
           // For new eSIMs, use the regular order API
-          const finalPrice = verifiedPromoDetails ? 
-            packageData.price - verifiedPromoDetails.discountAmount : 
-            packageData.price;
+          const finalPrice = getFinalPrice();
           const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
           
           console.log('Currency Debug:', {
@@ -666,11 +670,7 @@ const CheckoutScreenV2 = () => {
                 <View style={styles.priceRow}>
                   <Text style={styles.totalLabel}>Total</Text>
                   <Text style={styles.totalValue}>
-                    {formatPrice(
-                      verifiedPromoDetails ? 
-                        packageData.price - verifiedPromoDetails.discountAmount : 
-                        packageData.price
-                    )}
+                    {formatPrice(getFinalPrice())}
                   </Text>
                 </View>
               </View>
@@ -835,7 +835,7 @@ const CheckoutScreenV2 = () => {
                   <Text style={styles.paymentMethodSubtitle}>
                     Available: {getFormattedBalance()}
                   </Text>
-                  {balance && packageData.price > balance.balance && (
+                  {isBalanceInsufficient() && (
                     <Text style={styles.insufficientBalance}>
                       Insufficient balance
                     </Text>
@@ -915,12 +915,12 @@ const CheckoutScreenV2 = () => {
       <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity 
           onPress={handlePurchase}
-          disabled={!paymentMethod || !isAgreed || isLoading || (paymentMethod === 'balance' && balance && packageData.price > balance.balance)}
+          disabled={!paymentMethod || !isAgreed || isLoading || (paymentMethod === 'balance' && isBalanceInsufficient())}
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={paymentMethod && isAgreed && !(paymentMethod === 'balance' && balance && packageData.price > balance.balance) 
-              ? ['#FF6B00', '#FF8533'] 
+            colors={paymentMethod && isAgreed && !(paymentMethod === 'balance' && isBalanceInsufficient())
+              ? ['#FF6B00', '#FF8533']
               : ['#E5E7EB', '#D1D5DB']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -938,11 +938,7 @@ const CheckoutScreenV2 = () => {
                     <View>
                       <Text style={styles.payButtonLabel}>Total Amount</Text>
                       <Text style={styles.payButtonPrice}>
-                        {formatPrice(
-                          verifiedPromoDetails ? 
-                            packageData.price - verifiedPromoDetails.discountAmount : 
-                            packageData.price
-                        )}
+                        {formatPrice(getFinalPrice())}
                       </Text>
                     </View>
                   </View>
