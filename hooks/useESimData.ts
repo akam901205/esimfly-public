@@ -40,23 +40,61 @@ export const useESimData = () => {
       }
 
       console.log('Fetching eSIM data with token:', userToken ? 'Token exists' : 'No token');
-      const response = await newApi.get('/myesims?limit=50&status=all');
+      const response = await newApi.get('/myesims?limit=100&status=all');
 
       console.log('eSIM data response:', response.data);
 
       if (response.data && response.data.esims && isMounted.current) {
         // Transform the API response to match the expected ESim interface
         const transformedEsims = response.data.esims.map(transformEsimData);
-        
-        setEsimData(transformedEsims);
-        if (transformedEsims.length > 0) {
-          const initialVisibleEsims = transformedEsims.slice(0, 5);
+
+        // Sort eSIMs to show active/in-use first, then new, then others
+        const sortedEsims = transformedEsims.sort((a, b) => {
+          const statusA = (a.status || '').toLowerCase();
+          const statusB = (b.status || '').toLowerCase();
+
+          // Priority order: active/in_use > new > expiring > expired/depleted
+          const getPriority = (status: string) => {
+            switch (status) {
+              case 'active':
+              case 'in_use':
+              case 'in use':
+                return 0;
+              case 'new':
+                return 1;
+              case 'expiring':
+                return 2;
+              case 'expired':
+              case 'depleted':
+                return 3;
+              default:
+                return 4;
+            }
+          };
+
+          const priorityA = getPriority(statusA);
+          const priorityB = getPriority(statusB);
+
+          // Sort by priority first
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+          }
+
+          // Within same priority, sort by creation date (newest first)
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        setEsimData(sortedEsims);
+        if (sortedEsims.length > 0) {
+          const initialVisibleEsims = sortedEsims.slice(0, 5);
           setVisibleEsims(initialVisibleEsims);
-          
+
           // If preserveSelection is true and we have a selected eSIM, try to keep it selected
           if (preserveSelection && selectedEsimRef.current) {
             // Find the same eSIM in the new data by ID
-            const updatedSelectedEsim = transformedEsims.find(esim => esim.id === selectedEsimRef.current!.id);
+            const updatedSelectedEsim = sortedEsims.find(esim => esim.id === selectedEsimRef.current!.id);
             if (updatedSelectedEsim) {
               setSelectedEsim(updatedSelectedEsim);
             } else {
