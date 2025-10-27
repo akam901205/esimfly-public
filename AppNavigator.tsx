@@ -380,7 +380,7 @@ function MainNavigator() {
 
     return () => {
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        responseListener.current.remove();
       }
       showSubscription.remove();
       hideSubscription.remove();

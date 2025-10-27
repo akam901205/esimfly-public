@@ -279,7 +279,7 @@ const SupportScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
         colors={[colors.background.primary, colors.background.secondary]}
@@ -287,7 +287,7 @@ const SupportScreen: React.FC = () => {
       />
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
+      <View style={[styles.header, { paddingTop: 5 }]}>
         <TouchableOpacity
           style={styles.headerIcon}
           onPress={() => {
@@ -536,7 +536,7 @@ const SupportScreen: React.FC = () => {
           </ScrollView>
         </KeyboardAvoidingView>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

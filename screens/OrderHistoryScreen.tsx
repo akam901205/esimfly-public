@@ -362,30 +362,30 @@ const OrderHistoryScreen: React.FC = () => {
 
   if (loading && !refreshing && orders.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4F46E5" />
           <Text style={styles.loadingText}>Loading orders...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
         colors={[colors.background.primary, colors.background.secondary]}
         style={styles.backgroundGradient}
       />
-      
+
       <Animated.View
         style={[
           styles.header,
           {
             transform: [{ translateY: headerAnim }],
-            paddingTop: Math.max(insets.top, 16),
+            paddingTop: 5,
           },
         ]}
       >
@@ -430,7 +430,7 @@ const OrderHistoryScreen: React.FC = () => {
           onEndReachedThreshold={0.5}
         />
       </Animated.View>
-    </SafeAreaView>
+    </View>
   );
 };
 

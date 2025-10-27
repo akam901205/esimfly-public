@@ -1217,6 +1217,57 @@ export const createFIBSession = async (data: {
   }
 };
 
+// Create PayTabs payment session for Iraqi users (card payments in IQD)
+export const createPayTabsSession = async (data: {
+  items: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    data_amount: number;
+    duration: number;
+    flag_url?: string;
+    metadata?: any;
+  }>;
+  promoDetails?: any;
+  isTopup?: boolean;
+  esimId?: number;
+  provider?: string;
+}): Promise<ApiResponse<{
+  cartID: string;
+  amount: number;
+  cartDescription: string;
+  orderReference: string;
+}>> => {
+  try {
+    console.log('Creating PayTabs payment session');
+
+    const response = await newApi.post('/checkout/create-paytabs-session', data);
+    console.log('PayTabs session response:', response.data);
+
+    if (response.data.success) {
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } else {
+      return {
+        success: false,
+        message: response.data.message || 'Failed to create PayTabs payment session',
+        error_code: response.data.error_code
+      };
+    }
+  } catch (error) {
+    const errorInfo = handleApiError(error);
+    console.error('Error creating PayTabs session:', error);
+    return {
+      success: false,
+      message: errorInfo.message || 'Failed to create PayTabs payment session',
+      ...errorInfo
+    };
+  }
+};
+
 // Create checkout session for Stripe Payment Element
 export const createCheckoutSession = async (data: {
   items: Array<{
@@ -1331,6 +1382,7 @@ const esimApi = {
   orderAddOnPlan,
   createCheckoutSession,
   createFIBSession,
+  createPayTabsSession,
   checkOrderStatus,
 };
 

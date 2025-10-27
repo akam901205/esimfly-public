@@ -2,7 +2,7 @@ export default {
   expo: {
     name: 'eSimFly',
     slug: 'esimfly-public',
-    version: '1.0.6',
+    version: '1.0.9',
     orientation: 'portrait',
     icon: './assets/icon.png',
     scheme: 'esimfly',
@@ -23,6 +23,9 @@ export default {
     },
     runtimeVersion: {
       policy: "sdkVersion"
+    },
+    web: {
+      bundler: 'metro'
     },
     ios: {
       supportsTablet: true,
@@ -110,7 +113,8 @@ export default {
         'android.permission.RECEIVE_BOOT_COMPLETED',
         'android.permission.POST_NOTIFICATIONS',
         'android.permission.BILLING',
-        'com.google.android.gms.permission.PAYMENTS'
+        'com.google.android.gms.permission.PAYMENTS',
+        'com.google.android.gms.permission.AD_ID'
       ],
       config: {
         googleSignIn: {
@@ -164,7 +168,6 @@ export default {
           },
         },
       ],
-      'expo-router',
       'expo-camera',
       'expo-localization',
       [
@@ -205,7 +208,9 @@ export default {
         {
           iCloudContainerEnvironment: 'Production'
         }
-      ]
+      ],
+      'expo-web-browser',
+      './plugins/withPayTabsManifest.js'
     ],
     experiments: {
       typedRoutes: true

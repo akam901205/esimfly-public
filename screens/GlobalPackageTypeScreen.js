@@ -28,7 +28,6 @@ const GlobalPackageTypeScreen = () => {
   const route = useRoute();
   const { globalPackageName } = route.params;
 
-  console.log('[DEBUG] GlobalPackageTypeScreen received package:', globalPackageName);
 
   const getSearchTerm = (packageName) => {
     // Normalize search terms to match database naming
@@ -51,7 +50,6 @@ const GlobalPackageTypeScreen = () => {
     try {
       return JSON.parse(jsonString);
     } catch (e) {
-      console.log('[DEBUG] Initial parse failed, attempting to fix JSON');
       const plansMatch = jsonString.match(/"plans":\s*(\[[\s\S]*?\])(?=,\s*"pagination")/);
       if (plansMatch && plansMatch[1]) {
         try {
@@ -66,7 +64,7 @@ const GlobalPackageTypeScreen = () => {
   };
 	
 const renderHeader = () => (
-  <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+  <View style={[styles.header, { paddingTop: 5 }]}>
     <TouchableOpacity 
       onPress={() => navigation.goBack()} 
       style={styles.headerIcon}
@@ -97,7 +95,6 @@ const renderHeader = () => (
     }
 
     try {
-      console.log(`[DEBUG] Checking availability for package: ${globalPackageName}`);
       
       // Use the new API to fetch global packages
       const response = await newApi.get('/user/esims/packages', {
@@ -111,7 +108,6 @@ const renderHeader = () => (
       });
 
       const allPackages = response.data?.data?.packages || [];
-      console.log(`[DEBUG] Total packages: ${allPackages.length}`);
 
       let foundUnlimited = false;
       let foundVoiceSMS = false;
@@ -123,20 +119,17 @@ const renderHeader = () => (
         if (pkg.isUnlimited === true || 
             (pkg.name && pkg.name.toLowerCase().includes('unlimited'))) {
           foundUnlimited = true;
-          console.log(`[DEBUG] Found unlimited package: ${pkg.name}`);
         }
 
         // Check for voice and SMS capabilities
         if ((pkg.voiceMinutes !== null && pkg.voiceMinutes !== undefined && pkg.voiceMinutes > 0) || 
             (pkg.smsCount !== null && pkg.smsCount !== undefined && pkg.smsCount > 0)) {
           foundVoiceSMS = true;
-          console.log(`[DEBUG] Found Voice+SMS package: ${pkg.name}, Voice: ${pkg.voiceMinutes}, SMS: ${pkg.smsCount}`);
         }
       });
 
       setHasUnlimited(foundUnlimited);
       setHasVoiceSMS(foundVoiceSMS);
-      console.log(`[DEBUG] Has unlimited: ${foundUnlimited}, Has Voice+SMS: ${foundVoiceSMS}`);
     } catch (error) {
       console.error('[DEBUG] Error checking package availability:', error);
       setError('Failed to fetch package information. Please try again.');
@@ -150,7 +143,6 @@ const renderHeader = () => (
   }, [checkPackageAvailability]);
 
   const navigateToPackages = useCallback((type) => {
-    console.log(`[DEBUG] Navigating to ${type} packages for ${globalPackageName}`);
     navigation.navigate('GlobalPackages', {
       packageType: type,
       globalPackageName: globalPackageName,
@@ -160,7 +152,7 @@ const renderHeader = () => (
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
         <LinearGradient
           colors={['#F8F9FA', '#F3F4F6']}
           style={styles.backgroundGradient}
@@ -169,13 +161,13 @@ const renderHeader = () => (
         <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
           <ActivityIndicator size="large" color="#FF6B00" />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
         <LinearGradient
           colors={['#F8F9FA', '#F3F4F6']}
           style={styles.backgroundGradient}
@@ -196,12 +188,12 @@ const renderHeader = () => (
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <LinearGradient
         colors={['#F8F9FA', '#F3F4F6']}
         style={styles.backgroundGradient}
@@ -270,7 +262,7 @@ const renderHeader = () => (
           </TouchableOpacity>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

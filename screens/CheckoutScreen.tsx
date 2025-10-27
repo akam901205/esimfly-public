@@ -28,6 +28,7 @@ import { colors } from '../theme/colors';
 import { useToast } from '../components/ToastNotification';
 import { formatBalance, SupportedCurrency } from '../utils/currencyUtils';
 import { useCurrencyConversion } from '../hooks/useCurrencyConversion';
+import { usePayTabs } from '../hooks/usePayTabs';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -45,6 +46,7 @@ const CheckoutScreenV2 = () => {
   const auth = useContext(AuthContext);
   const [verifiedPromoDetails, setVerifiedPromoDetails] = useState(route.params.promoDetails);
   const { userCurrency, formatPrice, formatActualBalance, convertPrice, loading: currencyLoading } = useCurrencyConversion();
+  const { processPayment: processPayTabsPayment, isProcessing: isPayTabsProcessing } = usePayTabs();
   
   // Refs for auto-scroll
   const scrollViewRef = useRef(null);
@@ -60,9 +62,9 @@ const CheckoutScreenV2 = () => {
 
   // Automatically set payment method based on user currency
   useEffect(() => {
-    if (userCurrency === 'IQD' && paymentMethod !== 'fib') {
-      // Default to FIB for Iraqi users (local bank payment)
-      setPaymentMethod('fib');
+    if (userCurrency === 'IQD' && paymentMethod !== 'paytabs' && paymentMethod !== 'fib') {
+      // Default to PayTabs for Iraqi users (card payment in IQD)
+      setPaymentMethod('paytabs');
     } else if (userCurrency !== 'USD' && userCurrency !== 'IQD' && paymentMethod !== 'balance') {
       // Default to balance for other non-USD currencies
       setPaymentMethod('balance');
@@ -281,6 +283,83 @@ const CheckoutScreenV2 = () => {
           });
         }, 1500);
 
+      } else if (paymentMethod === 'paytabs') {
+        // Process PayTabs payment
+        const finalPrice = getFinalPrice();
+        const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
+
+        const payTabsResult = await processPayTabsPayment({
+          items: [{
+            id: packageData.package_code || packageData.packageCode || packageData.id,
+            name: packageData.name,
+            price: convertedPrice, // IQD price
+            quantity: 1,
+            data_amount: packageData.data,
+            duration: packageData.duration,
+            flag_url: packageData.flag_url || getFlagUrl(),
+            ...(isTopup && {
+              metadata: {
+                is_topup: true,
+                esim_id: esimId,
+                iccid: esimDetails?.iccid,
+                provider: packageData.metadata?.provider || packageData.provider || esimDetails?.provider || 'auto'
+              }
+            })
+          }],
+          promoDetails: verifiedPromoDetails,
+          // Add topup parameters at root level
+          ...(isTopup && {
+            isTopup: true,
+            esimId: esimId,
+            provider: packageData.metadata?.provider || packageData.provider || esimDetails?.provider || 'auto'
+          })
+        });
+
+        if (payTabsResult.success && payTabsResult.orderReference) {
+          // PayTabs payment successful
+          toast.success('Payment successful! Processing your order...');
+
+          // Navigate to processing screen
+          setTimeout(() => {
+            navigation.navigate('OrderProcessing', {
+              orderReference: payTabsResult.orderReference,
+              packageName: packageData.name,
+              isPayTabs: true
+            });
+          }, 1500);
+        } else if (payTabsResult.cancelled) {
+          // Payment was cancelled by user
+          toast.error('Payment cancelled');
+          return;
+        } else {
+          // Payment failed - show detailed error message
+          const errorMessage = payTabsResult.error || 'PayTabs payment failed';
+          const details = payTabsResult.details;
+
+          // Show detailed error toast
+          if (details?.responseCode === '300') {
+            toast.error('💳 Card Declined - Please try a different card or contact your bank');
+          } else if (details?.responseCode === '100') {
+            toast.error('💰 Insufficient Funds - Please check your card balance');
+          } else if (details?.responseCode === '200') {
+            toast.error('⏰ Card Expired - Please use a valid card');
+          } else if (details?.responseCode === '400') {
+            toast.error('❌ Invalid Card - Please check your card details');
+          } else {
+            toast.error(`Payment Failed: ${errorMessage}`);
+          }
+
+          // Log details for debugging
+          console.log('PayTabs payment declined:', {
+            responseCode: details?.responseCode,
+            responseMessage: details?.responseMessage,
+            cardScheme: details?.cardScheme,
+            cardType: details?.cardType
+          });
+
+          return; // Don't throw error, just show toast and return
+        }
+
       } else if (paymentMethod === 'fib') {
         // Create FIB payment session
         const finalPrice = getFinalPrice();
@@ -432,6 +511,48 @@ const CheckoutScreenV2 = () => {
             }
           }
 
+          // For TGT orders, poll for eSIM details before navigating
+          // Check if this is a TGT order by ICCID (more reliable than provider field)
+          const isTGTOrder = !isTopup && orderResponse.data.esims?.[0]?.iccid?.startsWith('TGT_PENDING_');
+
+          if (isTGTOrder && responseData.orderReference) {
+
+            let esimReady = false;
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            while (!esimReady && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              attempts++;
+
+              try {
+                // Check order status by order reference
+                const checkResponse = await esimApi.checkOrderStatus(responseData.orderReference);
+
+                if (checkResponse.success && checkResponse.data) {
+                  const data = checkResponse.data;
+
+                  // Check if webhook has updated the eSIM (data is at root level)
+                  if (data.iccid && !data.iccid.startsWith('TGT_PENDING_') && data.qrCodeUrl) {
+                    // Update orderResponse with real details
+                    orderResponse.data.qrCodeUrl = data.qrCodeUrl;
+                    orderResponse.data.directAppleInstallUrl = data.directAppleInstallUrl;
+                    orderResponse.data.esims = [{
+                      iccid: data.iccid,
+                      qrCodeUrl: data.qrCodeUrl,
+                      appleInstallUrl: data.directAppleInstallUrl,
+                      matchingId: '',
+                      smdpAddress: ''
+                    }];
+                    esimReady = true;
+                  }
+                }
+              } catch {
+                // Silent error - continue polling
+              }
+            }
+          }
+
           toast.success(isTopup ? 'Top-up successful!' : 'Purchase successful!');
 
           if (isTopup) {
@@ -491,9 +612,29 @@ const CheckoutScreenV2 = () => {
   };
 
   const getFlagUrl = () => {
-    // For topups, use the flag from the package data
-    if (isTopup && packageData.flag_url) {
-      return packageData.flag_url;
+    // For topups, use the flag from the original eSIM or package data
+    if (isTopup) {
+      // First try the package data flag
+      if (packageData.flag_url) {
+        return packageData.flag_url;
+      }
+
+      // Then try the original eSIM's flag URL
+      if (esimDetails?.flagUrl) {
+        return esimDetails.flagUrl;
+      }
+
+      // If we have eSIM details, try to determine flag from the eSIM's destination
+      if (esimDetails?.countries && esimDetails.countries.length > 0) {
+        const countryName = esimDetails.countries[0];
+        const countryCode = countries.find(c =>
+          c.name.toLowerCase() === countryName.toLowerCase()
+        )?.id || '';
+
+        if (countryCode) {
+          return `/img/flags/${countryCode.toLowerCase()}.png`;
+        }
+      }
     }
     
     if (isGlobalPackage) return '/img/flags/GLOBAL.png';
@@ -548,7 +689,7 @@ const CheckoutScreenV2 = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       {/* Background gradient */}
       <LinearGradient
         colors={['#F9FAFB', '#EFF6FF', '#FEF3C7']}
@@ -558,7 +699,7 @@ const CheckoutScreenV2 = () => {
       />
       
       {/* Header */}
-      <View style={[styles.headerContainer, { height: Math.max(insets.top + 60, 60) }]}>
+      <View style={[styles.headerContainer, { height: 60 }]}>
         {/* Fixed header background with blur effect */}
         <View style={styles.headerBackground}>
           {Platform.OS === 'ios' && (
@@ -567,7 +708,7 @@ const CheckoutScreenV2 = () => {
         </View>
         
         {/* Header content */}
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
+        <View style={[styles.header, { paddingTop: 5 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
             <LinearGradient
               colors={['#FFFFFF', '#F9FAFB']}
@@ -760,6 +901,65 @@ const CheckoutScreenV2 = () => {
             </TouchableOpacity>
             )}
 
+            {/* PayTabs Payment - only for IQD users on mobile */}
+            {userCurrency === 'IQD' && Platform.OS !== 'web' && (
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodCard,
+                  paymentMethod === 'paytabs' && styles.selectedPaymentMethod
+                ]}
+                onPress={() => handlePaymentMethodSelect('paytabs')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.paymentMethodContent}>
+                  <View style={[
+                    styles.paymentIconContainer,
+                    paymentMethod === 'paytabs' && styles.selectedPaymentIcon
+                  ]}>
+                    <Ionicons
+                      name="card"
+                      size={24}
+                      color={paymentMethod === 'paytabs' ? '#FF6B00' : '#6B7280'}
+                    />
+                  </View>
+                  <View style={styles.paymentMethodInfo}>
+                    <Text style={[
+                      styles.paymentMethodTitle,
+                      paymentMethod === 'paytabs' && styles.selectedPaymentTitle
+                    ]}>Card Payment</Text>
+                    <Text style={styles.paymentMethodSubtitle}>
+                      Pay with Credit/Debit Card
+                    </Text>
+                    <View style={styles.payTabsLogos}>
+                      <View style={styles.payTabsLogoBadge}>
+                        <Text style={styles.payTabsLogoText}>PayTabs</Text>
+                      </View>
+                      <View style={styles.payTabsCurrencyBadge}>
+                        <Text style={styles.payTabsCurrency}>IQD</Text>
+                      </View>
+                      <View style={[styles.cardLogoBadge, { backgroundColor: '#1A1F71', paddingHorizontal: 6 }]}>
+                        <Text style={[styles.cardLogoBadgeText, { color: '#FFFFFF', fontSize: 10, fontWeight: '800' }]}>VISA</Text>
+                      </View>
+                      <View style={[styles.cardLogoBadge, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 6 }]}>
+                        <Svg width="19" height="13" viewBox="0 0 32 20" fill="none">
+                          <Circle cx="12" cy="10" r="7" fill="#EA001B" />
+                          <Circle cx="20" cy="10" r="7" fill="#FFA200" fillOpacity="0.8" />
+                        </Svg>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={[
+                    styles.radioButton,
+                    paymentMethod === 'paytabs' && styles.radioButtonActive
+                  ]}>
+                    {paymentMethod === 'paytabs' && (
+                      <View style={styles.radioInner} />
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+
             {/* FIB Payment - only for IQD users */}
             {userCurrency === 'IQD' && (
               <TouchableOpacity 
@@ -775,10 +975,10 @@ const CheckoutScreenV2 = () => {
                     styles.paymentIconContainer,
                     paymentMethod === 'fib' && styles.selectedPaymentIcon
                   ]}>
-                    <Ionicons 
-                      name="card" 
-                      size={24} 
-                      color={paymentMethod === 'fib' ? '#FF6B00' : '#6B7280'} 
+                    <Ionicons
+                      name="swap-horizontal"
+                      size={24}
+                      color={paymentMethod === 'fib' ? '#FF6B00' : '#6B7280'}
                     />
                   </View>
                   <View style={styles.paymentMethodInfo}>
@@ -913,9 +1113,9 @@ const CheckoutScreenV2 = () => {
 
       {/* Floating Pay Button */}
       <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handlePurchase}
-          disabled={!paymentMethod || !isAgreed || isLoading || (paymentMethod === 'balance' && isBalanceInsufficient())}
+          disabled={!paymentMethod || !isAgreed || isLoading || isPayTabsProcessing || (paymentMethod === 'balance' && isBalanceInsufficient())}
           activeOpacity={0.8}
         >
           <LinearGradient
@@ -927,7 +1127,7 @@ const CheckoutScreenV2 = () => {
             style={styles.payButton}
           >
             <View style={styles.payButtonContent}>
-              {isLoading ? (
+              {(isLoading || isPayTabsProcessing) ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <>
@@ -959,7 +1159,7 @@ const CheckoutScreenV2 = () => {
           {' '}Your payment is protected by bank-level security
         </Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -1461,6 +1661,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+
+  // PayTabs Payment styles
+  payTabsLogos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  payTabsLogoBadge: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    minWidth: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payTabsLogoText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  payTabsCurrencyBadge: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    minWidth: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payTabsCurrency: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
   },
 });

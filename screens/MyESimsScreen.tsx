@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  TouchableOpacity, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   Modal,
   FlatList,
   Dimensions,
   Platform,
+  StatusBar,
   LayoutChangeEvent,
   RefreshControl,
   Alert,
@@ -763,13 +764,13 @@ const MyESimsScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <LinearGradient
         colors={['#F8F9FA', '#F3F4F6']}
         style={styles.gradient}
       />
-      
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
+
+      <View style={[styles.header, { paddingTop: 5 }]}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
           style={styles.headerIcon}
@@ -1009,7 +1010,7 @@ const MyESimsScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

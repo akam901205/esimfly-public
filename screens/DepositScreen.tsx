@@ -250,14 +250,14 @@ const DepositScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
         colors={[colors.background.primary, colors.background.secondary]}
         style={styles.gradient}
       />
-      <View style={[styles.content, { height: WINDOW_HEIGHT - insets.top }]}>
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={styles.content}>
+        <View style={[styles.header, { paddingTop: 5 }]}>
   <TouchableOpacity 
     style={styles.headerIcon}
     onPress={() => {
@@ -338,7 +338,7 @@ const DepositScreen: React.FC = () => {
           )}
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

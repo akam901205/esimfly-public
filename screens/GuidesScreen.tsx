@@ -624,14 +624,14 @@ const GuidesScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
         colors={[colors.background.primary, colors.background.secondary]}
         style={styles.backgroundGradient}
       />
-      
-      <Animated.View style={[styles.header, { opacity: fadeAnim, paddingTop: Math.max(insets.top, 20) }]}>
+
+      <Animated.View style={[styles.header, { opacity: fadeAnim, paddingTop: 5 }]}>
         <Text style={styles.title}>eSIM Guide</Text>
         <Text style={styles.subtitle}>Everything you need to know</Text>
         
@@ -767,7 +767,7 @@ const GuidesScreen = () => {
           </Animated.View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

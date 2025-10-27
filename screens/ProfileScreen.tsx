@@ -243,15 +243,15 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
 
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <LinearGradient
         colors={[colors.background.primary, colors.background.secondary]}
         style={styles.gradient}
       />
-      
+
       {/* Fixed safe area spacer - NOT scrollable */}
-      <View style={{ paddingTop: Math.max(insets.top, 10) }}>
-        
+      <View style={{ paddingTop: 5 }}>
+
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 40, 60) }}
@@ -438,7 +438,7 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
         </ScrollView>
         
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

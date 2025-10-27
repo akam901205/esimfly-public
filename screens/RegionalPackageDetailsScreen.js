@@ -47,8 +47,6 @@ const RegionalPackageDetailsScreen = () => {
   const packageData = params.package;
   const region = params.region;
   const { formatPrice, userCurrency } = useCurrencyConversion();
-  
-  console.log('[DEBUG] RegionalPackageDetailsScreen - packageData:', JSON.stringify(packageData, null, 2));
 
   useEffect(() => {
     setOriginalPrice(packageData.price);
@@ -108,7 +106,6 @@ const RegionalPackageDetailsScreen = () => {
   };
 
   const getNetworks = (packageData) => {
-    console.log('[DEBUG] RegionalPackageDetailsScreen getNetworks:', packageData);
     const networks = [];
     
     if (!packageData) return networks;
@@ -226,23 +223,12 @@ const RegionalPackageDetailsScreen = () => {
       });
     }
 
-    console.log('[DEBUG] Final Processed Networks:', networks);
     return networks;
   };
 	
   const formatLocationNetworkList = (packageData) => {
     if (!packageData) return [];
-    
-    console.log('[DEBUG] formatLocationNetworkList:', {
-      provider: packageData.provider,
-      coverages: packageData.coverages?.length || 0,
-      coverage: packageData.coverage?.length || 0,
-      coverage_countries: packageData.coverage_countries?.length || 0,
-      networks: packageData.networks?.length || 0,
-      sample_coverage: packageData.coverages?.[0],
-      sample_network: packageData.networks?.[0]
-    });
-    
+
     // For the new API format, we'll create a location network list with countries
     const locationNetworks = [];
     
@@ -354,14 +340,14 @@ const RegionalPackageDetailsScreen = () => {
   };
 
   const renderHeader = () => (
-    <View style={[styles.headerContainer, { height: Math.max(insets.top + 60, 60) }]}>
+    <View style={[styles.headerContainer, { height: 60 }]}>
       {/* Fixed header background with blur effect */}
       <View style={styles.headerBackground}>
         <BlurView intensity={80} tint="light" style={styles.headerBlur} />
       </View>
       
       {/* Header content */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
+      <View style={[styles.header, { paddingTop: 5 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
           <LinearGradient
             colors={['#FFFFFF', '#F9FAFB']}
@@ -389,32 +375,42 @@ const RegionalPackageDetailsScreen = () => {
 
   const TopRegion = () => {
     const RegionIcon = regionInfo?.image;
-    
+
     // Calculate country count based on available data
     let countryCount = 0;
     let countryList = [];
-    
-    if (packageData.coverage && Array.isArray(packageData.coverage)) {
+
+    if (packageData.coverages && Array.isArray(packageData.coverages) && packageData.coverages.length > 0) {
+      // TGT and others use this
+      countryCount = packageData.coverages.length;
+      countryList = packageData.coverages.map(c => ({
+        name: c.name,
+        code: c.code || c.name.toLowerCase()
+      }));
+    } else if (packageData.coverage && Array.isArray(packageData.coverage) && packageData.coverage.length > 0) {
       countryCount = packageData.coverage.length;
       countryList = packageData.coverage;
-    } else if (packageData.coverages && Array.isArray(packageData.coverages)) {
-      countryCount = packageData.coverages.length;
-      countryList = packageData.coverages.map(c => ({ 
-        name: c.name, 
-        code: c.code || c.name.toLowerCase() 
-      }));
     } else if (packageData.coverage_countries && Array.isArray(packageData.coverage_countries)) {
       countryCount = packageData.coverage_countries.length;
       countryList = packageData.coverage_countries;
+    } else if (packageData.locationNetworkList && Array.isArray(packageData.locationNetworkList)) {
+      // For other providers using locationNetworkList
+      countryCount = packageData.locationNetworkList.length;
+      countryList = packageData.locationNetworkList.map(loc => ({
+        name: loc.locationName,
+        code: loc.countryCode || ''
+      }));
     }
 
     // Get up to 3 country flags for preview
     const getCountryFlags = () => {
       const flagsToShow = countryList.slice(0, 3).map((country, index) => {
-        const countryCode = country.code || 
-          countries.find(c => c.name.toLowerCase() === (country.name || country).toLowerCase())?.id || 
-          '';
-        
+        // Handle both object and string formats
+        const countryName = typeof country === 'string' ? country : country.name;
+        const countryCode = typeof country === 'object' && country.code
+          ? country.code
+          : countries.find(c => c.name.toLowerCase() === countryName?.toLowerCase())?.id || '';
+
         return (
           <View key={index} style={[styles.flagPreview, { marginLeft: index > 0 ? -15 : 0 }]}>
             <FlagIcon countryCode={countryCode} size={40} />
@@ -866,7 +862,7 @@ const RegionalPackageDetailsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       {/* Background gradient */}
       <LinearGradient
         colors={['#F9FAFB', '#EFF6FF', '#FEF3C7']}
@@ -936,7 +932,7 @@ const RegionalPackageDetailsScreen = () => {
         networks={getNetworks(packageData)}
         locationNetworkList={formatLocationNetworkList(packageData)}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

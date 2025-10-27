@@ -93,14 +93,14 @@ const GlobalPackageDetailsScreen = () => {
   };
 
   const renderHeader = () => (
-    <View style={[styles.headerContainer, { height: Math.max(insets.top + 60, 60) }]}>
+    <View style={[styles.headerContainer, { height: 60 }]}>
       {/* Fixed header background with blur effect */}
       <View style={styles.headerBackground}>
         <BlurView intensity={80} tint="light" style={styles.headerBlur} />
       </View>
       
       {/* Header content */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
+      <View style={[styles.header, { paddingTop: 5 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
           <LinearGradient
             colors={['#FFFFFF', '#F9FAFB']}
@@ -607,7 +607,7 @@ const GlobalPackageDetailsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       {/* Background gradient */}
       <LinearGradient
         colors={['#F9FAFB', '#EFF6FF', '#FEF3C7']}
@@ -675,7 +675,7 @@ const GlobalPackageDetailsScreen = () => {
         packageData={packageData}
         globalPackageName={globalPackageName}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

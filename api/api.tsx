@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Centralized API base URL - change here to affect all API calls
-export const NEW_API_BASE_URL = 'https://esimfly.net/api';
+export const NEW_API_BASE_URL = 'https://dev.esimfly.net/api';
 
 // Export just the domain for other config files
 export const API_DOMAIN = NEW_API_BASE_URL.replace('/api', '');

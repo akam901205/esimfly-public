@@ -30,7 +30,6 @@ const RegionalPackageTypeScreen = () => {
 
   const checkUnlimitedAvailability = useCallback(async () => {
     try {
-      console.log(`[DEBUG] Checking availability for region: ${region}`);
       
       // Use the new API to fetch packages based on region
       const response = await newApi.get('/user/esims/packages', {
@@ -46,7 +45,6 @@ const RegionalPackageTypeScreen = () => {
 
       const allPackages = response.data?.data?.packages || [];
       
-      console.log(`[DEBUG] Found ${allPackages.length} packages for region ${region}`);
 
       // Check if any packages are unlimited
       const unlimitedExists = allPackages.some(pkg => {
@@ -54,7 +52,6 @@ const RegionalPackageTypeScreen = () => {
                (pkg.name && pkg.name.toLowerCase().includes('unlimited'));
       });
 
-      console.log(`[DEBUG] Has unlimited packages: ${unlimitedExists}`);
       setHasUnlimited(unlimitedExists);
     } catch (error) {
       console.error('[DEBUG] Error checking unlimited availability:', error);
@@ -79,7 +76,7 @@ const RegionalPackageTypeScreen = () => {
   }, [navigation, region]);
 
   const renderHeader = () => (
-    <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+    <View style={[styles.header, { paddingTop: 5 }]}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
         <Ionicons name="arrow-back" size={24} color="#374151" />
       </TouchableOpacity>
@@ -92,7 +89,7 @@ const RegionalPackageTypeScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
         <LinearGradient
           colors={['#F8F9FA', '#F3F4F6']}
           style={styles.backgroundGradient}
@@ -101,13 +98,13 @@ const RegionalPackageTypeScreen = () => {
         <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
           <ActivityIndicator size="large" color="#FF6B00" />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
         <LinearGradient
           colors={['#F8F9FA', '#F3F4F6']}
           style={styles.backgroundGradient}
@@ -120,12 +117,12 @@ const RegionalPackageTypeScreen = () => {
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <LinearGradient
         colors={['#F8F9FA', '#F3F4F6']}
         style={styles.backgroundGradient}
@@ -175,7 +172,7 @@ const RegionalPackageTypeScreen = () => {
           </TouchableOpacity>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

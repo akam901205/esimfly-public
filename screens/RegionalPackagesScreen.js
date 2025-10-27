@@ -130,7 +130,6 @@ const RegionalPackagesScreen = () => {
 
   const fetchPackages = useCallback(async () => {
     try {
-      console.log(`[DEBUG] Fetching packages for region: ${region}, type: ${packageType}`);
       
       // Use the new API to fetch packages
       const response = await newApi.get('/user/esims/packages', {
@@ -145,16 +144,6 @@ const RegionalPackagesScreen = () => {
       });
 
       let allPackages = response.data?.data?.packages || [];
-      
-      // Debug: Log first package to see coverage structure
-      if (allPackages.length > 0) {
-        console.log('[DEBUG] Sample package coverage data:', {
-          name: allPackages[0].name,
-          coverage: allPackages[0].coverage?.slice(0, 3),
-          coverages: allPackages[0].coverages?.slice(0, 3),
-          coverageLength: allPackages[0].coverage?.length || allPackages[0].coverages?.length || 0
-        });
-      }
       
       // Map packages to match expected format
       allPackages = allPackages.map(pkg => {
@@ -238,7 +227,6 @@ const RegionalPackagesScreen = () => {
               packageNameLower.startsWith(countryLower + '-') ||
               packageNameLower.startsWith(countryLower + ':') ||
               packageNameLower === countryLower) {
-            console.log(`[DEBUG] Excluding country-specific package: ${pkg.name}`);
             return false;
           }
         }
@@ -285,7 +273,6 @@ const RegionalPackagesScreen = () => {
         // Filter out packages under 1 GB first
         const validPackages = packagesForData.filter(pkg => {
           if (pkg.data < 1 && !pkg.unlimited) {
-            console.log(`[DEBUG] Hiding package under 1GB: ${pkg.name} (${pkg.data}GB)`);
             return false;
           }
           return true;
@@ -305,13 +292,10 @@ const RegionalPackagesScreen = () => {
             if (!seen.has(uniqueKey)) {
               seen.add(uniqueKey);
               uniquePackages.push(pkg);
-              console.log(`[DEBUG] Keeping unique Europe package: ${pkg.name} ($${pkg.price})`);
             } else {
-              console.log(`[DEBUG] Skipping duplicate Europe package: ${pkg.name} ($${pkg.price})`);
             }
           });
           
-          console.log(`[DEBUG] Europe region: ${validPackages.length} packages → ${uniquePackages.length} unique packages for ${dataKey}`);
           uniquePackages.forEach(pkg => processedPackages.push(pkg));
         } else {
           // For other regions, use normal cheapest-only logic
@@ -320,12 +304,10 @@ const RegionalPackagesScreen = () => {
           
           // Only keep the cheapest package
           const cheapestPackage = validPackages[0];
-          console.log(`[DEBUG] Keeping cheapest ${dataKey} package: ${cheapestPackage.name} ($${cheapestPackage.price})`);
           
           // Log what we're hiding
           if (validPackages.length > 1) {
             validPackages.slice(1).forEach(pkg => {
-              console.log(`[DEBUG] Hiding more expensive ${dataKey} package: ${pkg.name} ($${pkg.price})`);
             });
           }
           
@@ -364,7 +346,7 @@ const RegionalPackagesScreen = () => {
   }, [fetchPackages]);
 
   const renderHeader = () => (
-    <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+    <View style={[styles.header, { paddingTop: 5 }]}>
       <TouchableOpacity 
         onPress={() => navigation.goBack()} 
         style={styles.headerIcon}
@@ -514,26 +496,26 @@ const renderPackageItem = ({ item, index }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
         <LinearGradient
           colors={['#F8F9FA', '#F3F4F6']}
           style={styles.backgroundGradient}
         />
         <ActivityIndicator size="large" color="#FF6B00" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
         <Text style={styles.errorText}>{error}</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
  return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <LinearGradient
         colors={['#F8F9FA', '#F3F4F6']}
         style={styles.backgroundGradient}
@@ -564,7 +546,7 @@ const renderPackageItem = ({ item, index }) => {
         networks={selectedNetworks}
         locationNetworkList={selectedLocationNetworks}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -506,7 +506,7 @@ const ShopScreen = () => {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Background gradient */}
@@ -521,7 +521,7 @@ const ShopScreen = () => {
         {
           transform: [{ translateY: headerTranslate }],
           opacity: headerOpacity,
-          paddingTop: Math.max(insets.top, 10),
+          paddingTop: 5, // Minimal padding since SafeArea handled by container
         }
       ]}>
         <View style={styles.headerContent}>
@@ -610,7 +610,7 @@ const ShopScreen = () => {
         windowSize={10}
         initialNumToRender={10}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

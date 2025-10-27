@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, AppState, View, ActivityIndicator, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StripeProvider } from '@stripe/stripe-react-native';
+import * as Updates from 'expo-updates';
+import Constants from 'expo-constants';
+// Conditionally import Stripe only on native platforms (not web)
+let StripeProvider: any;
+if (Platform.OS !== 'web') {
+  StripeProvider = require('@stripe/stripe-react-native').StripeProvider;
+}
 import AppNavigator from './AppNavigator';
 import * as Notifications from 'expo-notifications';
 import { NotificationManager, notificationManager } from './components/NotificationManager';
@@ -11,6 +17,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { ToastProvider } from './components/ToastNotification';
 import * as Linking from 'expo-linking';
+import { ForceUpdateModal } from './components/ForceUpdateModal';
+import { UpdatePrompt } from './components/UpdatePrompt';
+import { NEW_API_BASE_URL } from './api/api';
 
 // Stripe configuration
 const STRIPE_PUBLISHABLE_KEY = 'pk_live_51Qbg8uHbrtyQ1AACqgu82JueHGZak2BUQHFIfWb9TIliG4gP8npvVPm73L6gIyEVxYruu9LBhxk5vL7dC9e3ptOr00smrvDnD7';
@@ -106,6 +115,55 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isStripeInitialized, setIsStripeInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forceUpdate, setForceUpdate] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState('');
+  const [storeUrl, setStoreUrl] = useState('');
+  const [showOTAUpdate, setShowOTAUpdate] = useState(false);
+
+  // Check for app updates and force update if needed
+  useEffect(() => {
+    checkAppVersion();
+    checkForOTAUpdates();
+  }, []);
+
+  const checkAppVersion = async () => {
+    try {
+      const appVersion = Constants.expoConfig?.version || '1.0.9';
+      const platform = Platform.OS;
+
+      // Use the same base URL as the rest of the API
+      const baseUrl = NEW_API_BASE_URL.replace('/api', '');
+      const response = await fetch(
+        `${baseUrl}/api/app/version?platform=${platform}&version=${appVersion}`
+      );
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        if (result.data.forceUpdate) {
+          setForceUpdate(true);
+          setUpdateMessage(result.data.updateMessage);
+          setStoreUrl(result.data.storeUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check app version:', error);
+      // Don't block app if version check fails
+    }
+  };
+
+  const checkForOTAUpdates = async () => {
+    try {
+      if (!__DEV__) {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          // Show prompt to user instead of auto-reloading
+          setShowOTAUpdate(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for OTA updates:', error);
+    }
+  };
 
   // Initialize app without Firebase (using direct Google/Apple auth)
   useEffect(() => {
@@ -223,12 +281,8 @@ export default function App() {
     );
   }
 
-  return (
-    <StripeProvider
-      publishableKey={STRIPE_PUBLISHABLE_KEY}
-      merchantIdentifier={STRIPE_MERCHANT_ID}
-      urlScheme="esimfly"
-    >
+  const AppContent = (
+    <>
       <SafeAreaProvider>
         <ToastProvider>
           <NotificationManager />
@@ -236,6 +290,35 @@ export default function App() {
           <AppNavigator isAuthenticated={isAuthenticated} />
         </ToastProvider>
       </SafeAreaProvider>
+
+      {/* OTA Update Prompt - for JS updates */}
+      <UpdatePrompt
+        visible={showOTAUpdate && !forceUpdate}
+        onDismiss={() => setShowOTAUpdate(false)}
+        canDismiss={true}
+      />
+
+      {/* Force Update Modal - blocks app for critical native updates */}
+      <ForceUpdateModal
+        visible={forceUpdate}
+        message={updateMessage || 'Please update to the latest version to continue using the app.'}
+        storeUrl={storeUrl}
+      />
+    </>
+  );
+
+  // Only wrap with StripeProvider on native platforms
+  if (Platform.OS === 'web') {
+    return AppContent;
+  }
+
+  return (
+    <StripeProvider
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier={STRIPE_MERCHANT_ID}
+      urlScheme="esimfly"
+    >
+      {AppContent}
     </StripeProvider>
   );
 }

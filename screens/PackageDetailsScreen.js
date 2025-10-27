@@ -94,7 +94,6 @@ const PackageDetailsScreen = () => {
 
 	
  const getNetworks = (packageData) => {
-    console.log('[DEBUG] getNetworks packageData:', packageData);
     const networks = [];
     
     // Add speed information if available
@@ -107,8 +106,8 @@ const PackageDetailsScreen = () => {
     }
     
     // Check different network data structures based on provider
-    // Provider 3 (Airalo)
-    if (packageData.provider === 'airalo' || packageData.packageCode?.startsWith('airalo_')) {
+    // Handle all providers with networks/coverages data
+    if (packageData.provider === 'airalo' || packageData.provider === 'tgt' || packageData.packageCode?.startsWith('airalo_')) {
       // Use a Set to track unique networks
       const uniqueNetworkNames = new Set();
       
@@ -152,7 +151,6 @@ const PackageDetailsScreen = () => {
         });
       }
       
-      console.log('[DEBUG] Processed networks for airalo:', networks);
       return networks;
     }
     
@@ -177,7 +175,6 @@ const PackageDetailsScreen = () => {
           }
         });
       }
-      console.log('[DEBUG] Processed networks for esimgo:', networks);
       return networks;
     }
     
@@ -202,12 +199,10 @@ const PackageDetailsScreen = () => {
           }
         });
       }
-      console.log('[DEBUG] Processed networks for esimaccess:', networks);
     }
 
     // If no networks found, return a default message
     if (networks.length === 0) {
-      console.log('[DEBUG] No networks found, returning default message');
       // Return different messages based on provider
       let defaultMessage = 'Multiple operators available';
       
@@ -217,6 +212,8 @@ const PackageDetailsScreen = () => {
         defaultMessage = 'Premium network coverage';
       } else if (packageData.provider === 'esimaccess') {
         defaultMessage = 'Wide network coverage';
+      } else if (packageData.provider === 'tgt') {
+        defaultMessage = 'Reliable network coverage';
       }
       
       return [{
@@ -226,7 +223,6 @@ const PackageDetailsScreen = () => {
       }];
     }
 
-    console.log('[DEBUG] Final networks:', networks);
     return networks;
   };
 
@@ -239,14 +235,14 @@ const PackageDetailsScreen = () => {
   }, [packageData.id]);
 
   const renderHeader = () => (
-    <View style={[styles.headerContainer, { height: Math.max(insets.top + 60, 60) }]}>
+    <View style={[styles.headerContainer, { height: 60 }]}>
       {/* Fixed header background with blur effect */}
       <View style={styles.headerBackground}>
         <BlurView intensity={80} tint="light" style={styles.headerBlur} />
       </View>
       
       {/* Header content */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
+      <View style={[styles.header, { paddingTop: 5 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
           <LinearGradient
             colors={['#FFFFFF', '#F9FAFB']}
@@ -700,7 +696,7 @@ const PackageDetailsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       {/* Background gradient */}
       <LinearGradient
         colors={['#F9FAFB', '#EFF6FF', '#FEF3C7']}
@@ -767,7 +763,7 @@ const PackageDetailsScreen = () => {
         networks={getNetworks(packageData)}
         speed={packageData.speed}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

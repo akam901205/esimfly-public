@@ -24,7 +24,6 @@ const PackageTypeScreen = () => {
 
   const checkPackageAvailability = async () => {
     try {
-      console.log(`[DEBUG] Checking plans for country: ${country}`);
       
       // Fetch packages from the new API
       const response = await newApi.get('/user/esims/packages', {
@@ -38,62 +37,32 @@ const PackageTypeScreen = () => {
         return { data: { data: { packages: [] } } };
       });
 
-      console.log('[DEBUG] API Response:', response.data);
 
       const allPackages = response.data?.data?.packages || [];
 
-      console.log('[DEBUG] Total packages received:', allPackages.length);
 
-      console.log(`[DEBUG] Total packages before filtering: ${allPackages.length}`);
 
       // Packages are already filtered by country from the API, so we just need to check for unlimited
       const filteredPackages = allPackages;
-      
-      console.log('[DEBUG] Sample packages:', allPackages.slice(0, 3).map(pkg => ({
-        name: pkg.name,
-        isUnlimited: pkg.isUnlimited,
-        provider: pkg.provider,
-        data: pkg.data
-      })));
 
-      console.log(`[DEBUG] Filtered packages: ${filteredPackages.length}`);
 
       const unlimitedExists = filteredPackages.some(pkg => {
         const isUnlimited = pkg.isUnlimited === true ||
           (pkg.name && pkg.name.toLowerCase().includes('unlimited'));
 
-        if (isUnlimited) {
-          console.log('[DEBUG] Found unlimited package:', {
-            name: pkg.name,
-            provider: pkg.provider,
-            isUnlimited: pkg.isUnlimited
-          });
-        }
-
         return isUnlimited;
       });
 
-      console.log(`[DEBUG] Has unlimited packages: ${unlimitedExists}`);
       setHasUnlimited(unlimitedExists);
       
       // Check for voice/SMS packages
       const voiceSmsExists = filteredPackages.some(pkg => {
-        const hasVoiceOrSms = (pkg.voiceMinutes && pkg.voiceMinutes > 0) || 
+        const hasVoiceOrSms = (pkg.voiceMinutes && pkg.voiceMinutes > 0) ||
                               (pkg.smsCount && pkg.smsCount > 0);
-        
-        if (hasVoiceOrSms) {
-          console.log('[DEBUG] Found voice/SMS package:', {
-            name: pkg.name,
-            provider: pkg.provider,
-            voiceMinutes: pkg.voiceMinutes,
-            smsCount: pkg.smsCount
-          });
-        }
-        
+
         return hasVoiceOrSms;
       });
       
-      console.log(`[DEBUG] Has voice/SMS packages: ${voiceSmsExists}`);
       setHasVoiceSms(voiceSmsExists);
       
       setLoading(false);
@@ -110,8 +79,8 @@ const PackageTypeScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
+        <View style={[styles.header, { paddingTop: 5 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
             <Ionicons name="arrow-back" size={24} color="#374151" />
           </TouchableOpacity>
@@ -123,17 +92,17 @@ const PackageTypeScreen = () => {
         <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
           <ActivityIndicator size="large" color="#FF6B00" />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <LinearGradient
         colors={['#F8F9FA', '#F3F4F6']}
         style={styles.backgroundGradient}
       />
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={[styles.header, { paddingTop: 5 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
           <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
@@ -206,7 +175,7 @@ const PackageTypeScreen = () => {
           </TouchableOpacity>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -45,13 +45,11 @@ const [selectedPackage, setSelectedPackage] = useState(null);
     return foundCountry ? foundCountry.name : code;
   }, []);
 
-console.log('[DEBUG] GlobalPackagesScreen params:', route.params);
 
   const parseIncompleteJSON = (jsonString) => {
     try {
       return JSON.parse(jsonString);
     } catch (e) {
-      console.log('[DEBUG] Initial parse failed, attempting to fix JSON');
       const plansMatch = jsonString.match(/"plans":\s*(\[[\s\S]*?\])(?=,\s*"pagination")/);
       if (plansMatch && plansMatch[1]) {
         try {
@@ -98,13 +96,11 @@ console.log('[DEBUG] GlobalPackagesScreen params:', route.params);
 
 const fetchPackages = useCallback(async () => {
   if (!globalPackageName) {
-    console.log('[DEBUG] No package name provided');
     setLoading(false);
     return;
   }
 
   try {
-    console.log(`[DEBUG] Fetching packages for: ${globalPackageName}, type: ${packageType}`);
     
     // Use the new API to fetch global packages
     const response = await newApi.get('/user/esims/packages', {
@@ -119,8 +115,6 @@ const fetchPackages = useCallback(async () => {
 
     const allPackages = response.data?.data?.packages || [];
 
-    console.log(`[DEBUG] Total packages before filtering: ${allPackages.length}`);
-    console.log(`[DEBUG] Raw packages:`, allPackages);
 
     // Map packages to match expected format
     const mappedPackages = allPackages.map(pkg => ({
@@ -170,9 +164,7 @@ const fetchPackages = useCallback(async () => {
       return true;
     });
 
-    console.log(`[DEBUG] Filtered packages count: ${filteredPackages.length}`);
     filteredPackages.forEach(pkg => {
-      console.log(`[DEBUG] Filtered package: ${pkg.name}, Data: ${pkg.data}, Region: ${pkg.region}`);
     });
 
     // Group packages by data and duration
@@ -211,9 +203,7 @@ const fetchPackages = useCallback(async () => {
     setPackages(sortedPackages);
     setError(null);
 
-    console.log(`[DEBUG] Final sorted packages: ${sortedPackages.length}`);
     sortedPackages.forEach(pkg => {
-      console.log(`[DEBUG] Final package: ${pkg.name}, Data: ${pkg.data}, Price: ${pkg.price}`);
     });
 
   } catch (err) {
@@ -229,7 +219,7 @@ const fetchPackages = useCallback(async () => {
   }, [fetchPackages]);
 
 const renderHeader = () => (
-  <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+  <View style={[styles.header, { paddingTop: 5 }]}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
       <Ionicons name="arrow-back" size={24} color="#374151" />
     </TouchableOpacity>
@@ -274,18 +264,9 @@ const renderPackageItem = ({ item, index }) => {
 
 const handleNetworkPress = () => {
   if (!item) {
-    console.log('[DEBUG] No package data to show in modal');
     return;
   }
 
-  console.log('[DEBUG] Package data for modal:', {
-    name: item.name,
-    networks: item.networks?.length,
-    coverage: item.coverage?.length,
-    coverages: item.coverages?.length,
-    provider: item.provider
-  });
-  
   setSelectedPackage(item);
   setNetworkModalVisible(true);
 };
@@ -456,26 +437,26 @@ const handleNetworkPress = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
         <LinearGradient
           colors={['#F8F9FA', '#F3F4F6']}
           style={styles.backgroundGradient}
         />
         <ActivityIndicator size="large" color="#FF6B00" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
         <Text style={styles.errorText}>{error}</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
  return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <LinearGradient
         colors={['#F8F9FA', '#F3F4F6']}
         style={styles.backgroundGradient}
@@ -506,7 +487,7 @@ const handleNetworkPress = () => {
         packageData={selectedPackage || {}}
         globalPackageName={globalPackageName}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

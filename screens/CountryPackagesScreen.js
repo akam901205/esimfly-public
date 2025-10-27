@@ -184,7 +184,6 @@ const handleNetworkPress = (packageData) => {
 
  const fetchPackages = useCallback(async () => {
     try {
-      console.log('[DEBUG] Fetching packages for:', { country, packageType });
       setLoading(true);
       
       // Fetch packages from the new API
@@ -208,16 +207,7 @@ const handleNetworkPress = (packageData) => {
         let correctedData = plan.data;
         if (!plan.isUnlimited && plan.data) {
           const dataValue = parseFloat(plan.data);
-          // Debug log for esimgo packages
-          if (plan.provider === 'esimgo' || plan.id?.startsWith('esim_')) {
-            console.log('[DEBUG] ESIMgo data correction:', {
-              provider: plan.provider,
-              originalData: plan.data,
-              parsedValue: dataValue,
-              name: plan.name
-            });
-          }
-          
+
           // Common esimgo data mappings
           if (dataValue >= 0.95 && dataValue <= 1.05) correctedData = 1;
           else if (dataValue >= 1.9 && dataValue <= 2.1) correctedData = 2;
@@ -235,11 +225,6 @@ const handleNetworkPress = (packageData) => {
             } else {
               correctedData = dataValue;
             }
-          }
-          
-          // Log the correction if it happened
-          if (correctedData !== dataValue && (plan.provider === 'esimgo' || plan.id?.startsWith('esim_'))) {
-            console.log('[DEBUG] ESIMgo data corrected:', dataValue, '->', correctedData);
           }
         }
         
@@ -308,7 +293,6 @@ const handleNetworkPress = (packageData) => {
   return b.duration - a.duration;
 });
 
-    console.log(`[DEBUG] Final packages count: ${sortedPackages.length}`);
     setPackages(sortedPackages);
     setError(null);
 
@@ -325,7 +309,7 @@ const handleNetworkPress = (packageData) => {
   }, [fetchPackages]);
 
   const renderHeader = () => (
-  <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+  <View style={[styles.header, { paddingTop: 5 }]}>
     <TouchableOpacity 
       onPress={() => navigation.goBack()} 
       style={styles.headerIcon}
@@ -393,11 +377,14 @@ const renderPackageItem = ({ item, index }) => {
         ...item,
         data: item.data,
         price: item.price,
-        duration: typeof item.duration === 'string' ? 
+        duration: typeof item.duration === 'string' ?
           item.duration.replace(' days', '') : item.duration,
         unlimited: item.unlimited || item.data === 'Unlimited',
         region: item.region,
-        networkCount: item.networkCount
+        networkCount: item.networkCount,
+        networks: item.networks || [],
+        coverages: item.coverages || [],
+        coverage: item.coverage || []
       },
       country: country
     });
@@ -501,7 +488,7 @@ const renderPackageItem = ({ item, index }) => {
 };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <LinearGradient
         colors={['#F8F9FA', '#F3F4F6']}
         style={styles.backgroundGradient}
@@ -531,7 +518,7 @@ const renderPackageItem = ({ item, index }) => {
         onClose={() => setNetworkModalVisible(false)}
         networks={selectedNetworks}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
