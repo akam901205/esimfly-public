@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
+import {
   View,
   Text,
   StyleSheet,
@@ -13,6 +13,7 @@ import {
   Alert,
   Keyboard,
   TouchableWithoutFeedback,
+  StatusBar,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -341,33 +342,18 @@ const RegionalPackageDetailsScreen = () => {
 
   const renderHeader = () => (
     <View style={[styles.headerContainer, { height: 60 }]}>
-      {/* Fixed header background with blur effect */}
-      <View style={styles.headerBackground}>
-        <BlurView intensity={80} tint="light" style={styles.headerBlur} />
-      </View>
-      
       {/* Header content */}
       <View style={[styles.header, { paddingTop: 5 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.headerButtonGradient}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </LinearGradient>
+          <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>
           {region || 'Regional Package'}
         </Text>
-        
+
         <TouchableOpacity onPress={() => {}} style={styles.headerButton}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.headerButtonGradient}
-          >
-            <Ionicons name="share-outline" size={24} color="#1F2937" />
-          </LinearGradient>
+          <Ionicons name="share-outline" size={24} color="#374151" />
         </TouchableOpacity>
       </View>
     </View>
@@ -834,19 +820,27 @@ const RegionalPackageDetailsScreen = () => {
   const [isPromoInputFocused, setIsPromoInputFocused] = useState(false);
 
   const handleBuyPress = () => {
+    // Calculate unique country count based on available data
+    let uniqueCountries = 0;
+    if (packageData.coverages?.length) {
+      uniqueCountries = packageData.coverages.length;
+    } else if (packageData.coverage?.length) {
+      uniqueCountries = packageData.coverage.length;
+    } else if (packageData.coverage_countries?.length) {
+      uniqueCountries = packageData.coverage_countries.length;
+    } else if (packageData.locationNetworkList?.length) {
+      uniqueCountries = new Set(packageData.locationNetworkList.map(loc => loc.locationName)).size;
+    }
+
     navigation.navigate('Checkout', {
       package: {
         ...packageData,
         data: packageData.data === 'Unlimited' || packageData.unlimited ? 'Unlimited' : packageData.data,
-        duration: typeof packageData.duration === 'object' ? 
-          packageData.duration.name || packageData.duration.toString() : 
+        duration: typeof packageData.duration === 'object' ?
+          packageData.duration.name || packageData.duration.toString() :
           packageData.duration.toString().replace(' days', ''),
         price: originalPrice, // Always pass original price
-        coverage: packageData.provider === 'esimgo' 
-          ? packageData.coverage?.length || 0
-          : packageData.provider === 'airalo'
-            ? packageData.coverage?.length || 0
-            : packageData.locationNetworkList?.length || 0,
+        coverage: uniqueCountries,
         locationNetworkList: packageData.locationNetworkList,
         countryNetworks: packageData.networks
       },
@@ -876,7 +870,7 @@ const RegionalPackageDetailsScreen = () => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 20, 40) }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
       >
@@ -885,15 +879,13 @@ const RegionalPackageDetailsScreen = () => {
         <ValiditySection />
         <PromoCodeSection />
         <InfoSection />
-        
-        {/* Extra padding for bottom */}
-        <View style={{ height: 170 }} />
+
       </ScrollView>
       
       {/* Modern floating bottom container */}
       <View style={[styles.bottomContainer, { backgroundColor: 'transparent' }]}>
-        <View style={[styles.bottomGradient, { paddingBottom: Math.max(insets.bottom + 88, Platform.OS === 'ios' ? 115 : 92) }]}>
-          
+        <View style={[styles.bottomGradient, { backgroundColor: 'transparent' }]}>
+
           <TouchableOpacity onPress={handleBuyPress}>
             <LinearGradient
               colors={['#FF6B00', '#FF8533']}
@@ -907,14 +899,18 @@ const RegionalPackageDetailsScreen = () => {
                     <Ionicons name="cart" size={24} color="#FFFFFF" />
                   </View>
                   <View>
-                    <Text style={styles.buyButtonLabel}>Total Price</Text>
+                    <Text style={styles.buyButtonLabel}>
+                      {discountedPrice !== null && discountedPrice === 0 ? 'Free!' : 'Total Price'}
+                    </Text>
                     <Text style={styles.buyButtonPrice}>
-                      {formatPrice(discountedPrice || originalPrice || 0)}
+                      {formatPrice(discountedPrice !== null ? discountedPrice : (originalPrice || 0))}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.buyButtonRight}>
-                  <Text style={styles.buyButtonText}>Buy Now</Text>
+                  <Text style={styles.buyButtonText}>
+                    {discountedPrice !== null && discountedPrice === 0 ? 'Claim Free eSIM' : 'Buy Now'}
+                  </Text>
                   <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                 </View>
               </View>
@@ -939,7 +935,6 @@ const RegionalPackageDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   backgroundGradient: {
     position: 'absolute',
@@ -977,8 +972,14 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   headerButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   headerButtonGradient: {
     width: 44,
@@ -1456,15 +1457,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
   },
   bottomGradient: {
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom: 16,
   },
   buyButton: {
     borderRadius: 20,

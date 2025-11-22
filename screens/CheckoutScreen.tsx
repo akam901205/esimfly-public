@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Dimensions,
   KeyboardAvoidingView,
+  StatusBar,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -92,41 +93,63 @@ const CheckoutScreenV2 = () => {
 
   const formatDuration = (duration) => {
     if (!duration) return '0 days';
-    if (typeof duration === 'object' && duration.name) {
-      return duration.name.toString().replace(' days', '') + ' days';
+    const durationStr = typeof duration === 'object' && duration.name
+      ? duration.name.toString()
+      : duration.toString();
+
+    // If it already contains "Days" or "days", return as-is
+    if (durationStr.toLowerCase().includes('days')) {
+      return durationStr;
     }
-    return duration.toString().replace(' days', '') + ' days';
+
+    // Otherwise add " days"
+    return durationStr + ' days';
   };
 
   const getCoverageCount = () => {
-    if (!packageData.coverage) {
-      if (packageData.locationNetworkList?.length) {
-        return packageData.locationNetworkList.length;
-      }
-      if (packageData.countryNetworks?.length) {
-        return packageData.countryNetworks.length;
-      }
-      if (packageData.networks?.length) {
-        return packageData.networks.length;
-      }
-      return 0;
-    }
-    
-    if (typeof packageData.coverage === 'number') {
+    // Priority 1: If coverage is a valid number > 0 (passed from detail screens), use it directly
+    if (typeof packageData.coverage === 'number' && packageData.coverage > 0) {
       return packageData.coverage;
     }
-    
+
+    // Priority 2: countryNetworks (for TGT - this is the actual count)
+    if (typeof packageData.countryNetworks === 'number' && packageData.countryNetworks > 0) {
+      return packageData.countryNetworks;
+    }
+    if (packageData.countryNetworks?.length) {
+      return packageData.countryNetworks.length;
+    }
+
+    // Priority 3: networks (fallback)
+    if (typeof packageData.networks === 'number' && packageData.networks > 0) {
+      return packageData.networks;
+    }
+    if (packageData.networks?.length) {
+      return packageData.networks.length;
+    }
+
+    // Priority 4: coverage_countries (for Airalo)
+    if (packageData.coverage_countries?.length) {
+      return packageData.coverage_countries.length;
+    }
+
+    // Priority 5: locationNetworkList (for regional packages)
+    if (packageData.locationNetworkList?.length) {
+      return packageData.locationNetworkList.length;
+    }
+
+    // Priority 5: coverage field as array or object
     if (Array.isArray(packageData.coverage)) {
       return packageData.coverage.length;
     }
-    
-    if (typeof packageData.coverage === 'object') {
+
+    if (typeof packageData.coverage === 'object' && packageData.coverage) {
       if (packageData.coverage.countries) {
         return packageData.coverage.countries.length;
       }
       return Object.keys(packageData.coverage).length;
     }
-    
+
     return 0;
   };
 
@@ -137,8 +160,15 @@ const CheckoutScreenV2 = () => {
       packageData.price;
   };
 
+  // Helper function to check if this is a free order (100% discount)
+  const isFreeOrder = () => {
+    return getFinalPrice() <= 0;
+  };
+
   // Helper function to check if balance is insufficient
   const isBalanceInsufficient = () => {
+    // Free orders don't need balance
+    if (isFreeOrder()) return false;
     return balance && getFinalPrice() > balance.balance;
   };
 
@@ -167,11 +197,12 @@ const CheckoutScreenV2 = () => {
   };
 
   const handlePurchase = async () => {
-    if (!paymentMethod) {
+    // Free orders (100% discount) skip payment method selection
+    if (!isFreeOrder() && !paymentMethod) {
       toast.error('Please select a payment method');
       return;
     }
-    
+
     if (!isAgreed) {
       toast.error('Please agree to the terms and conditions to continue');
       return;
@@ -180,6 +211,84 @@ const CheckoutScreenV2 = () => {
     setIsLoading(true);
 
     try {
+      // Handle free orders (100% discount) - skip payment, directly create order
+      if (isFreeOrder()) {
+        let orderResponse;
+
+        if (isTopup) {
+          orderResponse = await esimApi.processTopUpNew(esimId, packageData.id, {
+            price: 0,
+            displayPrice: 0,
+            currency: userCurrency,
+            paymentMethod: 'free'
+          });
+        } else {
+          const orderRequest = {
+            packageCode: packageData.package_code || packageData.packageCode || packageData.id,
+            packageName: packageData.originalName || packageData.name,
+            price: 0,
+            displayPrice: 0,
+            currency: userCurrency,
+            data: packageData.data,
+            duration: packageData.duration,
+            region: packageData.region || packageData.location,
+            operator: packageData.operator,
+            provider: packageData.provider,
+            flagUrl: getFlagUrl(),
+            quantity: 1,
+            payment_method: 'free',
+            promoDetails: verifiedPromoDetails
+          };
+
+          orderResponse = await esimApi.orderEsim(orderRequest);
+        }
+
+        if (orderResponse.success && orderResponse.data) {
+          const responseData = isTopup ? (orderResponse.data.data || orderResponse.data) : orderResponse.data;
+
+          // Update balance if provided
+          if (responseData.newBalance !== undefined) {
+            setBalance({
+              balance: responseData.newBalance,
+              currency: responseData.currency || 'USD'
+            });
+          }
+
+          if (!isTopup) {
+            EventEmitter.dispatch('ESIM_ADDED', {
+              countryName: packageData.region || packageData.location,
+              data: packageData.data,
+              duration: packageData.duration
+            });
+          }
+
+          toast.success(isTopup ? 'Free top-up applied!' : 'Free eSIM activated!');
+
+          if (isTopup) {
+            navigation.navigate('OrderProcessing', {
+              orderReference: responseData.orderReference || `free_topup_${Date.now()}`,
+              packageName: packageData.name,
+              isTopup: true,
+              navigateToMyEsims: true
+            });
+          } else {
+            navigation.navigate('Instructions', {
+              qrCodeUrl: orderResponse.data.qrCodeUrl,
+              directAppleInstallUrl: orderResponse.data.directAppleInstallUrl,
+              packageName: orderResponse.data.packageName,
+              iccid: orderResponse.data.esims?.[0]?.iccid || '',
+              ac: orderResponse.data.esims?.[0]?.ac || '',
+              processing: orderResponse.data.processing,
+              esimId: orderResponse.data.esimId,
+              orderReference: orderResponse.data.orderReference
+            });
+          }
+          return;
+        } else {
+          throw new Error(orderResponse.message || 'Failed to process free order');
+        }
+      }
+
       if (paymentMethod === 'card') {
         // Create payment intent for card payment
         const finalPrice = getFinalPrice();
@@ -700,27 +809,17 @@ const CheckoutScreenV2 = () => {
       
       {/* Header */}
       <View style={[styles.headerContainer, { height: 60 }]}>
-        {/* Fixed header background with blur effect */}
-        <View style={styles.headerBackground}>
-          {Platform.OS === 'ios' && (
-            <BlurView intensity={80} tint="light" style={styles.headerBlur} />
-          )}
-        </View>
-        
         {/* Header content */}
         <View style={[styles.header, { paddingTop: 5 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-            <LinearGradient
-              colors={['#FFFFFF', '#F9FAFB']}
-              style={styles.headerButtonGradient}
-            >
-              <Ionicons name="arrow-back" size={24} color="#1F2937" />
-            </LinearGradient>
+            <Ionicons name="arrow-back" size={24} color="#374151" />
           </TouchableOpacity>
-          
+
           <Text style={styles.headerTitle}>Checkout</Text>
-          
-          <View style={styles.headerButton} />
+
+          <View style={styles.headerButton}>
+            <Ionicons name="cart-outline" size={24} color="#374151" />
+          </View>
         </View>
       </View>
 
@@ -822,9 +921,26 @@ const CheckoutScreenV2 = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialIcons name="payment" size={24} color="#FF6B00" />
-              <Text style={styles.sectionTitle}>Payment Method</Text>
+              <Text style={styles.sectionTitle}>
+                {isFreeOrder() ? 'Free Order' : 'Payment Method'}
+              </Text>
             </View>
-            
+
+            {/* Show free order message for 100% discount */}
+            {isFreeOrder() ? (
+              <View style={styles.freeOrderCard}>
+                <View style={styles.freeOrderIconContainer}>
+                  <MaterialCommunityIcons name="gift" size={32} color="#10B981" />
+                </View>
+                <View style={styles.freeOrderContent}>
+                  <Text style={styles.freeOrderTitle}>🎉 This is a Free Order!</Text>
+                  <Text style={styles.freeOrderText}>
+                    You've received a 100% discount. No payment required!
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <>
             {/* Only show Stripe payment for USD users */}
             {userCurrency === 'USD' && (
               <TouchableOpacity 
@@ -1051,6 +1167,8 @@ const CheckoutScreenV2 = () => {
                 </View>
               </View>
             </TouchableOpacity>
+              </>
+            )}
           </View>
 
           {/* Terms Agreement */}
@@ -1112,14 +1230,14 @@ const CheckoutScreenV2 = () => {
       </KeyboardAvoidingView>
 
       {/* Floating Pay Button */}
-      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
+      <View style={styles.bottomContainer}>
         <TouchableOpacity
           onPress={handlePurchase}
-          disabled={!paymentMethod || !isAgreed || isLoading || isPayTabsProcessing || (paymentMethod === 'balance' && isBalanceInsufficient())}
+          disabled={(!isFreeOrder() && !paymentMethod) || !isAgreed || isLoading || isPayTabsProcessing || (paymentMethod === 'balance' && isBalanceInsufficient())}
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={paymentMethod && isAgreed && !(paymentMethod === 'balance' && isBalanceInsufficient())
+            colors={(isFreeOrder() || paymentMethod) && isAgreed && !(paymentMethod === 'balance' && isBalanceInsufficient())
               ? ['#FF6B00', '#FF8533']
               : ['#E5E7EB', '#D1D5DB']}
             start={{ x: 0, y: 0 }}
@@ -1133,10 +1251,16 @@ const CheckoutScreenV2 = () => {
                 <>
                   <View style={styles.payButtonLeft}>
                     <View style={styles.payButtonIconContainer}>
-                      <MaterialIcons name="payment" size={24} color="#FFFFFF" />
+                      <MaterialIcons
+                        name={isFreeOrder() ? "card-giftcard" : "payment"}
+                        size={24}
+                        color="#FFFFFF"
+                      />
                     </View>
                     <View>
-                      <Text style={styles.payButtonLabel}>Total Amount</Text>
+                      <Text style={styles.payButtonLabel}>
+                        {isFreeOrder() ? 'Free!' : 'Total Amount'}
+                      </Text>
                       <Text style={styles.payButtonPrice}>
                         {formatPrice(getFinalPrice())}
                       </Text>
@@ -1144,7 +1268,10 @@ const CheckoutScreenV2 = () => {
                   </View>
                   <View style={styles.payButtonRight}>
                     <Text style={styles.payButtonText}>
-                      {isTopup ? 'Top Up Now' : 'Complete Purchase'}
+                      {isFreeOrder()
+                        ? (isTopup ? 'Claim Free Top-up' : 'Claim Free eSIM')
+                        : (isTopup ? 'Top Up Now' : 'Complete Purchase')
+                      }
                     </Text>
                     <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                   </View>
@@ -1204,8 +1331,14 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   headerButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   headerButtonGradient: {
     width: 44,
@@ -1235,7 +1368,7 @@ const styles = StyleSheet.create({
   },
   scrollContentContainer: {
     paddingTop: 30,
-    paddingBottom: 230,
+    paddingBottom: 180,
   },
   
   // Section styles
@@ -1408,6 +1541,34 @@ const styles = StyleSheet.create({
     borderColor: '#FF6B00',
     backgroundColor: '#FFF7ED',
   },
+  freeOrderCard: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#10B981',
+  },
+  freeOrderIconContainer: {
+    marginRight: 16,
+  },
+  freeOrderContent: {
+    flex: 1,
+  },
+  freeOrderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#065F46',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  freeOrderText: {
+    fontSize: 14,
+    color: '#047857',
+    lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
   paymentMethodContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1560,12 +1721,13 @@ const styles = StyleSheet.create({
   // Bottom container
   bottomContainer: {
     position: 'absolute',
-    bottom: 52,
+    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom: 16,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: '#000',

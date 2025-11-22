@@ -13,6 +13,7 @@ import {
   Dimensions,
   Keyboard,
   TouchableWithoutFeedback,
+  StatusBar,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -236,33 +237,18 @@ const PackageDetailsScreen = () => {
 
   const renderHeader = () => (
     <View style={[styles.headerContainer, { height: 60 }]}>
-      {/* Fixed header background with blur effect */}
-      <View style={styles.headerBackground}>
-        <BlurView intensity={80} tint="light" style={styles.headerBlur} />
-      </View>
-      
       {/* Header content */}
       <View style={[styles.header, { paddingTop: 5 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.headerButtonGradient}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </LinearGradient>
+          <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>
           {country || 'Package Details'}
         </Text>
-        
+
         <TouchableOpacity onPress={() => {}} style={styles.headerButton}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.headerButtonGradient}
-          >
-            <Ionicons name="share-outline" size={24} color="#1F2937" />
-          </LinearGradient>
+          <Ionicons name="share-outline" size={24} color="#374151" />
         </TouchableOpacity>
       </View>
     </View>
@@ -710,7 +696,7 @@ const PackageDetailsScreen = () => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 20, 40) }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
       >
@@ -720,14 +706,12 @@ const PackageDetailsScreen = () => {
         <PromoCodeSection />
         <InfoSection />
         
-        {/* Extra padding for bottom */}
-        <View style={{ height: 170 }} />
       </ScrollView>
-      
+
       {/* Modern floating bottom container */}
       <View style={[styles.bottomContainer, { backgroundColor: 'transparent' }]}>
-        <View style={[styles.bottomGradient, { paddingBottom: Math.max(insets.bottom + 88, Platform.OS === 'ios' ? 115 : 92) }]}>
-          
+        <View style={[styles.bottomGradient, { backgroundColor: 'transparent' }]}>
+
           <TouchableOpacity onPress={handleBuyPress}>
             <LinearGradient
               colors={['#FF6B00', '#FF8533']}
@@ -741,14 +725,18 @@ const PackageDetailsScreen = () => {
                     <Ionicons name="cart" size={24} color="#FFFFFF" />
                   </View>
                   <View>
-                    <Text style={styles.buyButtonLabel}>Total Price</Text>
+                    <Text style={styles.buyButtonLabel}>
+                      {discountedPrice !== null && discountedPrice === 0 ? 'Free!' : 'Total Price'}
+                    </Text>
                     <Text style={styles.buyButtonPrice}>
-                      {formatPrice(discountedPrice || originalPrice || 0)}
+                      {formatPrice(discountedPrice !== null ? discountedPrice : (originalPrice || 0))}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.buyButtonRight}>
-                  <Text style={styles.buyButtonText}>Buy Now</Text>
+                  <Text style={styles.buyButtonText}>
+                    {discountedPrice !== null && discountedPrice === 0 ? 'Claim Free eSIM' : 'Buy Now'}
+                  </Text>
                   <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                 </View>
               </View>
@@ -770,7 +758,6 @@ const PackageDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   backgroundGradient: {
     position: 'absolute',
@@ -791,7 +778,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'transparent',
   },
   headerBlur: {
     flex: 1,
@@ -808,20 +795,14 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   headerButton: {
-    width: 44,
-    height: 44,
-  },
-  headerButtonGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 18,
@@ -1257,15 +1238,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
   },
   bottomGradient: {
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom: 16,
   },
   buyButton: {
     borderRadius: 20,

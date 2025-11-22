@@ -455,31 +455,12 @@ createPaymentIntent: async (data: CreatePaymentIntentRequest): Promise<ApiRespon
 	
 export const orderAddOnPlan = async (data: OrderAddOnPlanRequest & { esimId?: number }): Promise<ApiResponse<OrderEsimResponse>> => {
   try {
-    // Extract eSIM ID from ICCID if not provided
-    let esimIdToUse = data.esimId;
-    
-    if (!esimIdToUse) {
-      // Try to extract from ICCID if it's numeric
-      const numericMatch = data.iccid.match(/^(\d+)/);
-      if (numericMatch) {
-        esimIdToUse = parseInt(numericMatch[1]);
-      } else {
-        // Fallback: get eSIM ID from database
-        const response = await newApi.get('/myesims', {
-          params: { search: data.iccid, limit: 1 }
-        });
-        if (response.data?.success && response.data?.esims?.[0]) {
-          esimIdToUse = response.data.esims[0].id;
-        }
-      }
-    }
-    
-    if (!esimIdToUse) {
-      throw new Error('Could not determine eSIM ID for top-up');
-    }
+    // The API now accepts both numeric IDs and full ICCIDs (including alphanumeric)
+    // Use esimId if provided, otherwise use the ICCID directly
+    const identifier = data.esimId ? data.esimId.toString() : data.iccid;
 
     // Use the new top-up API
-    const processResponse = await processTopUpNew(esimIdToUse, data.packageCode);
+    const processResponse = await processTopUpNew(identifier, data.packageCode);
 
     if (!processResponse.success) {
       return {
@@ -542,9 +523,9 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
   try {
     console.log('Ordering eSIM:', data);
     
-    // For balance payments, use the new unified API endpoint
-    if (data.payment_method === 'balance') {
-      console.log('Using new API endpoint for balance payment');
+    // For balance and free payments, use the new unified API endpoint
+    if (data.payment_method === 'balance' || data.payment_method === 'free') {
+      console.log('Using new API endpoint for', data.payment_method, 'payment');
       
       // Prepare request data for the new API
       const requestData = {
@@ -555,7 +536,7 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
         currency: data.currency, // User's currency preference
         quantity: data.quantity || 1,
         flagUrl: data.flagUrl,
-        paymentMethod: 'balance',
+        paymentMethod: data.payment_method, // Use actual payment method (balance or free)
         duration: data.duration,
         promoDetails: data.promoDetails
       };
@@ -587,7 +568,7 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
             esims: response.data.esims,
             discountAmount: response.data.discountAmount,
             finalPrice: response.data.finalPrice,
-            payment_method: 'balance'
+            payment_method: data.payment_method // Use actual payment method (balance or free)
           }
         };
       } else {
@@ -1022,15 +1003,10 @@ export const fetchOrders = async (page: number = 1, limit: number = 20): Promise
 export const fetchEsimDetails = async (iccid: string): Promise<ApiResponse<EsimDetails>> => {
   try {
     console.log('Fetching eSIM details for ICCID:', iccid);
-    
-    // Extract numeric ID from ICCID if it starts with a number
-    let esimId = iccid;
-    const match = iccid.match(/^(\d+)/);
-    if (match) {
-      esimId = match[1];
-    }
-    
-    const response = await newApi.get(`/myesims/${esimId}`);
+
+    // The API handles both numeric IDs and full ICCIDs (including alphanumeric like TGT)
+    // Just pass the ICCID as-is - don't try to extract numeric part
+    const response = await newApi.get(`/myesims/${iccid}`);
 
     console.log('eSIM details response:', response.data);
 
@@ -1109,18 +1085,18 @@ export const fetchEsimDetails = async (iccid: string): Promise<ApiResponse<EsimD
 
 // New function to process top-up using the new API endpoint with multi-currency support
 export const processTopUpNew = async (
-  esimId: number, 
-  packageCode: string, 
-  options?: { 
-    price?: number; 
-    displayPrice?: number; 
-    currency?: string; 
+  esimIdentifier: string | number,
+  packageCode: string,
+  options?: {
+    price?: number;
+    displayPrice?: number;
+    currency?: string;
     paymentMethod?: string;
   }
 ): Promise<ApiResponse<any>> => {
   try {
-    console.log('Processing top-up with new API:', { esimId, packageCode, options });
-    
+    console.log('Processing top-up with new API:', { esimIdentifier, packageCode, options });
+
     const requestData = {
       packageCode,
       paymentMethod: options?.paymentMethod || 'balance',
@@ -1128,8 +1104,8 @@ export const processTopUpNew = async (
       ...(options?.displayPrice && { displayPrice: options.displayPrice }), // User currency price
       ...(options?.currency && { currency: options.currency }) // User currency preference
     };
-    
-    const response = await newApi.post(`/myesims/${esimId}/topup`, requestData);
+
+    const response = await newApi.post(`/myesims/${esimIdentifier}/topup`, requestData);
 
     console.log('Top-up response:', response.data);
 
