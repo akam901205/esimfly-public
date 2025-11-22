@@ -2,8 +2,9 @@ export default {
   expo: {
     name: 'eSimFly',
     slug: 'esimfly-public',
-    version: '1.0.9',
+    version: '1.1.2',
     orientation: 'portrait',
+    platforms: ['ios', 'android'],
     icon: './assets/icon.png',
     scheme: 'esimfly',
     userInterfaceStyle: 'automatic',
@@ -138,11 +139,11 @@ export default {
       softwareKeyboardLayoutMode: 'pan',
       jsEngine: 'hermes'
     },
-    web: {
-      bundler: 'metro',
-      output: 'static',
-      favicon: './assets/favicon.png'
-    },
+    // web: {
+    //   bundler: 'metro',
+    //   output: 'single',
+    //   favicon: './assets/favicon.png'
+    // },
     plugins: [
       [
         'expo-build-properties',
@@ -181,7 +182,7 @@ export default {
         'expo-notifications',
         {
           icon: './assets/notification_icon.png',
-          color: '#1E1E1E',
+          color: '#FF6B6B',
           androidCollapsedTitle: 'eSimFly',
           iosDisplayInForeground: true,
           channels: [
@@ -189,7 +190,8 @@ export default {
               name: 'default',
               importance: 'max',
               vibrationPattern: [0, 250, 250, 250],
-              lightColor: '#FF231F7C'
+              lightColor: '#FF6B6B',
+              sound: 'default'
             }
           ]
         }
