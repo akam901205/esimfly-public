@@ -57,7 +57,7 @@ export const usePaymentSheet = () => {
       const { error } = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'eSimFly',
-        returnURL: 'esimfly://checkout',
+        returnURL: 'esimfly://payment-complete',
         defaultBillingDetails: {
           address: { country: 'hk' }
         }
