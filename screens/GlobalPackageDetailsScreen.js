@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
+import {
   View,
   Text,
   StyleSheet,
@@ -13,6 +13,7 @@ import {
   Alert,
   Keyboard,
   TouchableWithoutFeedback,
+  StatusBar,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -287,6 +288,89 @@ const GlobalPackageDetailsScreen = () => {
     </View>
   );
 
+  const FairUsagePolicySection = () => {
+    // Only show for unlimited packages
+    const isUnlimited = packageData.data === 'Unlimited' ||
+                       packageData.data === 'infinity' ||
+                       packageData.data === '∞' ||
+                       packageData.data === 'Infinity' ||
+                       packageData.isUnlimited ||
+                       packageData.unlimited;
+
+    if (!isUnlimited) {
+      return null;
+    }
+
+    const provider = packageData.provider?.toLowerCase() || '';
+    let fupDetails = {
+      dailyLimit: '',
+      speedAfterLimit: '',
+      description: ''
+    };
+
+    if (provider.includes('airalo')) {
+      fupDetails = {
+        dailyLimit: '3 GB',
+        speedAfterLimit: '1 Mbps',
+        description: 'After using 3 GB of data per day, your connection speed will be reduced to 1 Mbps for the remainder of that day. The limit resets at midnight (local time), and you\'ll get full speed again.'
+      };
+    } else if (provider.includes('esimgo')) {
+      fupDetails = {
+        dailyLimit: '1 GB',
+        speedAfterLimit: '512 Kbps',
+        description: 'After using 1 GB of data per day, your connection speed will be reduced to 512 Kbps for the remainder of that day. The limit resets at midnight (local time), and you\'ll get full speed again.'
+      };
+    } else {
+      // Default FUP for other providers
+      return null;
+    }
+
+    return (
+      <View style={styles.fupSection}>
+        <LinearGradient
+          colors={['#FFFFFF', '#F9FAFB']}
+          style={styles.fupCard}
+        >
+          <View style={styles.fupHeader}>
+            <View style={styles.fupIconContainer}>
+              <LinearGradient
+                colors={['#FF6B00', '#FF8533']}
+                style={styles.iconGradient}
+              >
+                <Ionicons name="information-circle" size={28} color="#FFFFFF" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.fupTitle}>Fair Usage Policy</Text>
+          </View>
+
+          <View style={styles.fupContent}>
+            <View style={styles.fupDetailRow}>
+              <Ionicons name="speedometer-outline" size={20} color="#FF6B00" />
+              <View style={styles.fupDetailText}>
+                <Text style={styles.fupDetailLabel}>Daily Data Limit</Text>
+                <Text style={styles.fupDetailValue}>{fupDetails.dailyLimit} per day</Text>
+              </View>
+            </View>
+
+            <View style={styles.fupDetailRow}>
+              <Ionicons name="flash-outline" size={20} color="#FF6B00" />
+              <View style={styles.fupDetailText}>
+                <Text style={styles.fupDetailLabel}>Speed After Limit</Text>
+                <Text style={styles.fupDetailValue}>{fupDetails.speedAfterLimit}</Text>
+              </View>
+            </View>
+
+            <View style={styles.fupDescription}>
+              <Text style={styles.fupDescriptionText}>
+                {fupDetails.description}
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  };
+
 
   const PromoCodeSection = () => {
     const [localPromoCode, setLocalPromoCode] = useState('');
@@ -537,7 +621,13 @@ const GlobalPackageDetailsScreen = () => {
             index={3}
           />
         </View>
+      </View>
+    );
+  };
 
+  const ActivationPolicySection = () => {
+    return (
+      <View style={styles.activationPolicySection}>
         <View style={styles.policyCard}>
           <LinearGradient
             colors={['#EEF2FF', '#E0E7FF']}
@@ -550,7 +640,7 @@ const GlobalPackageDetailsScreen = () => {
               <Text style={styles.policyTitle}>Activation Policy</Text>
             </View>
             <Text style={styles.policyText}>
-              The validity period starts when the eSIM connects to any supported network 
+              The validity period starts when the eSIM connects to any supported network
               in the covered countries. Make sure to activate only when you're ready to use it.
             </Text>
             <View style={styles.policyFeatures}>
@@ -616,6 +706,8 @@ const GlobalPackageDetailsScreen = () => {
         <ValiditySection />
         <PromoCodeSection />
         <InfoSection />
+        <FairUsagePolicySection />
+        <ActivationPolicySection />
         
       </ScrollView>
       
@@ -1138,6 +1230,77 @@ const styles = StyleSheet.create({
   // Info Section
   infoSection: {
     marginBottom: 20,
+  },
+
+  // Activation Policy Section
+  activationPolicySection: {
+    marginBottom: 20,
+  },
+
+  // Fair Usage Policy Section
+  fupSection: {
+    marginBottom: 20,
+  },
+  fupCard: {
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  fupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  fupIconContainer: {
+    marginRight: 12,
+  },
+  fupTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  fupContent: {
+    gap: 12,
+  },
+  fupDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF7ED',
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B00',
+  },
+  fupDetailText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  fupDetailLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  fupDetailValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FF6B00',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  fupDescription: {
+    backgroundColor: '#FFF7ED',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  fupDescriptionText: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+    lineHeight: 20,
   },
   infoSectionTitle: {
     fontSize: 20,

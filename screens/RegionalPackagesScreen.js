@@ -5,9 +5,9 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  SafeAreaView,
   TouchableOpacity,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -368,6 +368,20 @@ const RegionalPackagesScreen = () => {
     </View>
   );
 
+const getFUPMessage = (provider) => {
+  if (!provider) return null;
+
+  const providerLower = provider.toLowerCase();
+
+  if (providerLower.includes('airalo')) {
+    return 'Fair Usage Policy: Speed reduced to 1 Mbps after 3 GB daily usage';
+  } else if (providerLower.includes('esimgo')) {
+    return 'Fair Usage Policy: Speed reduced to 512 Kbps after 1 GB daily usage';
+  }
+
+  return null;
+};
+
 const renderPackageItem = ({ item, index }) => {
     const RegionIcon = regions.find(r => r.name.toLowerCase() === region.toLowerCase())?.image;
     const highestSpeed = getHighestSpeed(item);
@@ -404,19 +418,29 @@ const renderPackageItem = ({ item, index }) => {
           </View>
 
           <View style={styles.packageDetails}>
-            <View>
+            <View style={styles.packageDetailsLeft}>
               <Text style={styles.dataAmount}>{displayData}</Text>
               <Text style={styles.validityPeriod}>
                 VALID FOR {String(item.duration).replace(/\s*(days?|Days?)\s*/gi, '')} DAYS
               </Text>
+              {(item.data === 'Unlimited' || item.unlimited || item.isUnlimited) && getFUPMessage(item.provider) && (
+                <View style={styles.fupContainer}>
+                  <Ionicons name="information-circle-outline" size={11} color="#9CA3AF" />
+                  <Text style={styles.fupText}>
+                    {item.provider?.toLowerCase().includes('airalo')
+                      ? 'FUP: 1Mbps after 3GB/day'
+                      : 'FUP: 512Kbps after 1GB/day'}
+                  </Text>
+                </View>
+              )}
               <TouchableOpacity
                 onPress={() => handleNetworkPress(item)}
                 style={styles.networkButton}
               >
                 <View style={styles.networkContent}>
-                  <Ionicons 
-                    name="cellular-outline" 
-                    size={16} 
+                  <Ionicons
+                    name="cellular-outline"
+                    size={16}
                     color={ICON_COLORS.network}
                   />
                   <Text style={styles.networkButtonText}>
@@ -525,7 +549,7 @@ const renderPackageItem = ({ item, index }) => {
         data={packages}
         renderItem={renderPackageItem}
         keyExtractor={(item, index) => `${item.packageCode}-${index}`}
-        contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom + 20, Platform.OS === 'ios' ? 80 : 60) }]}
+        contentContainerStyle={styles.listContainer}
         ListEmptyComponent={() => (
           <View style={styles.emptyStateContainer}>
             {loading ? (
@@ -643,7 +667,11 @@ const styles = StyleSheet.create({
   packageDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+  },
+  packageDetailsLeft: {
+    flex: 1,
+    marginRight: 12,
   },
   dataAmount: {
     fontSize: 28,
@@ -656,6 +684,23 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginTop: 4,
+    fontWeight: '500',
+  },
+  fupContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  fupText: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginLeft: 3,
     fontWeight: '500',
   },
   networkButton: {

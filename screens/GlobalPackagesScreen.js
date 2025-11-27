@@ -5,9 +5,9 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  SafeAreaView,
   TouchableOpacity,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -232,17 +232,31 @@ const renderHeader = () => (
 
 const formatDuration = (duration) => {
     if (!duration) return '';
-    
+
     // Convert duration to string if it's a number
     const durationStr = duration.toString().toLowerCase();
-    
+
     // Extract the numeric value
     const number = parseInt(durationStr);
     if (isNaN(number)) return duration;
-    
+
     // Return formatted string
     return `${number} DAY${number !== 1 ? 'S' : ''}`;
   };
+
+const getFUPMessage = (provider) => {
+  if (!provider) return null;
+
+  const providerLower = provider.toLowerCase();
+
+  if (providerLower.includes('airalo')) {
+    return 'Fair Usage Policy: Speed reduced to 1 Mbps after 3 GB daily usage';
+  } else if (providerLower.includes('esimgo')) {
+    return 'Fair Usage Policy: Speed reduced to 512 Kbps after 1 GB daily usage';
+  }
+
+  return null;
+};
 
 const renderPackageItem = ({ item, index }) => {
   const getCountryCount = (item) => {
@@ -394,15 +408,25 @@ const handleNetworkPress = () => {
         </View>
 
         <View style={styles.packageDetails}>
-          <View>
+          <View style={styles.packageDetailsLeft}>
             <Text style={styles.dataAmount}>
-              {typeof item.data === 'string' && item.data.toLowerCase().includes('unlimited') 
-                ? 'Unlimited' 
+              {typeof item.data === 'string' && item.data.toLowerCase().includes('unlimited')
+                ? 'Unlimited'
                 : `${adjustDataDisplay(parseFloat(item.data))} GB`}
             </Text>
             <Text style={styles.validityPeriod}>
               VALID FOR {formatDuration(item.duration)}
             </Text>
+            {(item.unlimited || item.isUnlimited || (typeof item.data === 'string' && item.data.toLowerCase().includes('unlimited'))) && getFUPMessage(item.provider) && (
+              <View style={styles.fupContainer}>
+                <Ionicons name="information-circle-outline" size={11} color="#9CA3AF" />
+                <Text style={styles.fupText}>
+                  {item.provider?.toLowerCase().includes('airalo')
+                    ? 'FUP: 1Mbps after 3GB/day'
+                    : 'FUP: 512Kbps after 1GB/day'}
+                </Text>
+              </View>
+            )}
             <TouchableOpacity
               onPress={() => handleNetworkPress()}
               style={styles.networkButton}
@@ -466,7 +490,7 @@ const handleNetworkPress = () => {
         data={packages}
         renderItem={renderPackageItem}
         keyExtractor={(item, index) => `${item.packageCode}-${index}`}
-        contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom + 20, Platform.OS === 'ios' ? 80 : 60) }]}
+        contentContainerStyle={styles.listContainer}
         ListEmptyComponent={() => (
           <View style={styles.emptyStateContainer}>
             <Text style={styles.noPackagesText}>
@@ -584,7 +608,11 @@ const styles = StyleSheet.create({
   packageDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+  },
+  packageDetailsLeft: {
+    flex: 1,
+    marginRight: 12,
   },
   dataAmount: {
     fontSize: 28,
@@ -597,6 +625,23 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginTop: 4,
+    fontWeight: '500',
+  },
+  fupContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  fupText: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginLeft: 3,
     fontWeight: '500',
   },
   priceContainer: {
