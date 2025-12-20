@@ -12,6 +12,7 @@ import {
   Animated,
   Dimensions,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -254,7 +255,6 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 40, 60) }}
           bounces={false}
           overScrollMode="never"
           refreshControl={
@@ -433,7 +433,7 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
           </TouchableOpacity>
 
           {/* Version Info */}
-          <Text style={styles.versionText}>Version 1.0.0</Text>
+          <Text style={styles.versionText}>Version 1.1.0</Text>
         </View>
         </ScrollView>
         
@@ -455,7 +455,6 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   content: {
-    paddingBottom: 40,
   },
   headerSection: {
     marginBottom: 24,

@@ -6,14 +6,13 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   Image,
   Dimensions,
   Platform,
   Animated,
-  StatusBar,
   RefreshControl,
 } from 'react-native';
+import { StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -319,11 +318,11 @@ const OrderHistoryScreen: React.FC = () => {
         activeOpacity={0.8}
       >
         {loading ? (
-          <ActivityIndicator size="small" color="#4F46E5" />
+          <ActivityIndicator size="small" color="#FF6B00" />
         ) : (
           <>
             <Text style={styles.loadMoreText}>Load More</Text>
-            <Ionicons name="chevron-down" size={20} color="#4F46E5" />
+            <Ionicons name="chevron-down" size={20} color="#FF6B00" />
           </>
         )}
       </TouchableOpacity>
@@ -333,7 +332,7 @@ const OrderHistoryScreen: React.FC = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <LinearGradient
-        colors={['#4F46E5', '#7C3AED']}
+        colors={['#FF6B00', '#FF8533']}
         style={styles.emptyIconContainer}
       >
         <Ionicons name="receipt-outline" size={48} color="#ffffff" />
@@ -348,7 +347,7 @@ const OrderHistoryScreen: React.FC = () => {
         }}
       >
         <LinearGradient
-          colors={['#4F46E5', '#6366F1']}
+          colors={['#FF6B00', '#FF8533']}
           style={styles.shopButtonGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -365,7 +364,7 @@ const OrderHistoryScreen: React.FC = () => {
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#FF6B00" />
           <Text style={styles.loadingText}>Loading orders...</Text>
         </View>
       </View>
@@ -414,13 +413,13 @@ const OrderHistoryScreen: React.FC = () => {
           data={orders}
           renderItem={renderOrderItem}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom, 100) }]}
+          contentContainerStyle={styles.listContainer}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#4F46E5"
-              colors={['#4F46E5']}
+              tintColor="#FF6B00"
+              colors={['#FF6B00']}
             />
           }
           ListFooterComponent={renderFooter}
@@ -626,7 +625,7 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#FF6B00',
     fontFamily: 'Quicksand-SemiBold',
   },
   emptyState: {

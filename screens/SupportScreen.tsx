@@ -3,16 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   TextInput,
   Alert,
   ActivityIndicator,
   Platform,
-  StatusBar,
   KeyboardAvoidingView,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -340,7 +339,7 @@ const SupportScreen: React.FC = () => {
         <ScrollView 
           style={styles.content} 
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 60 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
         >
           {/* Search Bar */}
           <View style={styles.searchContainer}>
@@ -417,7 +416,7 @@ const SupportScreen: React.FC = () => {
         >
           <ScrollView 
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            contentContainerStyle={{ paddingBottom: 20 }}
           >
             <View style={styles.contactForm}>
               <Text style={styles.formTitle}>Send us a message</Text>

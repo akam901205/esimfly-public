@@ -4,9 +4,9 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -158,7 +158,7 @@ const renderHeader = () => (
           style={styles.backgroundGradient}
         />
         {renderHeader()}
-        <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
+        <View style={styles.content}>
           <ActivityIndicator size="large" color="#FF6B00" />
         </View>
       </View>
@@ -173,7 +173,7 @@ const renderHeader = () => (
           style={styles.backgroundGradient}
         />
         {renderHeader()}
-        <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
+        <View style={styles.content}>
           <LottieView
             source={require('../assets/Animation - datapacke.json')}
             autoPlay

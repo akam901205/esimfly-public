@@ -5,8 +5,11 @@ import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
 // Conditionally import Stripe only on native platforms (not web)
 let StripeProvider: any;
+let useStripe: any;
 if (Platform.OS !== 'web') {
-  StripeProvider = require('@stripe/stripe-react-native').StripeProvider;
+  const stripeModule = require('@stripe/stripe-react-native');
+  StripeProvider = stripeModule.StripeProvider;
+  useStripe = stripeModule.useStripe;
 }
 import AppNavigator from './AppNavigator';
 import * as Notifications from 'expo-notifications';
@@ -312,13 +315,43 @@ export default function App() {
     return AppContent;
   }
 
+  // Wrapper component to handle Stripe deep links
+  function StripeDeepLinkHandler({ children }: { children: React.ReactNode }) {
+    const { handleURLCallback } = useStripe();
+
+    useEffect(() => {
+      const handleDeepLink = async (url: string) => {
+        if (url && url.includes('esimfly://')) {
+          console.log('[Stripe] Handling deep link:', url);
+          await handleURLCallback(url);
+        }
+      };
+
+      // Handle initial URL
+      Linking.getInitialURL().then((url) => {
+        if (url) handleDeepLink(url);
+      });
+
+      // Handle URL changes
+      const subscription = Linking.addEventListener('url', (event) => {
+        handleDeepLink(event.url);
+      });
+
+      return () => subscription.remove();
+    }, [handleURLCallback]);
+
+    return <>{children}</>;
+  }
+
   return (
     <StripeProvider
       publishableKey={STRIPE_PUBLISHABLE_KEY}
       merchantIdentifier={STRIPE_MERCHANT_ID}
       urlScheme="esimfly"
     >
-      {AppContent}
+      <StripeDeepLinkHandler>
+        {AppContent}
+      </StripeDeepLinkHandler>
     </StripeProvider>
   );
 }

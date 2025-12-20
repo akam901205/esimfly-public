@@ -10,8 +10,8 @@ import {
   Dimensions,
   SafeAreaView,
   Platform,
-  StatusBar
 } from 'react-native';
+import { StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -296,12 +296,9 @@ const EditProfileScreen: React.FC = () => {
           </View>
         )}
 
-        <ScrollView 
+        <ScrollView
           style={styles.scrollContent}
-          contentContainerStyle={[
-            styles.scrollContentContainer,
-            { paddingBottom: TAB_BAR_HEIGHT + insets.bottom }
-          ]}
+          contentContainerStyle={styles.scrollContentContainer}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.card}>

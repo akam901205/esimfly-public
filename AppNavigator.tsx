@@ -10,8 +10,9 @@ import * as Device from 'expo-device';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
 import NotificationService from './services/notificationService';
-import CustomTabBar from './components/CustomTabBar';
+import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from './components/LoadingScreen';
+import { colors } from './theme/colors';
 
 // Import all screens
 import WelcomeScreen from './screens/WelcomeScreen';
@@ -50,10 +51,9 @@ import DeleteAccountScreen from './screens/DeleteAccountScreen';
 async function configureNavigationBar() {
   if (Platform.OS === 'android') {
     try {
-      await NavigationBar.setBackgroundColorAsync('#F5F5F5');
+      await NavigationBar.setBackgroundColorAsync('#ffffff01'); // Transparent
       await NavigationBar.setButtonStyleAsync('dark');
-      await NavigationBar.setBorderColorAsync('#F5F5F5');
-      await NavigationBar.setVisibilityAsync('visible');
+      await NavigationBar.setPositionAsync('absolute'); // Make it absolute/transparent
     } catch (error) {
       console.warn('Error setting navigation bar:', error);
     }
@@ -389,46 +389,55 @@ function MainNavigator() {
 
   return (
     <Tab.Navigator
-  tabBar={props => (
-    <CustomTabBar 
-      {...props} 
-      style={{
-        opacity: tabBarOpacity,
-        transform: [{ translateY: tabBarTranslateY }],
-      }}
-    />
-  )}
   screenOptions={{
     headerShown: false,
     unmountOnBlur: true,
+    tabBarActiveTintColor: '#FF6B00',
+    tabBarInactiveTintColor: '#6B7280',
+    tabBarStyle: {
+      backgroundColor: colors.background.primary,
+      borderTopColor: colors.border.light,
+    },
   }}
 >
-  <Tab.Screen 
-    name="Shop" 
+  <Tab.Screen
+    name="Shop"
     component={ShopNavigator}
     options={{
-      unmountOnBlur: false
+      unmountOnBlur: false,
+      tabBarIcon: ({ color, size }) => (
+        <Ionicons name="storefront-outline" size={size} color={color} />
+      ),
     }}
   />
-  <Tab.Screen 
-    name="My eSims" 
+  <Tab.Screen
+    name="My eSims"
     component={MyESimsScreen}
     options={{
-      unmountOnBlur: true
+      unmountOnBlur: true,
+      tabBarIcon: ({ color, size }) => (
+        <Ionicons name="phone-portrait-outline" size={size} color={color} />
+      ),
     }}
   />
-  <Tab.Screen 
-    name="Guides" 
+  <Tab.Screen
+    name="Guides"
     component={GuidesScreen}
     options={{
-      unmountOnBlur: true
+      unmountOnBlur: true,
+      tabBarIcon: ({ color, size }) => (
+        <Ionicons name="book-outline" size={size} color={color} />
+      ),
     }}
   />
-  <Tab.Screen 
-    name="Profile" 
+  <Tab.Screen
+    name="Profile"
     component={ProfileNavigator}
     options={{
-      unmountOnBlur: true
+      unmountOnBlur: true,
+      tabBarIcon: ({ color, size }) => (
+        <Ionicons name="person-outline" size={size} color={color} />
+      ),
     }}
   />
 </Tab.Navigator>

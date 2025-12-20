@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, StatusBar } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -89,7 +89,7 @@ const PackageTypeScreen = () => {
             <Ionicons name="location-outline" size={24} color="#374151" />
           </View>
         </View>
-        <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 20) }]}>
+        <View style={styles.content}>
           <ActivityIndicator size="large" color="#FF6B00" />
         </View>
       </View>

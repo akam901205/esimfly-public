@@ -3,7 +3,7 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView, 
+ 
   FlatList, 
   TouchableOpacity, 
   Modal, 
@@ -671,7 +671,7 @@ const GuidesScreen = () => {
         data={filteredGuides}
         renderItem={renderGuideItem}
         keyExtractor={item => item.id}
-        contentContainerStyle={[styles.listContainer, { paddingBottom: Math.max(insets.bottom, 100) }]}
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -739,7 +739,7 @@ const GuidesScreen = () => {
 
             <ScrollView 
               style={styles.modalContent}
-              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
+              contentContainerStyle={{ paddingBottom: 20 }}
               showsVerticalScrollIndicator={false}
               bounces={true}
             >
@@ -819,7 +819,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 100,
   },
   guideItem: {
     marginBottom: 12,

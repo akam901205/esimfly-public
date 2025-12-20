@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   Dimensions,
   Platform,
@@ -279,9 +278,9 @@ const CurrencySelectionScreen: React.FC = () => {
         <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 100) }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>

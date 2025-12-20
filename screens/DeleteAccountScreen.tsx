@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   TextInput,
@@ -125,14 +124,14 @@ const DeleteAccountScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
         colors={[colors.background.primary, colors.background.secondary]}
         style={styles.gradient}
       />
-      
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+
+      <View style={styles.header}>
         <TouchableOpacity 
           style={styles.headerIcon}
           onPress={() => {
@@ -146,9 +145,9 @@ const DeleteAccountScreen: React.FC = () => {
         <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 100) }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.warningCard}>
@@ -273,7 +272,7 @@ const DeleteAccountScreen: React.FC = () => {
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -294,6 +293,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingTop: 5,
     paddingBottom: 16,
     backgroundColor: colors.background.primary,
     borderBottomWidth: 1,

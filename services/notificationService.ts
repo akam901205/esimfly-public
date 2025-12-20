@@ -38,10 +38,10 @@ class NotificationService {
     if (Platform.OS === 'ios') {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
-          shouldShowAlert: false,
-          shouldPlaySound: false,
+          shouldShowAlert: true,
+          shouldPlaySound: true,
           shouldSetBadge: true,
-          shouldPresentAlert: false,
+          shouldPresentAlert: true,
         }),
       });
     } else {
@@ -57,9 +57,9 @@ class NotificationService {
 
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
-        importance: Notifications.AndroidImportance.HIGH,
+        importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
+        lightColor: '#FF6B6B',
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         enableVibrate: true,
         enableLights: true,
@@ -157,7 +157,7 @@ class NotificationService {
 
       // Get new token
       const token = (await Notifications.getExpoPushTokenAsync({
-        projectId: '4ce0ba64-0a19-4c80-9f1e-4cb7df2c2496'
+        projectId: 'a60875e0-8d9c-43f8-8f0f-ac4605f91fb1'
       })).data;
 
       // Try to register with server if logged in

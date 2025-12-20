@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,12 +18,9 @@ const NoESimState = () => {
         style={styles.gradient}
       />
       
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: Math.max(insets.bottom + 84 + 80, 164) }
-        ]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.animationContainer}>
@@ -75,9 +72,9 @@ const NoESimState = () => {
 
       <View style={[
         styles.bottomContainer,
-        { bottom: Math.max(insets.bottom + 84, 84) }
+        Platform.OS === 'ios' && styles.bottomContainerIOS
       ]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.buttonWrapper}
           onPress={() => navigation.navigate('Shop')}
           activeOpacity={0.8}
@@ -88,7 +85,7 @@ const NoESimState = () => {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Ionicons name="cart-outline" size={20} color="#FFFFFF" />
+            <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
             <Text style={styles.buttonText}>Browse eSIM Packages</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -114,15 +111,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
+    paddingBottom: Platform.OS === 'android' ? 24 : 34,
   },
   animationContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 32,
+    marginTop: 0,
+    marginBottom: 24,
   },
   animation: {
-    width: 180,
-    height: 180,
+    width: 200,
+    height: 200,
   },
   title: {
     fontSize: 28,
@@ -139,9 +137,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text.secondary,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
     lineHeight: 24,
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     fontFamily: Platform.select({
       ios: 'System',
       android: 'Roboto',
@@ -149,7 +147,7 @@ const styles = StyleSheet.create({
   },
   featuresContainer: {
     width: '100%',
-    gap: 12,
+    gap: 16,
     marginBottom: 24,
   },
   featureItem: {
@@ -200,16 +198,16 @@ const styles = StyleSheet.create({
     }),
   },
   bottomContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     padding: 16,
+    paddingBottom: Platform.OS === 'android' ? 24 : 16,
     backgroundColor: colors.background.primary,
+  },
+  bottomContainerIOS: {
+    paddingBottom: 24,
   },
   buttonWrapper: {
     width: '100%',
-    borderRadius: 28,
+    borderRadius: 24,
     overflow: 'hidden',
   },
   button: {

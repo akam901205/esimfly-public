@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
   TextInput,
   Alert,
   ActivityIndicator,
@@ -12,8 +12,8 @@ import {
   Dimensions,
   Platform,
   Linking,
-  StatusBar
 } from 'react-native';
+import { StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -271,12 +271,9 @@ const DepositScreen: React.FC = () => {
   <View style={[styles.headerIcon, { backgroundColor: 'transparent', borderWidth: 0 }]} />
 </View>
 
-        <ScrollView 
+        <ScrollView
           style={styles.scrollContent}
-          contentContainerStyle={[
-            styles.scrollContentContainer,
-            { paddingBottom: TAB_BAR_HEIGHT + insets.bottom }
-          ]}
+          contentContainerStyle={styles.scrollContentContainer}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.balanceCard}>

@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
   TouchableOpacity,
   Dimensions,
-  Platform
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -43,7 +43,7 @@ const PrivacyScreen = () => {
           style={styles.scrollContent}
           contentContainerStyle={[
             styles.scrollContentContainer,
-            { paddingBottom: TAB_BAR_HEIGHT + insets.bottom }
+            {}
           ]}
           showsVerticalScrollIndicator={false}
         >

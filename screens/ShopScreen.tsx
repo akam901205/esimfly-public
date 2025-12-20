@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  SafeAreaView,
   Platform,
   StatusBar,
   FlatList,
@@ -597,8 +596,7 @@ const ShopScreen = () => {
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: insets.bottom + 100 }
+          styles.listContent
         ]}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -858,7 +856,6 @@ const styles = StyleSheet.create({
   
   // List Items
   listContent: {
-    paddingBottom: 100,
   },
   listHeader: {
     paddingBottom: 20,
