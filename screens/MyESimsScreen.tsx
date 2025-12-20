@@ -275,6 +275,8 @@ const MyESimsScreen = () => {
       flag_url: plan.flag_url,
       provider: provider,
       package_code: plan.packageCode || plan.id,
+      currency: plan.currency, // Pass currency so checkout knows it's already converted
+      priceAlreadyConverted: true, // Flag to prevent double conversion in checkout
       metadata: {
         is_topup: true,
         esim_id: topUpModal.esim.id,
@@ -750,16 +752,14 @@ const MyESimsScreen = () => {
   // Empty state
   if (!selectedEsim || esimData.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#000000" />
-          </TouchableOpacity>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight || 0) }]}>
+        <View style={[styles.header, { paddingTop: 5 }]}>
+          <View style={{ width: 24 }} />
           <Text style={styles.title}>My eSIMs</Text>
           <View style={{ width: 24 }} />
         </View>
         <NoeSIMState />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -771,18 +771,9 @@ const MyESimsScreen = () => {
       />
 
       <View style={[styles.header, { paddingTop: 5 }]}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.headerIcon}
-        >
-          <Ionicons 
-            name="arrow-back" 
-            size={24} 
-            color="#374151"
-          />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
         <Text style={styles.title}>eSIM Details</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => setShowAllEsims(true)}
           style={styles.headerIcon}
         >
@@ -796,7 +787,7 @@ const MyESimsScreen = () => {
 
       <ScrollView 
         style={styles.content}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 104, 124) }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -870,19 +861,34 @@ const MyESimsScreen = () => {
         </View>
 
         {/* Top-up button section */}
-        {selectedEsim && (
-          selectedEsim.status.toLowerCase() === 'active' || 
-          selectedEsim.status.toLowerCase() === 'in_use' || 
-          selectedEsim.status.toLowerCase() === 'depleted'
-        ) && (
-          <TouchableOpacity 
-            style={styles.topUpButton}
-            onPress={() => handleTopUp(selectedEsim)}
-          >
-            <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.topUpButtonText}>Buy Top-Up</Text>
-          </TouchableOpacity>
-        )}
+        {(() => {
+          if (!selectedEsim) return null;
+
+          const isActiveStatus =
+            selectedEsim.status.toLowerCase() === 'active' ||
+            selectedEsim.status.toLowerCase() === 'in_use' ||
+            selectedEsim.status.toLowerCase() === 'depleted';
+
+          const isUnlimited = selectedEsim.unlimited ||
+                             selectedEsim.total_volume === 'Unlimited' ||
+                             selectedEsim.data_left_formatted === 'Unlimited' ||
+                             (selectedEsim.plan_name && selectedEsim.plan_name.toLowerCase().includes('unlimited')) ||
+                             (selectedEsim.total_volume === '0 GB' && selectedEsim.plan_name && selectedEsim.plan_name.toLowerCase().includes('unlimited'));
+
+          if (!isActiveStatus || isUnlimited) {
+            return null;
+          }
+
+          return (
+            <TouchableOpacity
+              style={styles.topUpButton}
+              onPress={() => handleTopUp(selectedEsim)}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
+              <Text style={styles.topUpButtonText}>Buy Top-Up</Text>
+            </TouchableOpacity>
+          );
+        })()}
       </ScrollView>
 
       {/* Modal for all eSIMs */}
@@ -1056,7 +1062,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
   },
   progressContainer: {
     alignItems: 'center',

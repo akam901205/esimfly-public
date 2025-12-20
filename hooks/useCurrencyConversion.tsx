@@ -134,9 +134,22 @@ export function useCurrencyConversion() {
   // Format actual balance (already in correct currency)
   const formatActualBalance = useCallback((amount, currency) => {
     // Ensure amount is a valid number
-    const validAmount = typeof amount === 'number' ? amount : 
+    const validAmount = typeof amount === 'number' ? amount :
                         (amount && !isNaN(parseFloat(amount))) ? parseFloat(amount) : 0;
-    
+
+    if (currency === 'IQD') {
+      return `${Math.round(validAmount).toLocaleString('en-US')} IQD`;
+    } else {
+      return `$${validAmount.toFixed(2)}`;
+    }
+  }, []);
+
+  // Format price that's already in user's currency (no conversion needed)
+  const formatPriceAlreadyConverted = useCallback((amount, currency) => {
+    // Ensure amount is a valid number
+    const validAmount = typeof amount === 'number' ? amount :
+                        (amount && !isNaN(parseFloat(amount))) ? parseFloat(amount) : 0;
+
     if (currency === 'IQD') {
       return `${Math.round(validAmount).toLocaleString('en-US')} IQD`;
     } else {
@@ -163,6 +176,7 @@ export function useCurrencyConversion() {
     convertPrice,      // Convert USD amount to user currency (number)
     formatPrice,       // Convert and format USD amount for display (string)
     formatActualBalance, // Format actual balance amount (string)
+    formatPriceAlreadyConverted, // Format price already in user's currency (no conversion)
     getCurrencySymbol,
     refreshCurrency
   };

@@ -46,7 +46,7 @@ const CheckoutScreenV2 = () => {
   const [paymentMethod, setPaymentMethod] = useState(null);
   const auth = useContext(AuthContext);
   const [verifiedPromoDetails, setVerifiedPromoDetails] = useState(route.params.promoDetails);
-  const { userCurrency, formatPrice, formatActualBalance, convertPrice, loading: currencyLoading } = useCurrencyConversion();
+  const { userCurrency, formatPrice, formatActualBalance, formatPriceAlreadyConverted, convertPrice, loading: currencyLoading } = useCurrencyConversion();
   const { processPayment: processPayTabsPayment, isProcessing: isPayTabsProcessing } = usePayTabs();
   
   // Refs for auto-scroll
@@ -89,6 +89,26 @@ const CheckoutScreenV2 = () => {
     if (isLoadingBalance) return 'Loading...';
     if (!balance?.balance) return '$0.00';
     return formatActualBalance(balance.balance, balance.currency || 'USD');
+  };
+
+  // Helper function to format package price correctly (handles pre-converted prices)
+  const formatPackagePrice = (amount) => {
+    // If package has currency field or priceAlreadyConverted flag, use formatPriceAlreadyConverted
+    if (packageData.currency || packageData.priceAlreadyConverted) {
+      return formatPriceAlreadyConverted(amount, packageData.currency || userCurrency);
+    }
+    // Otherwise, use regular formatPrice which converts USD to user currency
+    return formatPrice(amount);
+  };
+
+  // Helper function to convert price only if needed (prevents double conversion)
+  const convertPackagePrice = (amount) => {
+    // If package has currency field or priceAlreadyConverted flag, don't convert
+    if (packageData.currency || packageData.priceAlreadyConverted) {
+      return amount; // Already in user's currency
+    }
+    // Otherwise, convert USD to user currency
+    return convertPrice ? convertPrice(amount) : amount;
   };
 
   const formatDuration = (duration) => {
@@ -292,7 +312,7 @@ const CheckoutScreenV2 = () => {
       if (paymentMethod === 'card') {
         // Create payment intent for card payment
         const finalPrice = getFinalPrice();
-        const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
+        const convertedPrice = convertPackagePrice(finalPrice);
         
         const paymentResponse = await esimApi.createCheckoutSession({
           items: [{
@@ -395,7 +415,7 @@ const CheckoutScreenV2 = () => {
       } else if (paymentMethod === 'paytabs') {
         // Process PayTabs payment
         const finalPrice = getFinalPrice();
-        const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
+        const convertedPrice = convertPackagePrice(finalPrice);
 
         const payTabsResult = await processPayTabsPayment({
           items: [{
@@ -472,7 +492,7 @@ const CheckoutScreenV2 = () => {
       } else if (paymentMethod === 'fib') {
         // Create FIB payment session
         const finalPrice = getFinalPrice();
-        const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
+        const convertedPrice = convertPackagePrice(finalPrice);
         
         const fibResponse = await esimApi.createFIBSession({
           items: [{
@@ -546,27 +566,20 @@ const CheckoutScreenV2 = () => {
         if (isTopup) {
           // For topups, use the topup API with currency support
           const finalPrice = getFinalPrice();
-          const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
-          
+          const convertedPrice = convertPackagePrice(finalPrice);
+
           orderResponse = await esimApi.processTopUpNew(esimId, packageData.id, {
-            price: finalPrice, // USD price for security validation
+            price: finalPrice, // Original price (may already be in IQD for topups)
             displayPrice: convertedPrice, // User currency price
-            currency: userCurrency, // User's currency preference
-            paymentMethod: 'balance'
+            currency: packageData.currency || userCurrency, // Package currency or user's preference
+            paymentMethod: 'balance',
+            priceAlreadyConverted: packageData.priceAlreadyConverted || false // Flag for backend
           });
         } else {
           // For new eSIMs, use the regular order API
           const finalPrice = getFinalPrice();
-          const convertedPrice = convertPrice ? convertPrice(finalPrice) : finalPrice;
-          
-          console.log('Currency Debug:', {
-            originalPrice: packageData.price,
-            finalPrice,
-            convertedPrice,
-            userCurrency,
-            convertPrice: !!convertPrice
-          });
-          
+          const convertedPrice = convertPackagePrice(finalPrice);
+
           const orderRequest = {
             packageCode: packageData.package_code || packageData.packageCode || packageData.id,
             packageName: packageData.originalName || packageData.name,
@@ -590,14 +603,7 @@ const CheckoutScreenV2 = () => {
         if (orderResponse.success && orderResponse.data) {
           // For topups, the actual data is nested in data.data
           const responseData = isTopup ? (orderResponse.data.data || orderResponse.data) : orderResponse.data;
-          
-          console.log('Order response data:', {
-            isTopup,
-            orderResponse: orderResponse.data,
-            responseData,
-            orderReference: responseData.orderReference
-          });
-          
+
           // Update balance
           if (responseData.newBalance !== undefined) {
             setBalance({ 
@@ -898,19 +904,19 @@ const CheckoutScreenV2 = () => {
               <View style={styles.priceContainer}>
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabel}>Subtotal</Text>
-                  <Text style={styles.priceValue}>{formatPrice(packageData.price)}</Text>
+                  <Text style={styles.priceValue}>{formatPackagePrice(packageData.price)}</Text>
                 </View>
                 {verifiedPromoDetails && (
                   <View style={styles.priceRow}>
                     <Text style={styles.discountLabel}>Discount</Text>
-                    <Text style={styles.discountValue}>-{formatPrice(verifiedPromoDetails.discountAmount)}</Text>
+                    <Text style={styles.discountValue}>-{formatPackagePrice(verifiedPromoDetails.discountAmount)}</Text>
                   </View>
                 )}
                 <View style={styles.totalDivider} />
                 <View style={styles.priceRow}>
                   <Text style={styles.totalLabel}>Total</Text>
                   <Text style={styles.totalValue}>
-                    {formatPrice(getFinalPrice())}
+                    {formatPackagePrice(getFinalPrice())}
                   </Text>
                 </View>
               </View>
@@ -1262,7 +1268,7 @@ const CheckoutScreenV2 = () => {
                         {isFreeOrder() ? 'Free!' : 'Total Amount'}
                       </Text>
                       <Text style={styles.payButtonPrice}>
-                        {formatPrice(getFinalPrice())}
+                        {formatPackagePrice(getFinalPrice())}
                       </Text>
                     </View>
                   </View>

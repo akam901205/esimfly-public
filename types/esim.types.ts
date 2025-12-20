@@ -17,6 +17,7 @@ export interface ESim {
   country: string;
   package_code: string;
   unlimited: boolean;
+  provider?: string;
   package_duration_days?: number | null;
   created_at?: string | null;
   assigned_user: {

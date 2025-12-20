@@ -49,9 +49,15 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<AddOnPlan | null>(null);
-  
-  // Use the same currency conversion hook as country packages
-  const { formatPrice, userCurrency, loading: currencyLoading } = useCurrencyConversion();
+  const [plansCurrency, setPlansCurrency] = useState<'USD' | 'IQD'>('USD');
+
+  // Helper function to format price with correct currency
+  const formatPriceWithCurrency = (price: number, currency: 'USD' | 'IQD' = plansCurrency) => {
+    if (currency === 'IQD') {
+      return `${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} IQD`;
+    }
+    return `$${price.toFixed(2)}`;
+  };
 
   useEffect(() => {
     if (modalState.isVisible && modalState.esim) {
@@ -61,6 +67,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
       console.log('Modal closed, resetting plans...');
       setTopUpPlans([]);
       setSelectedPlan(null);
+      setPlansCurrency('USD');
     }
   }, [modalState.isVisible, modalState.esim]);
 
@@ -77,18 +84,23 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
       const response = await newApi.get(`/myesims/${modalState.esim.id}/topup-plans`);
       
       console.log('Top-up API response:', response.data);
-      
+
       if (response.data?.success && response.data?.plans) {
+        // Get currency from API response
+        const apiCurrency = response.data.user_info?.currency || 'USD';
+        setPlansCurrency(apiCurrency);
+        console.log('Plans currency:', apiCurrency);
+
         const transformedPlans = response.data.plans.map(plan => {
           // Data is already in GB from the API
           let dataInGB = plan.data;
           let dataFormatted = plan.data_formatted;
-          
+
           // If data_formatted is not provided, create it
           if (!dataFormatted) {
             dataFormatted = `${dataInGB} GB`;
           }
-          
+
           return {
             id: plan.id || plan.packageCode,
             name: plan.name,
@@ -107,10 +119,11 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
             speed: plan.speed || '',
             location: plan.location || '',
             operator: plan.operator || '',
-            provider: plan.provider || ''
+            provider: plan.provider || '',
+            currency: plan.currency || apiCurrency // Add currency to each plan
           };
         });
-        
+
         const filteredPlans = transformedPlans
           .filter(plan => !plan.name.includes('Single Use'))
           .sort((a, b) => {
@@ -118,7 +131,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
             const bValue = b.data || 0;
             return aValue - bValue;
           });
-        
+
         console.log('Transformed plans:', filteredPlans);
         console.log('Setting top-up plans, length:', filteredPlans.length);
         setTopUpPlans(filteredPlans);
@@ -195,8 +208,8 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
                 Price
               </Text>
               <Text style={[styles.planDetailValue, { color: '#FF6B00' }]}>
-                {formatPrice(
-                  typeof selectedPlan.price === 'number' ? selectedPlan.price : 
+                {formatPriceWithCurrency(
+                  typeof selectedPlan.price === 'number' ? selectedPlan.price :
                   (selectedPlan.price && !isNaN(parseFloat(selectedPlan.price))) ? parseFloat(selectedPlan.price) : 0
                 )}
               </Text>
@@ -262,8 +275,8 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
               <Text style={styles.priceLabel}>Price</Text>
               <View style={styles.priceContainer}>
                 <Text style={styles.planPrice}>
-                  {formatPrice(
-                    typeof plan.price === 'number' ? plan.price : 
+                  {formatPriceWithCurrency(
+                    typeof plan.price === 'number' ? plan.price :
                     (plan.price && !isNaN(parseFloat(plan.price))) ? parseFloat(plan.price) : 0
                   )}
                 </Text>

@@ -1,6 +1,15 @@
 // ESim utility functions
 
 import { ESim, TopUpAvailability } from '@/types/esim.types';
+import { canTopupMobile } from './tgt-card-types';
+import { countries } from './countryData';
+
+// Convert country code to country name using existing countryData
+export const getCountryNameFromCode = (code: string): string => {
+  if (!code) return 'International';
+  const country = countries.find(c => c.id.toLowerCase() === code.toLowerCase());
+  return country ? country.name : code;
+};
 
 export const getCountryFromPackageName = (packageName?: string): string => {
   if (!packageName) return 'International';
@@ -99,25 +108,48 @@ export const transformEsimData = (esim: any): ESim => {
       
       // For multi-country packages like "Singapore & Malaysia & Thailand"
       if (packageName.includes('&') && esim.countries && esim.countries.length > 1) {
-        return esim.countries.slice(0, 3).join(' & ');
+        // Convert any country codes to names
+        const countryNames = esim.countries.map((c: string) => getCountryNameFromCode(c));
+        return countryNames.slice(0, 3).join(' & ');
       }
-      
+
       // Default to first country or 'International'
-      return esim.countries && esim.countries.length > 0 ? esim.countries[0] : 'International';
+      const country = esim.countries && esim.countries.length > 0 ? esim.countries[0] : 'International';
+      // Convert country code to name if needed (e.g., "PL" → "Poland")
+      return getCountryNameFromCode(country);
     })(),
-    package_code: esim.provider || '',
-    unlimited: esim.dataTotal === 'Unlimited' || ((esim.status === 'new' || esim.status === 'inactive' || esim.status === 'not_active') && esim.dataTotal === 0),
+    package_code: esim.packageCode || '',
+    unlimited: esim.unlimited ||
+               esim.dataTotal === 'Unlimited' ||
+               ((esim.status === 'new' || esim.status === 'inactive' || esim.status === 'not_active') && esim.dataTotal === 0) ||
+               (esim.planName && esim.planName.toLowerCase().includes('unlimited')), // Check package name
+    provider: esim.provider || '',
     assigned_user: null
   };
 };
 
 export const checkTopUpAvailability = (
-  esim: ESim, 
+  esim: ESim,
   navigation: any
 ): TopUpAvailability => {
   const iccid = esim.iccid;
   const upperStatus = esim.status.toUpperCase();
-  
+
+  // Check TGT card type restrictions and unlimited status FIRST
+  const cardTypeCheck = canTopupMobile(
+    esim.package_code || '',
+    esim.status,
+    esim.unlimited || false,
+    esim.provider || 'esimaccess'
+  );
+
+  if (!cardTypeCheck.canTopup) {
+    return {
+      canTopUp: false,
+      message: cardTypeCheck.reason || 'This eSIM cannot be topped up at this time.'
+    };
+  }
+
   // Map of statuses and their topup availability
   switch (upperStatus) {
     case 'ACTIVE':
