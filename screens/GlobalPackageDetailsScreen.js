@@ -66,7 +66,7 @@ const GlobalPackageDetailsScreen = () => {
   const getNetworkCount = () => {
     if (packageData.provider === 'esimgo') {
       return packageData.networks?.reduce((total, country) => total + (country.networks?.length || 1), 0) || 0;
-    } else if (packageData.provider === 'airalo') {
+    } else if (packageData.provider === 'airalo' || packageData.provider === 'tgt' || packageData.provider === 'esimfly') {
       return packageData.networks?.length || 0;
     } else {
       const networksByLocation = {};
@@ -457,8 +457,8 @@ const GlobalPackageDetailsScreen = () => {
         setVerifiedPromoCode('');
         setDiscountedPrice(null);
         Alert.alert(
-          'Error',
-          'An error occurred while checking the code'
+          'Invalid Coupon',
+          error.response?.data?.error || 'An error occurred while checking the code'
         );
       } finally {
         setLocalIsRedeeming(false);

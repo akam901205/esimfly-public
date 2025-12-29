@@ -140,7 +140,7 @@ const RegionalPackageDetailsScreen = () => {
           }
         });
       }
-    } else if (packageData.provider === 'airalo') {
+    } else if (packageData.provider === 'airalo' || packageData.provider === 'tgt' || packageData.provider === 'esimfly') {
       // Use a Set to track unique networks
       const uniqueNetworkNames = new Set();
       
@@ -696,8 +696,8 @@ const RegionalPackageDetailsScreen = () => {
         setVerifiedPromoCode('');
         setDiscountedPrice(null);
         Alert.alert(
-          'Error',
-          'An error occurred while checking the code'
+          'Invalid Coupon',
+          error.response?.data?.error || 'An error occurred while checking the code'
         );
       } finally {
         setLocalIsRedeeming(false);
