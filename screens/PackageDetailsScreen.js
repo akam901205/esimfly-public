@@ -108,7 +108,7 @@ const PackageDetailsScreen = () => {
     
     // Check different network data structures based on provider
     // Handle all providers with networks/coverages data
-    if (packageData.provider === 'airalo' || packageData.provider === 'tgt' || packageData.packageCode?.startsWith('airalo_')) {
+    if (packageData.provider === 'airalo' || packageData.provider === 'tgt' || packageData.provider === 'esimfly' || packageData.packageCode?.startsWith('airalo_')) {
       // Use a Set to track unique networks
       const uniqueNetworkNames = new Set();
       
@@ -544,8 +544,8 @@ const PackageDetailsScreen = () => {
         setVerifiedPromoCode('');
         setDiscountedPrice(null);
         Alert.alert(
-          'Error',
-          'An error occurred while checking the code'
+          'Invalid Coupon',
+          error.response?.data?.error || 'An error occurred while checking the code'
         );
       } finally {
         setLocalIsRedeeming(false);

@@ -90,6 +90,28 @@ export class PayTabsService {
     configuration.showBillingInfo = false; // Hide billing form from user
     configuration.showShippingInfo = false;
 
+    // Theme configuration for dark mode support
+    configuration.theme = {
+      primaryColor: '#007AFF',
+      primaryFont: 'System',
+      primaryFontColor: '#FFFFFF',
+      secondaryColor: '#F5F5F5',
+      secondaryFont: 'System',
+      secondaryFontColor: '#000000',
+      buttonColor: '#007AFF',
+      buttonFontColor: '#FFFFFF',
+      titleFontColor: '#000000',
+      backgroundColor: '#FFFFFF',
+      placeholderColor: '#999999',
+      // Dark mode specific colors
+      darkModeBackgroundColor: '#1C1C1E',
+      darkModeTitleFontColor: '#FFFFFF',
+      darkModeSecondaryFontColor: '#FFFFFF',
+      darkModePlaceholderColor: '#EBEBF5',
+      darkModeInputBackgroundColor: '#2C2C2E',
+      darkModeInputTextColor: '#FFFFFF',
+    };
+
     return configuration;
   }
 
