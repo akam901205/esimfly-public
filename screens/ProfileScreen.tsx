@@ -13,6 +13,7 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -175,6 +176,31 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
       await notificationService.deregisterPushNotifications();
       setNotificationsEnabled(false);
       setExpoPushToken('');
+    }
+  };
+
+  const handleWhatsAppSupport = async () => {
+    const phoneNumber = '9647509797667'; // +964 750 979 7667
+    const whatsappUrl = `whatsapp://send?phone=${phoneNumber}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(whatsappUrl);
+      if (canOpen) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        Alert.alert(
+          'WhatsApp Not Available',
+          'Please make sure WhatsApp is installed on your device.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error opening WhatsApp:', error);
+      Alert.alert(
+        'Error',
+        'Could not open WhatsApp. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -385,6 +411,15 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
                 onPress={() => navigation.navigate('Support')}
                 color="#06b6d4"
               />
+              {balance?.data?.currency === 'IQD' && (
+                <MenuItem
+                  icon="logo-whatsapp"
+                  title="WhatsApp Support"
+                  subtitle="Chat with us on WhatsApp"
+                  onPress={handleWhatsAppSupport}
+                  color="#25D366"
+                />
+              )}
               <MenuItem
                 icon="shield-checkmark-outline"
                 title="Privacy Policy"
@@ -433,7 +468,7 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
           </TouchableOpacity>
 
           {/* Version Info */}
-          <Text style={styles.versionText}>Version 1.1.0</Text>
+          <Text style={styles.versionText}>Version 1.2.1</Text>
         </View>
         </ScrollView>
         

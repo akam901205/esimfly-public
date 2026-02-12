@@ -111,28 +111,38 @@ async function makeApiRequest(
 }
 
 
-export async function signIn(email: string, password: string): Promise<AuthResponse> {
+export async function signIn(email: string, password: string, deviceFingerprint?: any): Promise<AuthResponse> {
   debugLog('Attempting sign in for email:', email);
-  const response = await makeApiRequest('login', 'POST', { email, password });
+  const body: any = { email, password };
+  if (deviceFingerprint) {
+    body.deviceFingerprint = deviceFingerprint;
+  }
+  const response = await makeApiRequest('login', 'POST', body);
   debugLog('Sign in response:', response);
   return response;
 }
 
 export async function signUp(
-    email: string, 
-    password: string, 
-    referralCode?: string, 
-    name?: string
+    email: string,
+    password: string,
+    referralCode?: string,
+    name?: string,
+    deviceFingerprint?: any
 ): Promise<AuthResponse> {
     debugLog('Attempting sign up for email:', email);
-    
+
     // Make the request to the new API endpoint
-    const requestBody = {
+    const requestBody: any = {
         name: name || email.split('@')[0],
         email,
         password,
         referralCode: referralCode?.trim()
     };
+
+    // Add device fingerprint if provided
+    if (deviceFingerprint) {
+        requestBody.deviceFingerprint = deviceFingerprint;
+    }
     
     debugLog('Making POST request to register endpoint');
     debugLog('Request body:', requestBody);

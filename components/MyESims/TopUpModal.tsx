@@ -50,6 +50,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<AddOnPlan | null>(null);
   const [plansCurrency, setPlansCurrency] = useState<'USD' | 'IQD'>('USD');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Helper function to format price with correct currency
   const formatPriceWithCurrency = (price: number, currency: 'USD' | 'IQD' = plansCurrency) => {
@@ -68,6 +69,7 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
       setTopUpPlans([]);
       setSelectedPlan(null);
       setPlansCurrency('USD');
+      setErrorMessage(null);
     }
   }, [modalState.isVisible, modalState.esim]);
 
@@ -79,10 +81,11 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
     
     console.log('Fetching top-up plans for eSIM ID:', modalState.esim.id);
     setLoadingPlans(true);
+    setErrorMessage(null); // Clear any previous errors
     try {
       // Use the new API endpoint
       const response = await newApi.get(`/myesims/${modalState.esim.id}/topup-plans`);
-      
+
       console.log('Top-up API response:', response.data);
 
       if (response.data?.success && response.data?.plans) {
@@ -135,13 +138,23 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
         console.log('Transformed plans:', filteredPlans);
         console.log('Setting top-up plans, length:', filteredPlans.length);
         setTopUpPlans(filteredPlans);
+        setErrorMessage(null); // Clear error on success
       } else {
         console.error('Failed to fetch plans:', response.data);
-        Alert.alert('Error', response.data?.error || 'Failed to load top-up plans');
+        const errorMsg = response.data?.error || response.data?.message || 'Failed to load top-up plans';
+        setErrorMessage(errorMsg);
+        setTopUpPlans([]); // Clear plans on error
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching top-up plans:', error);
-      Alert.alert('Error', 'Failed to load top-up plans');
+
+      // Extract error message from API response (400 status codes end up here)
+      const apiErrorMessage = error?.response?.data?.error ||
+                              error?.response?.data?.message ||
+                              error?.message;
+
+      setErrorMessage(apiErrorMessage || 'Failed to load top-up plans. Please try again.');
+      setTopUpPlans([]); // Clear plans on error
     } finally {
       setLoadingPlans(false);
       setRefreshing(false);
@@ -373,6 +386,13 @@ export const TopUpModal: React.FC<TopUpModalProps> = ({ modalState, onClose, onT
                 <ActivityIndicator size="large" color="#FF6B00" />
                 <Text style={[styles.loadingText, { color: '#6B7280' }]}>
                   Loading available plans...
+                </Text>
+              </View>
+            ) : errorMessage ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+                <Text style={[styles.emptyText, { color: '#6B7280', paddingHorizontal: 20 }]}>
+                  {errorMessage}
                 </Text>
               </View>
             ) : topUpPlans.length === 0 ? (

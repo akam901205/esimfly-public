@@ -60,7 +60,7 @@ const handleApiResponse = async (response: Response) => {
   }
 };
 
-export const signInWithGoogle = async (): Promise<AuthResponse> => {
+export const signInWithGoogle = async (deviceFingerprint?: any): Promise<AuthResponse> => {
   try {
     debugLog('Starting Google sign-in process');
     
@@ -104,6 +104,16 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
 
     // Send to backend for verification
     try {
+      const requestBody: any = {
+        id_token: googleToken,
+        referralCode: storedReferralCode
+      };
+
+      // Add device fingerprint if provided
+      if (deviceFingerprint) {
+        requestBody.deviceFingerprint = deviceFingerprint;
+      }
+
       const response = await fetch(`${API_URL}/google-callback`, {
         method: 'POST',
         headers: {
@@ -111,10 +121,7 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
           'Accept': 'application/json',
           'x-client-type': 'mobile'
         },
-        body: JSON.stringify({ 
-          id_token: googleToken,
-          referralCode: storedReferralCode
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await handleApiResponse(response);
@@ -179,7 +186,7 @@ export const signInWithGoogle = async (): Promise<AuthResponse> => {
   }
 };
 
-export const signInWithApple = async (): Promise<AuthResponse> => {
+export const signInWithApple = async (deviceFingerprint?: any): Promise<AuthResponse> => {
   try {
     debugLog('Starting Apple sign-in process');
     
@@ -229,6 +236,25 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
       debugLog('Stored referral code:', storedReferralCode);
 
       // Send to backend for verification
+      const requestBody: any = {
+        id_token: appleToken,
+        apple_token: identityToken,
+        referralCode: storedReferralCode,
+        user_data: {
+          email: appleAuthRequestResponse.email,
+          name: appleAuthRequestResponse.fullName &&
+                (appleAuthRequestResponse.fullName.givenName || appleAuthRequestResponse.fullName.familyName) ?
+            `${appleAuthRequestResponse.fullName.givenName || ''} ${appleAuthRequestResponse.fullName.familyName || ''}`.trim() :
+            null,
+          user: appleAuthRequestResponse.user
+        }
+      };
+
+      // Add device fingerprint if provided
+      if (deviceFingerprint) {
+        requestBody.deviceFingerprint = deviceFingerprint;
+      }
+
       const response = await fetch(`${API_URL}/apple-callback`, {
         method: 'POST',
         headers: {
@@ -236,19 +262,7 @@ export const signInWithApple = async (): Promise<AuthResponse> => {
           'Accept': 'application/json',
           'x-client-type': 'mobile'
         },
-        body: JSON.stringify({ 
-          id_token: appleToken,
-          apple_token: identityToken,
-          referralCode: storedReferralCode,
-          user_data: {
-            email: appleAuthRequestResponse.email,
-            name: appleAuthRequestResponse.fullName && 
-                  (appleAuthRequestResponse.fullName.givenName || appleAuthRequestResponse.fullName.familyName) ? 
-              `${appleAuthRequestResponse.fullName.givenName || ''} ${appleAuthRequestResponse.fullName.familyName || ''}`.trim() : 
-              null,
-            user: appleAuthRequestResponse.user
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await handleApiResponse(response);

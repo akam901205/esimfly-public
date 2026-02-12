@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { colors } from '../theme/colors';
 import { newApi } from '../api/api';
 import { useToast } from '../components/ToastNotification';
+import { AuthContext } from '../api/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -47,15 +48,24 @@ const SupportScreen: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  const { userEmail } = React.useContext(AuthContext);
   const [activeTab, setActiveTab] = useState<'faq' | 'contact'>('faq');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
   const [subject, setSubject] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<SelectedFile[]>([]);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+
+  // Pre-fill email from user context when available
+  useEffect(() => {
+    if (userEmail) {
+      setEmail(userEmail);
+    }
+  }, [userEmail]);
 
   const subjectOptions = [
     'General Inquiry',
@@ -211,7 +221,22 @@ const SupportScreen: React.FC = () => {
     else return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = async () => {
+    if (!email || email.trim() === '') {
+      Alert.alert('Email Required', 'Please provide your email address so we can contact you back');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
     if (!selectedSubject) {
       Alert.alert('Missing Subject', 'Please select a subject for your message');
       return;
@@ -227,6 +252,7 @@ const SupportScreen: React.FC = () => {
 
     try {
       const formData = new FormData();
+      formData.append('email', email.trim());
       formData.append('subject', selectedSubject);
       formData.append('message', message);
 
@@ -251,6 +277,8 @@ const SupportScreen: React.FC = () => {
         setSelectedSubject('');
         setMessage('');
         setAttachments([]);
+        // Reset email to user's email (or empty if not available)
+        setEmail(userEmail || '');
         setActiveTab('faq');
       } else {
         throw new Error(response.data.error || 'Failed to send support request');
@@ -423,6 +451,29 @@ const SupportScreen: React.FC = () => {
               <Text style={styles.formDescription}>
                 We'll get back to you as soon as possible
               </Text>
+
+              {/* Email Input */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Email Address *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="your.email@example.com"
+                  placeholderTextColor={colors.text.secondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {email.includes('privaterelay.appleid.com') && (
+                  <View style={styles.warningBox}>
+                    <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+                    <Text style={styles.warningText}>
+                      You're using an Apple private relay email. Please provide your real email address so we can contact you back.
+                    </Text>
+                  </View>
+                )}
+              </View>
 
               {/* Subject Picker */}
               <View style={styles.fieldContainer}>
@@ -726,6 +777,34 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontFamily: 'Quicksand-Medium',
     marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: colors.text.primary,
+    fontFamily: 'Quicksand-Regular',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    gap: 8,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
+    fontFamily: 'Quicksand-Medium',
+    lineHeight: 18,
   },
   selectButton: {
     flexDirection: 'row',

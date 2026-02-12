@@ -12,6 +12,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme/colors';
 import { appleAuth } from '@invertase/react-native-apple-authentication';
+import { useDeviceFingerprint } from '../hooks/useDeviceFingerprint';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -21,12 +22,13 @@ export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
 
   const { signIn } = useContext(AuthContext);
+  const { fingerprint, isLoading: fingerprintLoading } = useDeviceFingerprint();
 
   const handleSignIn = async () => {
     setIsLoading(true);
     try {
       const normalizedEmail = email.toLowerCase().trim();
-      const response = await apiSignIn(normalizedEmail, password);
+      const response = await apiSignIn(normalizedEmail, password, fingerprint);
       if (response.success) {
         await signIn(response.token, normalizedEmail, response.expires_at);
       } else {
@@ -42,7 +44,7 @@ export default function LoginScreen({ navigation }) {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      const response = await signInWithGoogle();
+      const response = await signInWithGoogle(fingerprint);
       if (response.success) {
         await signIn(response.token, response.user?.email, response.expires_at);
       } else {
@@ -58,7 +60,7 @@ export default function LoginScreen({ navigation }) {
   const handleAppleSignIn = async () => {
     try {
       setIsLoading(true);
-      const response = await signInWithApple();
+      const response = await signInWithApple(fingerprint);
       if (response.success) {
         await signIn(response.token, response.user?.email, response.expires_at);
       } else {
@@ -158,24 +160,37 @@ export default function LoginScreen({ navigation }) {
                   <View style={styles.divider} />
                 </View>
 
+                {/* Device Fingerprint Loading Indicator */}
+                {fingerprintLoading && (
+                  <View style={{ padding: 8, backgroundColor: colors.secondary, borderRadius: 8, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 12, color: colors.text.secondary, textAlign: 'center' }}>
+                      🔒 Loading security features...
+                    </Text>
+                  </View>
+                )}
+
                 <View style={styles.socialButtonsContainer}>
                   <TouchableOpacity
-                    style={styles.socialButton}
+                    style={[styles.socialButton, (isLoading || fingerprintLoading) && { opacity: 0.5 }]}
                     onPress={handleGoogleSignIn}
-                    disabled={isLoading}
+                    disabled={isLoading || fingerprintLoading}
                   >
                     <Icon name="logo-google" size={20} color={colors.text.primary} />
-                    <Text style={styles.socialButtonText}>Google</Text>
+                    <Text style={styles.socialButtonText}>
+                      {fingerprintLoading ? 'Loading...' : 'Google'}
+                    </Text>
                   </TouchableOpacity>
 
                   {Platform.OS === 'ios' && (
                     <TouchableOpacity
-                      style={styles.socialButton}
+                      style={[styles.socialButton, (isLoading || fingerprintLoading) && { opacity: 0.5 }]}
                       onPress={handleAppleSignIn}
-                      disabled={isLoading}
+                      disabled={isLoading || fingerprintLoading}
                     >
                       <Icon name="logo-apple" size={20} color={colors.text.primary} />
-                      <Text style={styles.socialButtonText}>Apple</Text>
+                      <Text style={styles.socialButtonText}>
+                        {fingerprintLoading ? 'Loading...' : 'Apple'}
+                      </Text>
                     </TouchableOpacity>
                   )}
                 </View>

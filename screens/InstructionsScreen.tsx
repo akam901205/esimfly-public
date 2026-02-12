@@ -141,6 +141,7 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ esimDetails, params }) =>
 interface RouteParams {
   qrCodeUrl?: string;
   directAppleInstallUrl?: string;
+  directAndroidInstallUrl?: string;
   packageName?: string;
   isProcessing?: boolean;
   esimId?: number;
@@ -176,10 +177,12 @@ const InstructionsScreen = () => {
             ...details,
             short_url: details.short_url,
             apple_installation_url: details.apple_installation_url,
+            android_installation_url: details.android_installation_url,
             package_name: details.package_name,
             ac: details.ac,
             iccid: details.iccid,
-            status: details.status
+            status: details.status,
+            apn: details.apn
           });
         } else {
           setError(response.message || 'Failed to fetch eSIM details');
@@ -190,9 +193,10 @@ const InstructionsScreen = () => {
         setEsimDetails({
           short_url: params.qrCodeUrl,
           apple_installation_url: params.directAppleInstallUrl,
+          android_installation_url: params.directAndroidInstallUrl,
           package_name: params.packageName,
-          ac: params.ac || 
-              (params.directAppleInstallUrl && 
+          ac: params.ac ||
+              (params.directAppleInstallUrl &&
                `LPA:1$${activationInfo.smdpAddress}$${activationInfo.activationCode}`),
           status: params.isProcessing ? 'Processing' : 'Active'
         });
@@ -226,11 +230,15 @@ const InstructionsScreen = () => {
         break;
 
       case 'Direct':
-        if (esimDetails?.apple_installation_url) {
+        const directUrl = Platform.OS === 'android'
+          ? esimDetails?.android_installation_url
+          : esimDetails?.apple_installation_url;
+
+        if (directUrl) {
           if (isAiralo && esimDetails?.sharing_access_code) {
-            shareContent = `Here's your eSIM direct installation link: ${esimDetails.apple_installation_url}\nAccess Code: ${esimDetails.sharing_access_code}`;
+            shareContent = `Here's your eSIM direct installation link: ${directUrl}\nAccess Code: ${esimDetails.sharing_access_code}`;
           } else {
-            shareContent = `Here's your eSIM direct installation link: ${esimDetails.apple_installation_url}`;
+            shareContent = `Here's your eSIM direct installation link: ${directUrl}`;
           }
         }
         break;
@@ -379,14 +387,18 @@ const handleCopy = async (text: string) => {
 
   const renderDirectTab = () => {
     const isAndroid = Platform.OS === 'android';
-    const canDirectInstall = !isAndroid && esimDetails?.apple_installation_url;
-  
+    const canDirectInstallIOS = !isAndroid && esimDetails?.apple_installation_url;
+    const canDirectInstallAndroid = isAndroid && esimDetails?.android_installation_url;
+    const canDirectInstall = canDirectInstallIOS || canDirectInstallAndroid;
+
     const handleInstall = async () => {
-      if (!isAndroid && esimDetails?.apple_installation_url) {
+      const installUrl = isAndroid ? esimDetails?.android_installation_url : esimDetails?.apple_installation_url;
+
+      if (installUrl) {
         try {
-          const supported = await Linking.canOpenURL(esimDetails.apple_installation_url);
+          const supported = await Linking.canOpenURL(installUrl);
           if (supported) {
-            await Linking.openURL(esimDetails.apple_installation_url);
+            await Linking.openURL(installUrl);
           } else {
             Alert.alert(
               'Error',
@@ -425,49 +437,93 @@ const handleCopy = async (text: string) => {
 
         {canDirectInstall ? (
           <View style={styles.directInstallContainer}>
-            <Text style={styles.stepTitle}>Direct Installation</Text>
+            <Text style={styles.stepTitle}>⚡ Quick Install</Text>
             <View style={styles.warningBox}>
               <Text style={styles.warningBoxText}>
-                You can install this eSIM directly on your iOS device. Make sure you have a stable internet connection before proceeding.
+                {isAndroid
+                  ? 'You can install this eSIM directly on your Android device. Make sure you have a stable internet connection before proceeding.'
+                  : 'You can install this eSIM directly on your iOS device. Make sure you have a stable internet connection before proceeding.'}
               </Text>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.installButton}
               onPress={handleInstall}
             >
               <View style={styles.installButtonContent}>
                 <Ionicons name="download" size={24} color="#fff" />
-                <Text style={styles.installButtonText}>Install eSIM</Text>
+                <Text style={styles.installButtonText}>
+                  {isAndroid ? '🤖 Install on Android' : '📱 Install on iPhone'}
+                </Text>
               </View>
             </TouchableOpacity>
 
-            <View style={[styles.directStepsContainer, { marginTop: 32 }]}>
-              <DirectStep
-                number={1}
-                text='Tap "Install eSIM" above and follow the on-screen instructions.'
-                color="#FF6B00"
-              />
-              <DirectStep
-                number={2}
-                text='Choose a label for your new sim plan.'
-                color="#FF6B00"
-              />
-              <DirectStep
-                number={3}
-                text='Choose "Primary" for your default line, then tap "Continue".'
-                color="#FF6B00"
-              />
-              <DirectStep
-                number={4}
-                text='Choose the "Primary" you want to use with iMessage and FaceTime for your Apple ID, then tap "Continue".'
-                color="#FF6B00"
-              />
-              <DirectStep
-                number={5}
-                text='Choose your new sim plan for cellular/mobile data, then tap "Continue".'
-                color="#FF6B00"
-              />
+            {/* Version Requirements Box */}
+            <View style={styles.versionBox}>
+              <Text style={styles.versionTitle}>📋 Version Requirements:</Text>
+              <Text style={styles.versionText}>
+                {isAndroid
+                  ? '• Android: 10 or later'
+                  : '• iOS: 17.4 or later'}
+              </Text>
+              <Text style={styles.versionNote}>
+                Older versions? Use QR code or manual installation
+              </Text>
+            </View>
+
+            <View style={[styles.directStepsContainer, { marginTop: 24 }]}>
+              {isAndroid ? (
+                <>
+                  <DirectStep
+                    number={1}
+                    text='Tap "Install on Android" above to open the installation URL.'
+                    color="#FF6B00"
+                  />
+                  <DirectStep
+                    number={2}
+                    text='Follow the on-screen instructions to complete the setup.'
+                    color="#FF6B00"
+                  />
+                  <DirectStep
+                    number={3}
+                    text='Choose a label for your new eSIM plan.'
+                    color="#FF6B00"
+                  />
+                  <DirectStep
+                    number={4}
+                    text='Tap "Download" or "Confirm" to complete the installation.'
+                    color="#FF6B00"
+                  />
+                </>
+              ) : (
+                <>
+                  <DirectStep
+                    number={1}
+                    text='Tap "Install on iPhone" above and follow the on-screen instructions.'
+                    color="#FF6B00"
+                  />
+                  <DirectStep
+                    number={2}
+                    text='Choose a label for your new sim plan.'
+                    color="#FF6B00"
+                  />
+                  <DirectStep
+                    number={3}
+                    text='Choose "Primary" for your default line, then tap "Continue".'
+                    color="#FF6B00"
+                  />
+                  <DirectStep
+                    number={4}
+                    text='Choose the "Primary" you want to use with iMessage and FaceTime for your Apple ID, then tap "Continue".'
+                    color="#FF6B00"
+                  />
+                  <DirectStep
+                    number={5}
+                    text='Choose your new sim plan for cellular/mobile data, then tap "Continue".'
+                    color="#FF6B00"
+                  />
+                </>
+              )}
             </View>
           </View>
         ) : isAndroid ? (
@@ -675,7 +731,7 @@ const handleCopy = async (text: string) => {
             <View style={styles.networkItem}>
               <Text style={styles.networkLabel}>APN</Text>
               <View style={styles.networkValue}>
-                <Text style={styles.networkText}>wbdata</Text>
+                <Text style={styles.networkText}>{esimDetails?.apn || 'Auto'}</Text>
               </View>
             </View>
             <View style={styles.networkDivider} />
@@ -1146,6 +1202,36 @@ const styles = StyleSheet.create({
   },
   manualStepsContainer: {
     marginBottom: 32,
+  },
+  versionBox: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  versionTitle: {
+    color: colors.text.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  versionText: {
+    color: colors.text.primary,
+    fontSize: 13,
+    marginBottom: 8,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  versionNote: {
+    color: colors.text.secondary,
+    fontSize: 12,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

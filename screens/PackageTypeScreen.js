@@ -16,6 +16,8 @@ const PackageTypeScreen = () => {
   const { country } = route.params;
   const [hasUnlimited, setHasUnlimited] = useState(false);
   const [hasVoiceSms, setHasVoiceSms] = useState(false);
+  const [hasCustomizable, setHasCustomizable] = useState(false);
+  const [allPackages, setAllPackages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,27 +26,26 @@ const PackageTypeScreen = () => {
 
   const checkPackageAvailability = async () => {
     try {
-      
-      // Fetch packages from the new API
+
+      // Fetch regular country packages
       const response = await newApi.get('/user/esims/packages', {
-        params: { 
+        params: {
           country: country,
           type: 'country',
-          limit: 100 
+          limit: 100
         }
       }).catch(error => {
         console.error('[DEBUG] Package fetch error:', error);
         return { data: { data: { packages: [] } } };
       });
 
+      const packages = response.data?.data?.packages || [];
 
-      const allPackages = response.data?.data?.packages || [];
-
-
+      // Store all packages for Build Your Plan
+      setAllPackages(packages);
 
       // Packages are already filtered by country from the API, so we just need to check for unlimited
-      const filteredPackages = allPackages;
-
+      const filteredPackages = packages;
 
       const unlimitedExists = filteredPackages.some(pkg => {
         const isUnlimited = pkg.isUnlimited === true ||
@@ -54,7 +55,7 @@ const PackageTypeScreen = () => {
       });
 
       setHasUnlimited(unlimitedExists);
-      
+
       // Check for voice/SMS packages
       const voiceSmsExists = filteredPackages.some(pkg => {
         const hasVoiceOrSms = (pkg.voiceMinutes && pkg.voiceMinutes > 0) ||
@@ -62,9 +63,23 @@ const PackageTypeScreen = () => {
 
         return hasVoiceOrSms;
       });
-      
+
       setHasVoiceSms(voiceSmsExists);
-      
+
+      // Check for eSIMAccess packages (they have customizable daily plans)
+      // Note: We show the button if eSIMAccess has ANY packages for this country
+      // The BuildYourPlanScreen will fetch and filter daily plans specifically
+      const hasEsimAccessPackages = filteredPackages.some(pkg =>
+        pkg.provider === 'esimaccess'
+      );
+
+      console.log('=== BUILD YOUR PLAN DEBUG ===');
+      console.log('Total packages:', filteredPackages.length);
+      console.log('Has eSIMAccess packages?', hasEsimAccessPackages);
+      console.log('=== END DEBUG ===');
+
+      setHasCustomizable(hasEsimAccessPackages);
+
       setLoading(false);
 
     } catch (error) {
@@ -75,6 +90,21 @@ const PackageTypeScreen = () => {
 
   const navigateToPackages = (type) => {
     navigation.navigate('CountryPackages', { country, packageType: type });
+  };
+
+  const navigateToBuildPlan = () => {
+    // Find country code for the flag
+    const { countries } = require('../utils/countryData');
+    const countryCode = countries.find(c => c.name.toLowerCase() === country.toLowerCase())?.id || '';
+
+    navigation.navigate('BuildYourPlan', {
+      country: {
+        name: country,
+        code: countryCode,
+        flagUrl: null
+      },
+      plans: allPackages
+    });
   };
 
   if (loading) {
@@ -136,7 +166,7 @@ const PackageTypeScreen = () => {
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
-        
+
         {hasUnlimited && (
           <TouchableOpacity
             style={[styles.buttonCard, { marginTop: 16 }]}
@@ -169,6 +199,25 @@ const PackageTypeScreen = () => {
               <View style={styles.buttonTextContainer}>
                 <Text style={styles.buttonTitle}>Voice & SMS</Text>
                 <Text style={styles.buttonSubtitle}>Plans with calling and texting</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {hasCustomizable && (
+          <TouchableOpacity
+            style={[styles.buttonCard, { marginTop: 16 }]}
+            onPress={navigateToBuildPlan}
+            activeOpacity={0.7}
+          >
+            <View style={styles.buttonContent}>
+              <View style={styles.buttonIconContainer}>
+                <Ionicons name="construct-outline" size={24} color="#FF6B00" />
+              </View>
+              <View style={styles.buttonTextContainer}>
+                <Text style={styles.buttonTitle}>Build Your Plan</Text>
+                <Text style={styles.buttonSubtitle}>Customize speed & duration</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </View>

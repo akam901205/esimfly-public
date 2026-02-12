@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signUp } from '../api/authApi';
 import { colors } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDeviceFingerprint } from '../hooks/useDeviceFingerprint';
 
 type RootStackParamList = {
   SignUp: undefined;
@@ -52,6 +53,9 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const insets = useSafeAreaInsets();
+
+  // Device fingerprinting for fraud detection
+  const { fingerprint, isLoading: fingerprintLoading } = useDeviceFingerprint();
 
   // Load stored referral code on component mount
   useEffect(() => {
@@ -149,8 +153,8 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
 
     try {
       const normalizedEmail = email.toLowerCase().trim();
-      const response = await signUp(normalizedEmail, password, referralCode || undefined, fullName);
-      
+      const response = await signUp(normalizedEmail, password, referralCode || undefined, fullName, fingerprint);
+
       if (response.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert(

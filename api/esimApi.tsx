@@ -106,6 +106,7 @@ export interface EsimDetails {
   short_url: string;
   formatted_short_url: string;
   apple_installation_url: string | null;
+  android_installation_url: string | null;
   activate_time: string | null;
   expired_time: string;
   order_usage: number;
@@ -124,6 +125,7 @@ export interface EsimDetails {
   sharing_access_code?: string;
   order_reference?: string;
   transaction_id?: string;
+  apn?: string | null;
 }
 
 export interface OrderEsimResponse {
@@ -136,6 +138,7 @@ export interface OrderEsimResponse {
   profit?: number;
   flagUrl?: string;
   directAppleInstallUrl?: string;
+  directAndroidInstallUrl?: string;
   errorCode?: string;
   currentBalance?: number;
   requiredBalance?: number;
@@ -189,6 +192,12 @@ export interface OrderEsimBaseRequest {
     code: string;
     originalPrice: number;
     discountAmount: number;
+  };
+  customData?: {
+    isCustomizable: boolean;
+    periodNum: number;
+    dailyData: string;
+    basePrice: number;
   };
 }
 
@@ -538,7 +547,8 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
         flagUrl: data.flagUrl,
         paymentMethod: data.payment_method, // Use actual payment method (balance or free)
         duration: data.duration,
-        promoDetails: data.promoDetails
+        promoDetails: data.promoDetails,
+        customData: data.customData // Pass customData for customizable plans (periodNum)
       };
       
       console.log('API Request: POST /esim/order');
@@ -1024,6 +1034,7 @@ export const fetchEsimDetails = async (iccid: string): Promise<ApiResponse<EsimD
         short_url: esim.qr_code_url || '',
         formatted_short_url: esim.qr_code_url || '',
         apple_installation_url: esim.apple_installation_url,
+        android_installation_url: esim.android_installation_url,
         activate_time: esim.activated_at,
         expired_time: esim.expires_at || '',
         order_usage: esim.data_used || 0,
@@ -1042,7 +1053,8 @@ export const fetchEsimDetails = async (iccid: string): Promise<ApiResponse<EsimD
         qr_code_url: esim.qr_code_url,
         sharing_access_code: esim.sharing_access_code,
         order_reference: esim.order_reference,
-        transaction_id: esim.transaction_id
+        transaction_id: esim.transaction_id,
+        apn: esim.apn
       };
       
       return {

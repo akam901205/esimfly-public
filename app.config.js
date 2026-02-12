@@ -2,10 +2,15 @@ export default {
   expo: {
     name: 'eSimFly',
     slug: 'esimfly-public',
-    version: '1.1.2',
+    version: '1.2.1',
     orientation: 'portrait',
     platforms: ['ios', 'android'],
     icon: './assets/icon.png',
+    splash: {
+      image: './assets/splash.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff'
+    },
     scheme: 'esimfly',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -53,7 +58,8 @@ export default {
           'stripe',
           'stripecheckout',
           'merchant.net.esimfly.user.app',
-          'esimfly'
+          'esimfly',
+          'whatsapp'
         ],
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'Allow eSimFly to access your camera to scan QR codes.',

@@ -46,6 +46,7 @@ import RefundPolicyScreen from './screens/RefundPolicyScreen';
 import OrderProcessingScreen from './screens/OrderProcessingScreen';
 import SupportScreen from './screens/SupportScreen';
 import DeleteAccountScreen from './screens/DeleteAccountScreen';
+import BuildYourPlanScreen from './screens/BuildYourPlanScreen';
 
 // Configure platform-specific settings for light theme
 async function configureNavigationBar() {
@@ -98,14 +99,18 @@ export type AuthStackParamList = {
 export type ShopStackParamList = {
   ShopMain: undefined;
   PackageType: { country: string };
-  CountryPackages: { 
-    country: string; 
-    packageType: 'regular' | 'unlimited' 
+  CountryPackages: {
+    country: string;
+    packageType: 'regular' | 'unlimited'
+  };
+  BuildYourPlan: {
+    country: any;
+    plans: any[];
   };
   RegionalPackageType: { region: string };
-  RegionalPackages: { 
-    region: string; 
-    packageType: 'regular' | 'unlimited' 
+  RegionalPackages: {
+    region: string;
+    packageType: 'regular' | 'unlimited'
   };
   RegionalPackageDetails: {
     package: {
@@ -282,6 +287,7 @@ function ShopNavigator() {
       <ShopStack.Screen name="ShopMain" component={ShopScreen} />
       <ShopStack.Screen name="PackageType" component={PackageTypeScreen} />
       <ShopStack.Screen name="CountryPackages" component={CountryPackagesScreen} />
+      <ShopStack.Screen name="BuildYourPlan" component={BuildYourPlanScreen} />
       <ShopStack.Screen name="RegionalPackageType" component={RegionalPackageTypeScreen} />
       <ShopStack.Screen name="RegionalPackages" component={RegionalPackagesScreen} />
       <ShopStack.Screen name="RegionalPackageDetails" component={RegionalPackageDetailsScreen} />

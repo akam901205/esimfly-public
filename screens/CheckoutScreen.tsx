@@ -257,7 +257,8 @@ const CheckoutScreenV2 = () => {
             flagUrl: getFlagUrl(),
             quantity: 1,
             payment_method: 'free',
-            promoDetails: verifiedPromoDetails
+            promoDetails: verifiedPromoDetails,
+            customData: packageData.customData // Pass customData for customizable plans
           };
 
           orderResponse = await esimApi.orderEsim(orderRequest);
@@ -312,19 +313,23 @@ const CheckoutScreenV2 = () => {
       if (paymentMethod === 'card') {
         // Create payment intent for card payment
         const finalPrice = getFinalPrice();
-        const convertedPrice = convertPackagePrice(finalPrice);
-        
+        const convertedPrice = convertPackagePrice(packageData.price); // Convert ORIGINAL price, not discounted
+
         const paymentResponse = await esimApi.createCheckoutSession({
           items: [{
             id: packageData.package_code || packageData.packageCode || packageData.id,
             name: packageData.name,
-            price: convertedPrice, // Use converted price
+            price: convertedPrice, // Send original price - server will apply discount
             originalPrice: packageData.price, // Keep original for reference
             currency: userCurrency,
             quantity: 1,
             data_amount: packageData.data,
             duration: packageData.duration,
             flag_url: packageData.flag_url || getFlagUrl(),
+            // Add customData for customizable plans
+            ...(packageData.customData && {
+              customData: packageData.customData
+            }),
             // Keep metadata in item for backward compatibility
             ...(isTopup && {
               metadata: {
@@ -415,14 +420,19 @@ const CheckoutScreenV2 = () => {
       } else if (paymentMethod === 'paytabs') {
         // Process PayTabs payment
         const finalPrice = getFinalPrice();
-        const convertedPrice = convertPackagePrice(finalPrice);
+        const convertedPrice = convertPackagePrice(packageData.price); // Convert ORIGINAL price, not discounted
 
         const payTabsResult = await processPayTabsPayment({
           items: [{
             id: packageData.package_code || packageData.packageCode || packageData.id,
             name: packageData.name,
-            price: convertedPrice, // IQD price
+            price: convertedPrice, // Send original price - server will apply discount
+            originalPrice: packageData.price, // USD price for validation
             quantity: 1,
+            // Add customData for customizable plans
+            ...(packageData.customData && {
+              customData: packageData.customData
+            }),
             data_amount: packageData.data,
             duration: packageData.duration,
             flag_url: packageData.flag_url || getFlagUrl(),
@@ -492,14 +502,19 @@ const CheckoutScreenV2 = () => {
       } else if (paymentMethod === 'fib') {
         // Create FIB payment session
         const finalPrice = getFinalPrice();
-        const convertedPrice = convertPackagePrice(finalPrice);
-        
+        const convertedPrice = convertPackagePrice(packageData.price); // Convert ORIGINAL price, not discounted
+
         const fibResponse = await esimApi.createFIBSession({
           items: [{
             id: packageData.package_code || packageData.packageCode || packageData.id,
             name: packageData.name,
-            price: convertedPrice, // IQD price
+            price: convertedPrice, // Send original price - server will apply discount
+            originalPrice: packageData.price, // USD price for validation
             quantity: 1,
+            // Add customData for customizable plans
+            ...(packageData.customData && {
+              customData: packageData.customData
+            }),
             data_amount: packageData.data,
             duration: packageData.duration,
             flag_url: packageData.flag_url || getFlagUrl(),
@@ -566,10 +581,10 @@ const CheckoutScreenV2 = () => {
         if (isTopup) {
           // For topups, use the topup API with currency support
           const finalPrice = getFinalPrice();
-          const convertedPrice = convertPackagePrice(finalPrice);
+          const convertedPrice = convertPackagePrice(packageData.price); // Convert ORIGINAL price
 
           orderResponse = await esimApi.processTopUpNew(esimId, packageData.id, {
-            price: finalPrice, // Original price (may already be in IQD for topups)
+            price: packageData.price, // Send original price - server will apply discount
             displayPrice: convertedPrice, // User currency price
             currency: packageData.currency || userCurrency, // Package currency or user's preference
             paymentMethod: 'balance',
@@ -578,12 +593,12 @@ const CheckoutScreenV2 = () => {
         } else {
           // For new eSIMs, use the regular order API
           const finalPrice = getFinalPrice();
-          const convertedPrice = convertPackagePrice(finalPrice);
+          const convertedPrice = convertPackagePrice(packageData.price); // Convert ORIGINAL price
 
           const orderRequest = {
             packageCode: packageData.package_code || packageData.packageCode || packageData.id,
             packageName: packageData.originalName || packageData.name,
-            price: finalPrice, // USD price after discount for security validation
+            price: packageData.price, // Send original price - server will apply discount
             displayPrice: convertedPrice, // Converted price for display/storage
             currency: userCurrency,
             data: packageData.data,
@@ -594,7 +609,8 @@ const CheckoutScreenV2 = () => {
             flagUrl: getFlagUrl(),
             quantity: 1,
             payment_method: 'balance',
-            promoDetails: verifiedPromoDetails
+            promoDetails: verifiedPromoDetails,
+            customData: packageData.customData // Pass customData for customizable plans
           };
 
           orderResponse = await esimApi.orderEsim(orderRequest);
