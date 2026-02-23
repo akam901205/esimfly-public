@@ -9,6 +9,8 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,6 +37,7 @@ const CountryPackagesScreen = () => {
   const [error, setError] = useState(null);
   const [networkModalVisible, setNetworkModalVisible] = useState(false);
   const [selectedNetworks, setSelectedNetworks] = useState([]);
+  const [localInfoModalVisible, setLocalInfoModalVisible] = useState(false);
   const route = useRoute();
   const navigation = useNavigation();
   const { country, packageType } = route.params;
@@ -200,7 +203,7 @@ const handleNetworkPress = (packageData) => {
 
       // Process packages from the new API
       let allPackages = response.data?.data?.packages || [];
-      
+
       // Map the packages to match the expected format
       allPackages = allPackages.map(plan => {
         // Fix esimgo data format issues (0.98 -> 1, 1.95 -> 2, etc.)
@@ -239,6 +242,7 @@ const handleNetworkPress = (packageData) => {
           data: dataValue,
           duration: duration,
           provider: plan.provider,
+          type: plan.type,
           isUnlimited: plan.isUnlimited,
           voiceMinutes: plan.voiceMinutes,
           smsCount: plan.smsCount,
@@ -413,6 +417,15 @@ const renderPackageItem = ({ item, index }) => {
             <Text style={styles.countryName} numberOfLines={1} ellipsizeMode="tail">{country}</Text>
           </View>
           <View style={styles.headerBadgesContainer}>
+            {item.type === 'localesim' && (
+              <TouchableOpacity
+                style={styles.localBadgeContainer}
+                onPress={() => setLocalInfoModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.localBadgeText}>🏠 Local</Text>
+              </TouchableOpacity>
+            )}
             {(item.voiceMinutes > 0 || item.smsCount > 0) ? (
               <View style={styles.voiceSmsHeaderContainer}>
                 {item.voiceMinutes > 0 && (
@@ -542,6 +555,68 @@ const renderPackageItem = ({ item, index }) => {
         onClose={() => setNetworkModalVisible(false)}
         networks={selectedNetworks}
       />
+
+      {/* Local eSIM Info Modal */}
+      <Modal
+        visible={localInfoModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setLocalInfoModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setLocalInfoModalVisible(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>🏠 Local eSIM Benefits</Text>
+              <TouchableOpacity onPress={() => setLocalInfoModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.benefitItem}>
+                <Text style={styles.checkmark}>✓</Text>
+                <View style={styles.benefitContent}>
+                  <Text style={styles.benefitTitle}>Local Network</Text>
+                  <Text style={styles.benefitDescription}>Direct connection to local carrier</Text>
+                </View>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <Text style={styles.checkmark}>✓</Text>
+                <View style={styles.benefitContent}>
+                  <Text style={styles.benefitTitle}>Faster Speeds</Text>
+                  <Text style={styles.benefitDescription}>No roaming network overhead</Text>
+                </View>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <Text style={styles.checkmark}>✓</Text>
+                <View style={styles.benefitContent}>
+                  <Text style={styles.benefitTitle}>Better Coverage</Text>
+                  <Text style={styles.benefitDescription}>Full carrier network access</Text>
+                </View>
+              </View>
+
+              <View style={styles.benefitItem}>
+                <Text style={styles.checkmark}>✓</Text>
+                <View style={styles.benefitContent}>
+                  <Text style={styles.benefitTitle}>Lower Latency</Text>
+                  <Text style={styles.benefitDescription}>Local routing for faster response</Text>
+                </View>
+              </View>
+
+              <View style={styles.comparisonSection}>
+                <Text style={styles.comparisonTitle}>vs Roaming eSIM:</Text>
+                <Text style={styles.comparisonText}>Uses international roaming with potential speed limits</Text>
+              </View>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -641,6 +716,34 @@ packageItem: {
     fontSize: 12,
     color: '#FF6B00',
     fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  localBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FB923C',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  localBadgeText: {
+    fontSize: 11,
+    color: '#EA580C',
+    fontWeight: '700',
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
   packageDetails: {
@@ -951,6 +1054,96 @@ networkButton: {
     fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
     marginLeft: 3,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#EA580C',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  modalBody: {
+    maxHeight: 400,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    alignItems: 'flex-start',
+  },
+  checkmark: {
+    fontSize: 16,
+    color: '#10B981',
+    marginRight: 10,
+    marginTop: 2,
+  },
+  benefitContent: {
+    flex: 1,
+  },
+  benefitTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  benefitDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  comparisonSection: {
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  comparisonTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 6,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  },
+  comparisonText: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 18,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
 });
 

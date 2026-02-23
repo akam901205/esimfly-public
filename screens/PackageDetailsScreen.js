@@ -720,8 +720,13 @@ const PackageDetailsScreen = () => {
   };
 
   const ActivationPolicySection = () => {
+    // Check if this is a Laos TGT package
+    const isLaosTGT = country && country.toLowerCase() === 'laos' &&
+                      packageData.id && packageData.id.match(/^A-\d{3}-ES-/);
+
     return (
       <View style={styles.activationPolicySection}>
+        {/* Regular Activation Policy */}
         <View style={styles.policyCard}>
           <LinearGradient
             colors={['#EEF2FF', '#E0E7FF']}
@@ -749,6 +754,67 @@ const PackageDetailsScreen = () => {
             </View>
           </LinearGradient>
         </View>
+
+        {/* Laos Special Activation Instructions - BELOW regular policy */}
+        {isLaosTGT && (
+          <View style={[styles.policyCard, { marginTop: 16 }]}>
+            <LinearGradient
+              colors={['#FEE2E2', '#FEF2F2']}
+              style={styles.policyGradient}
+            >
+              <View style={styles.laosWarningHeader}>
+                <View style={[styles.infoIconContainer, { backgroundColor: '#DC262615' }]}>
+                  <Ionicons name="warning" size={24} color="#DC2626" />
+                </View>
+                <Text style={styles.laosWarningTitle}>Network Activation Required</Text>
+              </View>
+
+              <Text style={styles.laosWarningText}>
+                After installing your Laos eSIM, you must manually activate the network for it to work properly.
+              </Text>
+
+              {/* Step 1: Activate Network */}
+              <View style={styles.laosStepContainer}>
+                <View style={styles.laosStepHeader}>
+                  <View style={styles.laosStepBadge}>
+                    <Text style={styles.laosStepNumber}>1</Text>
+                  </View>
+                  <Text style={styles.laosStepTitle}>Activate Network</Text>
+                </View>
+
+                <View style={styles.laosDialBox}>
+                  <Text style={styles.laosDialNumber}>📞 121</Text>
+                  <Text style={styles.laosDialInstruction}>
+                    Wait 10 seconds, then press <Text style={styles.laosDialButton}>1</Text>
+                  </Text>
+                </View>
+              </View>
+
+              {/* Step 2: Check Usage */}
+              <View style={styles.laosStepContainer}>
+                <View style={styles.laosStepHeader}>
+                  <View style={styles.laosStepBadge}>
+                    <Text style={styles.laosStepNumber}>2</Text>
+                  </View>
+                  <Text style={styles.laosStepTitle}>Check Your Usage</Text>
+                </View>
+
+                <View style={styles.laosUsageBox}>
+                  <Text style={styles.laosUsageCode}>📊 *122#</Text>
+                  <Text style={styles.laosUsageInstruction}>
+                    Dial this anytime to check remaining data
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.laosTipBox}>
+                <Text style={styles.laosTipText}>
+                  <Text style={styles.laosTipBold}>💡 Tip:</Text> Complete activation (dial 121) immediately after installing your eSIM for best results
+                </Text>
+              </View>
+            </LinearGradient>
+          </View>
+        )}
       </View>
     );
   };
@@ -1392,7 +1458,129 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontWeight: '500',
   },
-  
+
+  // Laos Activation Instructions Styles
+  laosWarningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  laosWarningTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#991B1B',
+    flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  laosWarningText: {
+    fontSize: 14,
+    color: '#7F1D1D',
+    lineHeight: 20,
+    marginBottom: 20,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  laosStepContainer: {
+    marginBottom: 16,
+  },
+  laosStepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  laosStepBadge: {
+    backgroundColor: '#DC2626',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  laosStepNumber: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  laosStepTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto',
+  },
+  laosDialBox: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 3,
+    borderColor: '#DC2626',
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+  },
+  laosDialNumber: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#DC2626',
+    fontFamily: 'monospace',
+    letterSpacing: 4,
+    marginBottom: 8,
+  },
+  laosDialInstruction: {
+    fontSize: 13,
+    color: '#991B1B',
+    fontWeight: '600',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  laosDialButton: {
+    fontSize: 16,
+    backgroundColor: '#DC2626',
+    color: '#FFFFFF',
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  laosUsageBox: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+  },
+  laosUsageCode: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1E40AF',
+    fontFamily: 'monospace',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  laosUsageInstruction: {
+    fontSize: 12,
+    color: '#1E40AF',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  laosTipBox: {
+    backgroundColor: '#FFFBEB',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+    padding: 12,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  laosTipText: {
+    fontSize: 12,
+    color: '#92400E',
+    lineHeight: 18,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'Roboto',
+  },
+  laosTipBold: {
+    fontWeight: '700',
+    color: '#78350F',
+  },
+
   // Bottom Container
   bottomContainer: {
     position: 'absolute',
