@@ -39,10 +39,7 @@ export const useESimData = () => {
         return;
       }
 
-      console.log('Fetching eSIM data with token:', userToken ? 'Token exists' : 'No token');
       const response = await newApi.get('/myesims?limit=100&status=all');
-
-      console.log('eSIM data response:', response.data);
 
       if (response.data && response.data.esims && isMounted.current) {
         // Transform the API response to match the expected ESim interface
@@ -54,7 +51,14 @@ export const useESimData = () => {
           const statusB = (b.status || '').toLowerCase();
 
           // Priority order: active/in_use > new > expiring > expired/depleted
-          const getPriority = (status: string) => {
+          const getPriority = (esim: any) => {
+            const status = (esim.status || '').toLowerCase();
+
+            // Pending KDDI eSIMs (highest priority - show FIRST)
+            if (esim.iccid?.startsWith('KDDI_PENDING_') || esim.isPending) {
+              return -1;
+            }
+
             switch (status) {
               case 'active':
               case 'in_use':
@@ -72,8 +76,8 @@ export const useESimData = () => {
             }
           };
 
-          const priorityA = getPriority(statusA);
-          const priorityB = getPriority(statusB);
+          const priorityA = getPriority(a);
+          const priorityB = getPriority(b);
 
           // Sort by priority first
           if (priorityA !== priorityB) {
@@ -86,9 +90,16 @@ export const useESimData = () => {
           return dateB - dateA;
         });
 
-        setEsimData(sortedEsims);
-        if (sortedEsims.length > 0) {
-          const initialVisibleEsims = sortedEsims.slice(0, 5);
+        // Remove any duplicates by ID and ICCID (safety check)
+        const uniqueEsims = sortedEsims.filter((esim, index, self) =>
+          index === self.findIndex((e) =>
+            e.id === esim.id && e.iccid === esim.iccid
+          )
+        );
+
+        setEsimData(uniqueEsims);
+        if (uniqueEsims.length > 0) {
+          const initialVisibleEsims = uniqueEsims.slice(0, 5);
           setVisibleEsims(initialVisibleEsims);
 
           // If preserveSelection is true and we have a selected eSIM, try to keep it selected
@@ -116,7 +127,6 @@ export const useESimData = () => {
         setError('Failed to fetch eSIM data');
       }
     } catch (err: any) {
-      console.error('Error fetching eSIM data:', err);
       if (isMounted.current) {
         if (err.response?.status === 401) {
           setError('Session expired. Please login again.');

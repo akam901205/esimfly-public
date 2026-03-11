@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -31,6 +31,7 @@ import { colors } from '../theme/colors';
 
 // Components
 import { TopUpModal } from '../components/MyESims/TopUpModal';
+import { ProvisioningModal } from '../components/MyESims/ProvisioningModal';
 import NoeSIMState from '../components/NoeSIMState';
 
 // Hooks
@@ -108,6 +109,7 @@ const DataTypeButton = ({
 
 const MyESimsScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const { userToken, logout } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   
@@ -131,6 +133,7 @@ const MyESimsScreen = () => {
   const [sliderWidth, setSliderWidth] = useState(Dimensions.get('window').width);
   const [currentPage, setCurrentPage] = useState(0);
   const slideAnimation = useRef(new Animated.Value(0)).current;
+  const pulseAnimation = useRef(new Animated.Value(1)).current;
   const [refreshing, setRefreshing] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState>({
     visible: false,
@@ -140,9 +143,19 @@ const MyESimsScreen = () => {
     isVisible: false,
     esim: null
   });
-  
+
+  // KDDI provisioning state
+  const [pendingKDDICount, setPendingKDDICount] = useState(0);
+  const [showProvisioningModal, setShowProvisioningModal] = useState(false);
+  const [userDismissedModal, setUserDismissedModal] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
+
   const horizontalScrollRef = useRef<ScrollView>(null);
   const isMounted = useRef(true);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPollTimeRef = useRef<number>(0);
+  const isPollingRef = useRef(false);
 
   // Effects
   useEffect(() => {
@@ -150,6 +163,28 @@ const MyESimsScreen = () => {
       isMounted.current = false;
     };
   }, []);
+
+  // Pulsing animation for pending badge
+  useEffect(() => {
+    if (pendingKDDICount > 0) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnimation, {
+            toValue: 1.2,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnimation, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      return () => animation.stop();
+    }
+  }, [pendingKDDICount, pulseAnimation]);
 
 
   useFocusEffect(
@@ -160,6 +195,131 @@ const MyESimsScreen = () => {
       }
     }, [userToken, fetchEsimData])
   );
+
+  // Check for navigation params to force show modal
+  useEffect(() => {
+    const params = route.params as any;
+    if (params?.showProvisioning && esimData.length > 0) {
+      const pendingCount = esimData.filter(esim => esim.isPending).length;
+      if (pendingCount > 0) {
+        setShowProvisioningModal(true);
+        setUserDismissedModal(false); // Reset dismiss flag
+        // Clear the param so it doesn't keep triggering
+        navigation.setParams({ showProvisioning: undefined });
+      }
+    }
+  }, [route.params, esimData, navigation]);
+
+  // Check for pending KDDI eSIMs and show modal
+  useEffect(() => {
+    if (esimData.length > 0) {
+      const pendingCount = esimData.filter(esim => esim.isPending).length;
+      setPendingKDDICount(pendingCount);
+
+      // Auto-show modal ONLY if user hasn't dismissed it
+      if (pendingCount > 0 && !showProvisioningModal && !userDismissedModal) {
+        setShowProvisioningModal(true);
+      }
+
+      // Auto-hide modal and reset dismiss flag when all orders are complete
+      if (pendingCount === 0) {
+        setShowProvisioningModal(false);
+        setUserDismissedModal(false); // Reset so it can show again for new orders
+      }
+    } else {
+      setPendingKDDICount(0);
+      setShowProvisioningModal(false);
+      setUserDismissedModal(false);
+    }
+  }, [esimData, showProvisioningModal, userDismissedModal]);
+
+  // Poll for KDDI eSIM status updates - with rate limiting
+  useEffect(() => {
+    if (pendingKDDICount === 0 || !userToken) {
+      // Clear intervals if no pending orders
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+      isPollingRef.current = false;
+      return;
+    }
+
+    const checkPendingKDDI = async () => {
+      // Rate limiting: Prevent multiple simultaneous calls
+      if (isPollingRef.current) {
+        return;
+      }
+
+      // Rate limiting: Minimum 15 seconds between polls
+      const now = Date.now();
+      const timeSinceLastPoll = now - lastPollTimeRef.current;
+      if (timeSinceLastPoll < 15000 && lastPollTimeRef.current > 0) {
+        return;
+      }
+
+      try {
+        isPollingRef.current = true;
+        setIsPolling(true);
+        lastPollTimeRef.current = now;
+
+        const response = await newApi.get('/user/esims/check-pending-kddi');
+
+        if (response.data && response.data.success) {
+          // Check if rate limited
+          if (response.data.rate_limited) {
+            return; // Skip this check
+          }
+
+          const currentPending = response.data.pending_count - response.data.updated_count;
+          setPendingKDDICount(currentPending);
+
+          // If any eSIMs were updated, refresh the list
+          if (response.data.updated_count > 0) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await fetchEsimData(false, true); // Refresh without showing loader
+          }
+        }
+      } catch (error) {
+        // Silently handle errors
+      } finally {
+        isPollingRef.current = false;
+        setIsPolling(false);
+      }
+    };
+
+    // Check immediately on mount (but respect rate limit)
+    checkPendingKDDI();
+
+    // Poll every 20 seconds
+    pollingIntervalRef.current = setInterval(checkPendingKDDI, 20000);
+
+    // Safety timeout: Stop polling after 5 minutes max
+    pollingTimeoutRef.current = setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+        setShowProvisioningModal(false);
+      }
+    }, 300000); // 5 minutes
+
+    // Cleanup
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+      isPollingRef.current = false;
+    };
+  }, [pendingKDDICount, userToken, fetchEsimData]);
 
   // Set first 5 esims as visible when data loads
   useEffect(() => {
@@ -180,6 +340,10 @@ const MyESimsScreen = () => {
     setRefreshing(true);
     await refreshData();
     setRefreshing(false);
+  };
+
+  const handleProvisioningRefresh = async () => {
+    await fetchEsimData(false, true);
   };
 
   const handleModalSelection = (selectedItem: ESim) => {
@@ -578,15 +742,19 @@ const MyESimsScreen = () => {
           }}
           scrollEventThrottle={16}
         >
-          {visibleEsims.map((esim, index) => (
-            <View 
-              key={esim.id}
+          {visibleEsims.map((esim, index) => {
+            // Create a truly unique key combining multiple unique identifiers
+            const uniqueKey = `esim-${esim.id}-${esim.iccid || 'no-iccid'}-${esim.package_code || 'no-code'}-idx${index}`;
+            return (
+            <View
+              key={uniqueKey}
               style={[styles.cardWrapper, { width: sliderWidth }]}
             >
               <TouchableOpacity
                 style={[
                   styles.esimCard,
-                  selectedEsim?.id === esim.id && styles.selectedEsimCard
+                  selectedEsim?.id === esim.id && styles.selectedEsimCard,
+                  esim.isPending && styles.pendingEsimCard
                 ]}
                 onPress={() => {
                   selectEsim(esim);
@@ -599,9 +767,9 @@ const MyESimsScreen = () => {
                       styles.chipIconContainer,
                       selectedEsim?.id === esim.id && styles.selectedChipContainer
                     ]}>
-                      <Ionicons 
-                        name="hardware-chip-outline" 
-                        size={20} 
+                      <Ionicons
+                        name="hardware-chip-outline"
+                        size={20}
                         color={selectedEsim?.id === esim.id ? '#FFFFFF' : '#6B7280'}
                         style={styles.chipIcon}
                       />
@@ -612,13 +780,27 @@ const MyESimsScreen = () => {
                   </View>
                   <View style={styles.flagContainer}>
                     {esim.flag_url && (
-                      <Image 
-                        source={{ uri: esim.flag_url.startsWith('http') ? esim.flag_url : `https://esimfly.net${esim.flag_url}` }} 
+                      <Image
+                        source={{ uri: esim.flag_url.startsWith('http') ? esim.flag_url : `https://esimfly.net${esim.flag_url}` }}
                         style={styles.flagImage}
                       />
                     )}
                   </View>
                 </View>
+
+                {/* Pending Indicator - between country and status */}
+                {esim.isPending && (
+                  <View style={styles.pendingBadgeInline}>
+                    <Animated.View
+                      style={[
+                        styles.pendingDot,
+                        { transform: [{ scale: pulseAnimation }] }
+                      ]}
+                    />
+                    <Text style={styles.pendingText}>Provisioning your eSIM...</Text>
+                  </View>
+                )}
+
                 <View style={styles.statusTimeContainer}>
                   <View style={[
                     styles.statusBadge,
@@ -637,9 +819,9 @@ const MyESimsScreen = () => {
                   </View>
                   {esim.time_left !== 'N/A' && (
                     <View style={styles.timeContainer}>
-                      <Ionicons 
-                        name="time-outline" 
-                        size={14} 
+                      <Ionicons
+                        name="time-outline"
+                        size={14}
                         color="#888888"
                       />
                       <Text style={styles.timeText}>
@@ -650,7 +832,8 @@ const MyESimsScreen = () => {
                 </View>
               </TouchableOpacity>
             </View>
-          ))}
+            );
+          })}
         </ScrollView>
 
         <View style={styles.paginationWrapper}>
@@ -669,9 +852,9 @@ const MyESimsScreen = () => {
                 }
               ]}
             />
-            {visibleEsims.map((_, index) => (
+            {visibleEsims.map((esim, index) => (
               <TouchableOpacity
-                key={index}
+                key={`pagination-${esim.id}-${index}`}
                 onPress={() => {
                   setCurrentPage(index);
                   selectEsim(visibleEsims[index]);
@@ -785,7 +968,7 @@ const MyESimsScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -917,15 +1100,29 @@ const MyESimsScreen = () => {
             
             <FlatList
               data={esimData}
-              renderItem={({ item }) => (
-                <TouchableOpacity 
+              renderItem={({ item, index }) => (
+                <TouchableOpacity
                   style={[
                     styles.modalCard,
-                    selectedEsim?.id === item.id && styles.selectedModalCard
+                    selectedEsim?.id === item.id && styles.selectedModalCard,
+                    item.isPending && styles.pendingModalCard
                   ]}
                   onPress={() => handleModalSelection(item)}
                   activeOpacity={0.7}
                 >
+                  {/* Pending Indicator in Modal */}
+                  {item.isPending && (
+                    <View style={styles.modalPendingBadge}>
+                      <Animated.View
+                        style={[
+                          styles.pendingDot,
+                          { transform: [{ scale: pulseAnimation }] }
+                        ]}
+                      />
+                      <Text style={styles.pendingText}>Provisioning...</Text>
+                    </View>
+                  )}
+
                   <View style={styles.modalCardContent}>
                     <View style={styles.countryInfo}>
                       <View style={styles.leftContent}>
@@ -933,9 +1130,9 @@ const MyESimsScreen = () => {
                           styles.chipIconContainer,
                           selectedEsim?.id === item.id && styles.selectedChipContainer
                         ]}>
-                          <Ionicons 
-                            name="hardware-chip-outline" 
-                            size={20} 
+                          <Ionicons
+                            name="hardware-chip-outline"
+                            size={20}
                             color={selectedEsim?.id === item.id ? '#FFFFFF' : '#6B7280'}
                           />
                         </View>
@@ -945,8 +1142,8 @@ const MyESimsScreen = () => {
                       </View>
                       <View style={styles.flagContainer}>
                         {item.flag_url && (
-                          <Image 
-                            source={{ uri: item.flag_url.startsWith('http') ? item.flag_url : `https://esimfly.net${item.flag_url}` }} 
+                          <Image
+                            source={{ uri: item.flag_url.startsWith('http') ? item.flag_url : `https://esimfly.net${item.flag_url}` }}
                             style={styles.flagImage}
                           />
                         )}
@@ -970,9 +1167,9 @@ const MyESimsScreen = () => {
                       </View>
                       {item.time_left !== 'N/A' && (
                         <View style={styles.timeContainer}>
-                          <Ionicons 
-                            name="time-outline" 
-                            size={14} 
+                          <Ionicons
+                            name="time-outline"
+                            size={14}
                             color={colors.text.secondary}
                           />
                           <Text style={styles.timeText}>
@@ -984,7 +1181,11 @@ const MyESimsScreen = () => {
                   </View>
                 </TouchableOpacity>
               )}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item, index) => {
+                // Create a truly unique key for each item
+                const uniqueKey = `modal-${item.id}-${item.iccid || 'no-iccid'}-${item.package_code || 'no-code'}-${index}`;
+                return uniqueKey;
+              }}
               contentContainerStyle={styles.modalList}
               showsVerticalScrollIndicator={false}
               ItemSeparatorComponent={() => <View style={styles.modalCardSeparator} />}
@@ -1016,6 +1217,18 @@ const MyESimsScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Provisioning Modal for pending KDDI orders */}
+      <ProvisioningModal
+        visible={showProvisioningModal}
+        pendingCount={pendingKDDICount}
+        onClose={() => {
+          setShowProvisioningModal(false);
+          setUserDismissedModal(true); // Remember user dismissed it
+        }}
+        onRefresh={handleProvisioningRefresh}
+        isRefreshing={isPolling || refreshing}
+      />
     </View>
   );
 };
@@ -1179,6 +1392,43 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   selectedEsimCard: {
+  },
+  pendingEsimCard: {
+    borderColor: '#FDBA74',
+    borderWidth: 2,
+    backgroundColor: '#FFFBEB',
+  },
+  pendingBadgeInline: {
+    backgroundColor: '#F97316',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 8,
+    shadowColor: '#F97316',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pendingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+  },
+  pendingText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    letterSpacing: 0.3,
   },
   countryInfo: {
     flexDirection: 'row',
@@ -1508,6 +1758,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   selectedModalCard: {
+  },
+  pendingModalCard: {
+    borderColor: '#FDBA74',
+    borderWidth: 2,
+    backgroundColor: '#FFFBEB',
   },
   modalCardContent: {
     padding: 16,

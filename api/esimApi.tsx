@@ -570,7 +570,7 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
             orderReference: response.data.orderReference,
             currency: response.data.currency || 'USD',
             qrCodeUrl: response.data.qrCodeUrl || response.data.esims?.[0]?.qrCodeUrl,
-            directAppleInstallUrl: response.data.directAppleInstallUrl || 
+            directAppleInstallUrl: response.data.directAppleInstallUrl ||
                                   response.data.esims?.[0]?.directAppleInstallUrl ||
                                   response.data.esims?.[0]?.appleInstallUrl,
             processing: response.data.processing,
@@ -578,7 +578,10 @@ export const orderEsim = async (data: OrderEsimRequest): Promise<ApiResponse<Ord
             esims: response.data.esims,
             discountAmount: response.data.discountAmount,
             finalPrice: response.data.finalPrice,
-            payment_method: data.payment_method // Use actual payment method (balance or free)
+            payment_method: data.payment_method, // Use actual payment method (balance or free)
+            isPending: response.data.isPending, // KDDI provisioning flag
+            provider: response.data.provider, // Provider name (kddi, tgt, etc.)
+            status: response.data.status // Order status (pending, completed)
           }
         };
       } else {
@@ -1281,8 +1284,6 @@ export const createCheckoutSession = async (data: {
   orderReference: string;
 }>> => {
   try {
-    console.log('Creating checkout session:', data);
-    
     const response = await newApi.post('/checkout/create-payment-sheet', {
       items: data.items,
       promoDetails: data.promoDetails,
@@ -1290,8 +1291,6 @@ export const createCheckoutSession = async (data: {
       esimId: data.esimId,
       provider: data.provider
     });
-
-    console.log('Checkout session response:', response.data);
 
     if (response.data?.success) {
       return {

@@ -33,7 +33,7 @@ export const getCountryFromPackageName = (packageName?: string): string => {
 
 export const transformEsimData = (esim: any): ESim => {
   const packageName = esim.package?.toLowerCase() || '';
-  
+
   return {
     id: parseInt(esim.id),
     plan_name: esim.package,
@@ -69,25 +69,25 @@ export const transformEsimData = (esim: any): ESim => {
     })(),
     package_duration_days: esim.packageDurationDays || null,
     created_at: esim.createdAt || null,
-    time_left: esim.expires && esim.expires !== 'N/A' ? 
+    time_left: esim.expires && esim.expires !== 'N/A' ?
       (() => {
         const expiryDate = new Date(esim.expires);
         const now = new Date();
         const diffMs = expiryDate.getTime() - now.getTime();
-        
+
         if (diffMs <= 0) return 'Expired';
-        
+
         // Calculate days, hours, minutes
         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        
+
         // Format the time string
         let timeStr = '';
         if (days > 0) timeStr += `${days}d `;
         if (hours > 0 || days > 0) timeStr += `${hours}h `;
         if (minutes > 0 || hours > 0 || days > 0) timeStr += `${minutes}m`;
-        
+
         return timeStr.trim() || '0m';
       })() : 'N/A',
     activated_before: 'N/A',
@@ -105,7 +105,7 @@ export const transformEsimData = (esim: any): ESim => {
       if (packageName.includes('caribbean')) return 'Caribbean';
       if (packageName.includes('middle east')) return 'Middle East';
       if (packageName.includes('global') || packageName.includes('discover')) return 'Global';
-      
+
       // For multi-country packages like "Singapore & Malaysia & Thailand"
       if (packageName.includes('&') && esim.countries && esim.countries.length > 1) {
         // Convert any country codes to names
@@ -124,6 +124,8 @@ export const transformEsimData = (esim: any): ESim => {
                ((esim.status === 'new' || esim.status === 'inactive' || esim.status === 'not_active') && esim.dataTotal === 0) ||
                (esim.planName && esim.planName.toLowerCase().includes('unlimited')), // Check package name
     provider: esim.provider || '',
+    isPending: esim.isPending || false, // Preserve pending status from API
+    pendingType: esim.pendingType || null, // Preserve pending type from API
     assigned_user: null
   };
 };

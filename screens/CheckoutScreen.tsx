@@ -293,16 +293,35 @@ const CheckoutScreenV2 = () => {
               navigateToMyEsims: true
             });
           } else {
-            navigation.navigate('Instructions', {
-              qrCodeUrl: orderResponse.data.qrCodeUrl,
-              directAppleInstallUrl: orderResponse.data.directAppleInstallUrl,
-              packageName: orderResponse.data.packageName,
-              iccid: orderResponse.data.esims?.[0]?.iccid || '',
-              ac: orderResponse.data.esims?.[0]?.ac || '',
-              processing: orderResponse.data.processing,
-              esimId: orderResponse.data.esimId,
-              orderReference: orderResponse.data.orderReference
-            });
+            // Check if eSIM is pending provisioning (KDDI local carrier eSIMs)
+            // Check both response levels (direct and nested in data)
+            const isPending = responseData.isPending || responseData.status === 'pending' ||
+                            orderResponse.isPending || orderResponse.status === 'pending';
+
+            if (isPending) {
+              // For pending eSIMs (KDDI), navigate to My eSIMs with flag to show modal
+
+              // Dispatch event to refresh My eSIMs
+              EventEmitter.dispatch('ESIM_ADDED', {
+                countryName: 'Japan',
+                data: packageData.data,
+                duration: packageData.duration
+              });
+
+              // Navigate to My eSIMs tab with parameter to show provisioning modal
+              navigation.navigate('My eSims', { showProvisioning: true });
+            } else {
+              navigation.navigate('Instructions', {
+                qrCodeUrl: responseData.qrCodeUrl,
+                directAppleInstallUrl: responseData.directAppleInstallUrl,
+                packageName: responseData.packageName,
+                iccid: responseData.esims?.[0]?.iccid || '',
+                ac: responseData.esims?.[0]?.ac || '',
+                processing: responseData.processing,
+                esimId: responseData.esimId,
+                orderReference: responseData.orderReference
+              });
+            }
           }
           return;
         } else {
@@ -616,22 +635,18 @@ const CheckoutScreenV2 = () => {
           orderResponse = await esimApi.orderEsim(orderRequest);
         }
 
-        if (orderResponse.success && orderResponse.data) {
-          // For topups, the actual data is nested in data.data
-          const responseData = isTopup ? (orderResponse.data.data || orderResponse.data) : orderResponse.data;
+        if (orderResponse.success) {
+          // Handle both response structures:
+          // KDDI: { success, isPending, provider, ... } (top level)
+          // Others: { success, data: { isPending, provider, ... } } (nested)
+          const responseData = orderResponse.data || orderResponse;
 
           // Update balance
           if (responseData.newBalance !== undefined) {
-            setBalance({ 
+            setBalance({
               balance: responseData.newBalance,
               currency: responseData.currency || 'USD'
             });
-
-            // Don't update other screens' balance - let them refresh on their own
-            // EventEmitter.dispatch('BALANCE_UPDATED', {
-            //   balance: responseData.newBalance,
-            //   currency: responseData.currency || 'USD'
-            // });
 
             if (!isTopup) {
               EventEmitter.dispatch('ESIM_ADDED', {
@@ -644,7 +659,7 @@ const CheckoutScreenV2 = () => {
 
           // For TGT orders, poll for eSIM details before navigating
           // Check if this is a TGT order by ICCID (more reliable than provider field)
-          const isTGTOrder = !isTopup && orderResponse.data.esims?.[0]?.iccid?.startsWith('TGT_PENDING_');
+          const isTGTOrder = !isTopup && responseData.esims?.[0]?.iccid?.startsWith('TGT_PENDING_');
 
           if (isTGTOrder && responseData.orderReference) {
 
@@ -665,10 +680,10 @@ const CheckoutScreenV2 = () => {
 
                   // Check if webhook has updated the eSIM (data is at root level)
                   if (data.iccid && !data.iccid.startsWith('TGT_PENDING_') && data.qrCodeUrl) {
-                    // Update orderResponse with real details
-                    orderResponse.data.qrCodeUrl = data.qrCodeUrl;
-                    orderResponse.data.directAppleInstallUrl = data.directAppleInstallUrl;
-                    orderResponse.data.esims = [{
+                    // Update responseData with real details
+                    responseData.qrCodeUrl = data.qrCodeUrl;
+                    responseData.directAppleInstallUrl = data.directAppleInstallUrl;
+                    responseData.esims = [{
                       iccid: data.iccid,
                       qrCodeUrl: data.qrCodeUrl,
                       appleInstallUrl: data.directAppleInstallUrl,
@@ -695,17 +710,32 @@ const CheckoutScreenV2 = () => {
               navigateToMyEsims: true // Flag to indicate where to go after processing
             });
           } else {
-            // For new purchases, navigate to instructions
-            navigation.navigate('Instructions', {
-              qrCodeUrl: orderResponse.data.qrCodeUrl,
-              directAppleInstallUrl: orderResponse.data.directAppleInstallUrl,
-              packageName: orderResponse.data.packageName,
-              iccid: orderResponse.data.esims?.[0]?.iccid || '',
-              ac: orderResponse.data.esims?.[0]?.ac || '',
-              processing: orderResponse.data.processing,
-              esimId: orderResponse.data.esimId,
-              orderReference: orderResponse.data.orderReference
-            });
+            // Check if eSIM is pending provisioning (KDDI local carrier eSIMs)
+            if (responseData.isPending || responseData.status === 'pending') {
+              // For pending eSIMs (KDDI), navigate to My eSIMs with flag to show modal
+
+              // Dispatch event to refresh My eSIMs
+              EventEmitter.dispatch('ESIM_ADDED', {
+                countryName: 'Japan',
+                data: packageData.data,
+                duration: packageData.duration
+              });
+
+              // Navigate to My eSIMs tab with parameter to show provisioning modal
+              navigation.navigate('My eSims', { showProvisioning: true });
+            } else {
+              // For new purchases, navigate to instructions
+              navigation.navigate('Instructions', {
+                qrCodeUrl: responseData.qrCodeUrl,
+                directAppleInstallUrl: responseData.directAppleInstallUrl,
+                packageName: responseData.packageName,
+                iccid: responseData.esims?.[0]?.iccid || '',
+                ac: responseData.esims?.[0]?.ac || '',
+                processing: responseData.processing,
+                esimId: responseData.esimId,
+                orderReference: responseData.orderReference
+              });
+            }
           }
         } else {
           handleOrderError(orderResponse);

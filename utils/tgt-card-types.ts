@@ -67,6 +67,14 @@ export function canTopupMobile(
     };
   }
 
+  // KDDI doesn't support top-up
+  if (provider === 'kddi') {
+    return {
+      canTopup: false,
+      reason: 'KDDI eSIMs do not support top-up. Please purchase a new eSIM when your data runs out.'
+    };
+  }
+
   // Only check card types for TGT provider
   if (provider !== 'tgt') {
     return { canTopup: true };

@@ -20,6 +20,8 @@ export interface ESim {
   provider?: string;
   package_duration_days?: number | null;
   created_at?: string | null;
+  isPending?: boolean; // For KDDI/TGT pending orders
+  pendingType?: 'kddi' | 'tgt' | null; // Type of pending order
   assigned_user: {
     email: string;
     id: number;

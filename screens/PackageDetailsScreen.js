@@ -108,7 +108,7 @@ const PackageDetailsScreen = () => {
     
     // Check different network data structures based on provider
     // Handle all providers with networks/coverages data
-    if (packageData.provider === 'airalo' || packageData.provider === 'tgt' || packageData.provider === 'esimfly' || packageData.packageCode?.startsWith('airalo_')) {
+    if (packageData.provider === 'airalo' || packageData.provider === 'tgt' || packageData.provider === 'esimfly' || packageData.provider === 'kddi' || packageData.provider === 'esimnet' || packageData.packageCode?.startsWith('airalo_')) {
       // Use a Set to track unique networks
       const uniqueNetworkNames = new Set();
       
@@ -232,8 +232,9 @@ const PackageDetailsScreen = () => {
   }, [country]);
 
   const isProvider2 = useMemo(() => {
-    return packageData.id?.startsWith('esim_');
-  }, [packageData.id]);
+    // ESIMGo and KDDI don't support topup
+    return packageData.id?.startsWith('esim_') || packageData.provider === 'kddi';
+  }, [packageData.id, packageData.provider]);
 
   const renderHeader = () => (
     <View style={[styles.headerContainer, { height: 60 }]}>
@@ -686,6 +687,24 @@ const PackageDetailsScreen = () => {
             value="Data Only eSIM"
             index={1}
           />
+
+          {/* Local eSIM Indicator for KDDI */}
+          {packageData.provider === 'kddi' && (
+            <InfoCard
+              icon={<MaterialIcons name="location-on" size={24} color="#F59E0B" />}
+              iconColor="#F59E0B"
+              label="eSIM Type"
+              value={
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>
+                    Local Carrier eSIM
+                  </Text>
+                  <MaterialIcons name="verified" size={16} color="#F59E0B" />
+                </View>
+              }
+              index={1.5}
+            />
+          )}
 
           <InfoCard
             icon={<MaterialIcons name="add-circle" size={24} color="#FF6B00" />}
