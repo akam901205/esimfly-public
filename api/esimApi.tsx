@@ -1329,6 +1329,12 @@ export const checkOrderStatus = async (orderReference: string): Promise<ApiRespo
   esimId?: number;
   newBalance?: number;
   currency?: string;
+  processing?: boolean;
+  isPending?: boolean; // KDDI pending eSIM flag
+  isKDDI?: boolean;
+  isTopup?: boolean;
+  data?: string;
+  duration?: string;
 }>> => {
   try {
     const response = await newApi.get(`/orders/status/${orderReference}`);

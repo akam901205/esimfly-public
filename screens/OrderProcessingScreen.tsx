@@ -76,11 +76,11 @@ const OrderProcessingScreen = () => {
             } else {
               // Order is ready
               setStatus('success');
-              const successMessage = (response.data.isTopup || isTopup) 
-                ? 'Top-up completed successfully!' 
+              const successMessage = (response.data.isTopup || isTopup)
+                ? 'Top-up completed successfully!'
                 : 'Order completed successfully!';
               setMessage(successMessage);
-              
+
               // Update balance if available
               if (response.data.newBalance !== undefined) {
                 EventEmitter.dispatch('BALANCE_UPDATED', {
@@ -88,7 +88,7 @@ const OrderProcessingScreen = () => {
                   currency: response.data.currency || 'USD'
                 });
               }
-              
+
               // Check if this is a topup order
               if (response.data.isTopup || route.params?.isTopup) {
                 // For topup orders, navigate to My eSims tab
@@ -96,21 +96,40 @@ const OrderProcessingScreen = () => {
                   navigation.navigate('My eSims');
                 }, 1500);
               } else {
-                // Navigate to instructions for regular orders
-                setTimeout(() => {
-                  navigation.replace('Instructions', {
-                    qrCodeUrl: response.data.qrCodeUrl,
-                    directAppleInstallUrl: response.data.directAppleInstallUrl,
-                    packageName: response.data.packageName || packageName,
-                    iccid: response.data.iccid || '',
-                    ac: response.data.ac || '',
-                    processing: false,
-                    esimId: response.data.esimId,
-                    orderReference: orderReference
+                // Check if eSIM is pending provisioning (KDDI local carrier eSIMs)
+                // KDDI orders have isPending: true or iccid starts with 'KDDI_PENDING_'
+                const isPendingKDDI = response.data.isPending ||
+                                      response.data.status === 'pending' ||
+                                      (response.data.iccid && response.data.iccid.startsWith('KDDI_PENDING_'));
+
+                if (isPendingKDDI) {
+                  // For pending KDDI eSIMs, navigate to My eSims with provisioning modal
+                  EventEmitter.dispatch('ESIM_ADDED', {
+                    countryName: 'Japan',
+                    data: response.data.data || '',
+                    duration: response.data.duration || ''
                   });
-                }, 1500);
+
+                  setTimeout(() => {
+                    navigation.navigate('My eSims', { showProvisioning: true });
+                  }, 1500);
+                } else {
+                  // Navigate to instructions for regular orders
+                  setTimeout(() => {
+                    navigation.replace('Instructions', {
+                      qrCodeUrl: response.data.qrCodeUrl,
+                      directAppleInstallUrl: response.data.directAppleInstallUrl,
+                      packageName: response.data.packageName || packageName,
+                      iccid: response.data.iccid || '',
+                      ac: response.data.ac || '',
+                      processing: false,
+                      esimId: response.data.esimId,
+                      orderReference: orderReference
+                    });
+                  }, 1500);
+                }
               }
-              
+
               return true;
             }
           } else if (response.data.status === 'failed') {
